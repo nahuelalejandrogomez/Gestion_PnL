@@ -1,4 +1,5 @@
-import { IsString, IsEnum, IsOptional, IsDateString } from 'class-validator';
+import { IsString, IsEnum, IsOptional, IsDate } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 import { EstadoCliente } from '@prisma/client';
 
 export class CreateClienteDto {
@@ -15,9 +16,14 @@ export class CreateClienteDto {
   @IsOptional()
   estado?: EstadoCliente;
 
-  @IsDateString()
   @IsOptional()
-  fechaInicio?: string;
+  @Transform(({ value }) => {
+    if (!value) return undefined;
+    // Convert "YYYY-MM-DD" or ISO string to Date
+    return new Date(value);
+  })
+  @IsDate()
+  fechaInicio?: Date;
 
   @IsString()
   @IsOptional()
