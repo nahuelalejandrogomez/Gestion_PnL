@@ -34,14 +34,6 @@ export class ClientesService {
         skip: (page - 1) * limit,
         take: limit,
         orderBy: { nombre: 'asc' },
-        include: {
-          _count: {
-            select: {
-              proyectos: true,
-              contratos: true,
-            },
-          },
-        },
       }),
     ]);
 
@@ -59,19 +51,6 @@ export class ClientesService {
   async findOne(id: string) {
     const cliente = await this.prisma.cliente.findUnique({
       where: { id },
-      include: {
-        proyectos: {
-          where: { deletedAt: null },
-          orderBy: { fechaInicio: 'desc' },
-        },
-        contratos: {
-          where: { deletedAt: null },
-          orderBy: { fechaFirma: 'desc' },
-        },
-        objetivos: {
-          orderBy: [{ anio: 'desc' }, { mes: 'desc' }],
-        },
-      },
     });
 
     if (!cliente || cliente.deletedAt) {
