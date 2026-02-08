@@ -7,19 +7,32 @@ export class AppController {
 
   @Get('health')
   async healthCheck() {
+    const response = {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      database: 'unknown',
+      environment: process.env.NODE_ENV || 'development',
+    };
+
     try {
       await this.prisma.$queryRaw`SELECT 1`;
-      return {
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        database: 'connected',
-      };
-    } catch {
-      return {
-        status: 'error',
-        timestamp: new Date().toISOString(),
-        database: 'disconnected',
-      };
+      response.database = 'connected';
+    } catch (error) {
+      response.database = 'disconnected';
+      response.status = 'degraded';
+      // No fallar el health check si la DB no está disponible
+      // para permitir debugging en Railway
     }
+
+    return response;
+  }
+
+  @Get()
+  root() {
+    return {
+      name: 'Redbee PnL API',
+      version: '1.0.0',
+      health: '/api/health',
+    };
   }
 }
