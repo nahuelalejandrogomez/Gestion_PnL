@@ -17,13 +17,13 @@ export function SearchInput({
 }: SearchInputProps) {
   return (
     <div className={cn('relative', className)}>
-      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400 pointer-events-none" />
       <Input
         type="text"
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="pl-10 h-11 bg-white border-slate-200 focus:border-primary focus:ring-1 focus:ring-primary/20 placeholder:text-slate-400"
+        className="pl-10 h-10 bg-white border-stone-200 focus:border-stone-400 focus:ring-1 focus:ring-stone-300 placeholder:text-stone-400"
       />
     </div>
   );

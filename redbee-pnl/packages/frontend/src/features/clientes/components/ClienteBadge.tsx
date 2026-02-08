@@ -9,15 +9,15 @@ interface ClienteBadgeProps {
 const estadoConfig: Record<EstadoCliente, { label: string; className: string }> = {
   ACTIVO: { 
     label: 'Activo', 
-    className: 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+    className: 'bg-stone-100 text-stone-700 border-stone-200' 
   },
   INACTIVO: { 
     label: 'Inactivo', 
-    className: 'bg-slate-50 text-slate-600 border-slate-200' 
+    className: 'bg-stone-50 text-stone-500 border-stone-200' 
   },
   POTENCIAL: { 
     label: 'Potencial', 
-    className: 'bg-blue-50 text-blue-700 border-blue-200' 
+    className: 'bg-amber-50 text-amber-700 border-amber-200' 
   },
 };
 

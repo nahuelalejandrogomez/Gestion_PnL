@@ -54,13 +54,14 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
         size="sm"
         onClick={() => onPageChange(currentPage - 1)}
         disabled={!canGoPrevious}
+        className="border-stone-200 text-stone-600 hover:bg-stone-50 disabled:opacity-50"
       >
         <ChevronLeft className="h-4 w-4" />
       </Button>
 
       {getPageNumbers().map((page, index) =>
         typeof page === 'string' ? (
-          <span key={`ellipsis-${index}`} className="px-2 text-muted-foreground">
+          <span key={`ellipsis-${index}`} className="px-2 text-stone-400">
             {page}
           </span>
         ) : (
@@ -69,7 +70,11 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
             variant={page === currentPage ? 'default' : 'outline'}
             size="sm"
             onClick={() => onPageChange(page)}
-            className="min-w-[36px]"
+            className={`min-w-[36px] ${
+              page === currentPage 
+                ? 'bg-stone-800 text-white hover:bg-stone-700' 
+                : 'border-stone-200 text-stone-600 hover:bg-stone-50'
+            }`}
           >
             {page}
           </Button>
@@ -81,6 +86,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
         size="sm"
         onClick={() => onPageChange(currentPage + 1)}
         disabled={!canGoNext}
+        className="border-stone-200 text-stone-600 hover:bg-stone-50 disabled:opacity-50"
       >
         <ChevronRight className="h-4 w-4" />
       </Button>

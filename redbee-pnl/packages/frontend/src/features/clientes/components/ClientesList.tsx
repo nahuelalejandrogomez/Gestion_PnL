@@ -54,8 +54,8 @@ export function ClientesList() {
       accessorKey: 'nombre' as keyof Cliente,
       cell: (cliente: Cliente) => (
         <div className="py-1">
-          <p className="font-medium text-slate-900">{cliente.nombre}</p>
-          <p className="text-sm text-slate-500">{cliente.razonSocial}</p>
+          <p className="font-medium text-stone-800">{cliente.nombre}</p>
+          <p className="text-sm text-stone-500">{cliente.razonSocial}</p>
         </div>
       ),
     },
@@ -63,7 +63,7 @@ export function ClientesList() {
       header: 'CUIL/CUIT',
       accessorKey: 'cuilCuit' as keyof Cliente,
       cell: (cliente: Cliente) => (
-        <span className="text-slate-600 font-mono text-sm">{cliente.cuilCuit}</span>
+        <span className="text-stone-600 font-mono text-sm">{cliente.cuilCuit}</span>
       ),
     },
     {
@@ -75,7 +75,7 @@ export function ClientesList() {
       header: 'Proyectos',
       accessorKey: '_count.proyectos',
       cell: (cliente: Cliente) => (
-        <span className="text-slate-500 tabular-nums">{cliente._count?.proyectos || 0}</span>
+        <span className="text-stone-500 tabular-nums">{cliente._count?.proyectos || 0}</span>
       ),
       className: 'text-center',
     },
@@ -83,25 +83,25 @@ export function ClientesList() {
       header: 'Contratos',
       accessorKey: '_count.contratos',
       cell: (cliente: Cliente) => (
-        <span className="text-slate-500 tabular-nums">{cliente._count?.contratos || 0}</span>
+        <span className="text-stone-500 tabular-nums">{cliente._count?.contratos || 0}</span>
       ),
       className: 'text-center',
     },
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 bg-stone-50 min-h-screen -m-6 p-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Clientes</h1>
-          <p className="text-slate-500 mt-1">
+          <h1 className="text-2xl font-semibold text-stone-800">Clientes</h1>
+          <p className="text-stone-500 mt-1">
             Gestión de clientes y sus relaciones comerciales
           </p>
         </div>
         <Button 
           onClick={() => setIsCreateDialogOpen(true)}
-          className="bg-[#0066ff] hover:bg-[#0052cc] text-white shadow-sm"
+          className="bg-stone-800 hover:bg-stone-700 text-white focus:ring-amber-200"
         >
           <Plus className="mr-2 h-4 w-4" />
           Nuevo Cliente
@@ -109,7 +109,7 @@ export function ClientesList() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+      <div className="flex flex-col sm:flex-row gap-4">
         <SearchInput
           value={search}
           onChange={setSearch}
@@ -123,7 +123,7 @@ export function ClientesList() {
             setPage(1);
           }}
         >
-          <SelectTrigger className="w-full sm:w-48 h-11 bg-white border-slate-200">
+          <SelectTrigger className="w-full sm:w-48 h-10 bg-white border-stone-200 focus:ring-stone-300">
             <SelectValue placeholder="Filtrar por estado" />
           </SelectTrigger>
           <SelectContent>
@@ -138,9 +138,9 @@ export function ClientesList() {
       {/* Results info */}
       {data?.pagination && (
         <div className="flex items-center justify-between">
-          <p className="text-sm text-slate-500">
-            Mostrando <span className="font-medium text-slate-700">{data.data.length}</span> de{' '}
-            <span className="font-medium text-slate-700">{data.pagination.total}</span> clientes
+          <p className="text-sm text-stone-500">
+            Mostrando <span className="font-medium text-stone-700">{data.data.length}</span> de{' '}
+            <span className="font-medium text-stone-700">{data.pagination.total}</span> clientes
           </p>
         </div>
       )}
