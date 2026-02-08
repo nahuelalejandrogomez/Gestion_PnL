@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   Query,
+  Logger,
 } from '@nestjs/common';
 import { ClientesService } from './clientes.service';
 import { CreateClienteDto } from './dto/create-cliente.dto';
@@ -15,6 +16,8 @@ import { QueryClienteDto } from './dto/query-cliente.dto';
 
 @Controller('clientes')
 export class ClientesController {
+  private readonly logger = new Logger(ClientesController.name);
+
   constructor(private readonly clientesService: ClientesService) {}
 
   @Get()
@@ -28,8 +31,14 @@ export class ClientesController {
   }
 
   @Post()
-  create(@Body() createClienteDto: CreateClienteDto) {
-    return this.clientesService.create(createClienteDto);
+  async create(@Body() createClienteDto: CreateClienteDto) {
+    this.logger.log(`Creating cliente: ${JSON.stringify(createClienteDto)}`);
+    try {
+      return await this.clientesService.create(createClienteDto);
+    } catch (error) {
+      this.logger.error(`Error creating cliente: ${error.message}`, error.stack);
+      throw error;
+    }
   }
 
   @Put(':id')
