@@ -8,4 +8,4 @@ cmds = ["pnpm install", "pnpm prisma generate"]
 cmds = ["pnpm build"]
 
 [start]
-cmd = "pnpm prisma migrate deploy && node dist/main"
+cmd = "pnpm prisma db push --accept-data-loss && node dist/main"
