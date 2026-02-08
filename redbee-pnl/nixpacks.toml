@@ -1,3 +1,6 @@
+# Nixpacks config for Railway monorepo
+# Este archivo asegura que pnpm esté disponible
+
 [phases.setup]
 nixPkgs = ["nodejs_18", "pnpm"]
 
@@ -8,4 +11,4 @@ cmds = ["pnpm install"]
 cmds = ["pnpm build"]
 
 [start]
-cmd = "npx serve dist -l ${PORT:-4173}"
+cmd = "pnpm start"
