@@ -58,13 +58,13 @@ export function ClienteDetail() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-8">
         <div className="flex items-center gap-4">
-          <Skeleton className="h-10 w-10" />
-          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-10 w-10 rounded-lg bg-slate-100" />
+          <Skeleton className="h-8 w-64 bg-slate-100" />
         </div>
-        <Skeleton className="h-[200px] w-full" />
-        <Skeleton className="h-[300px] w-full" />
+        <Skeleton className="h-[200px] w-full rounded-xl bg-slate-100" />
+        <Skeleton className="h-[300px] w-full rounded-xl bg-slate-100" />
       </div>
     );
   }
@@ -72,13 +72,17 @@ export function ClienteDetail() {
   if (error || !cliente) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" onClick={() => navigate('/clientes')}>
+        <Button 
+          variant="ghost" 
+          onClick={() => navigate('/clientes')}
+          className="text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+        >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Volver a clientes
         </Button>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-muted-foreground text-center">
+        <Card className="border-slate-200 shadow-sm">
+          <CardContent className="pt-12 pb-12">
+            <p className="text-slate-500 text-center">
               No se pudo cargar el cliente.
             </p>
           </CardContent>
@@ -88,45 +92,54 @@ export function ClienteDetail() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/clientes')}>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => navigate('/clientes')}
+            className="text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
+          >
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-foreground">{cliente.nombre}</h1>
+              <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{cliente.nombre}</h1>
               <ClienteBadge estado={cliente.estado} />
             </div>
-            <p className="text-muted-foreground">{cliente.razonSocial}</p>
+            <p className="text-slate-500 mt-1">{cliente.razonSocial}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setIsEditDialogOpen(true)}>
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            onClick={() => setIsEditDialogOpen(true)}
+            className="border-slate-200 text-slate-700 hover:bg-slate-50"
+          >
             <Pencil className="mr-2 h-4 w-4" />
             Editar
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive">
+              <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700">
                 <Trash2 className="mr-2 h-4 w-4" />
                 Eliminar
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent>
+            <AlertDialogContent className="border-slate-200">
               <AlertDialogHeader>
-                <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                <AlertDialogDescription>
+                <AlertDialogTitle className="text-slate-900">¿Estás seguro?</AlertDialogTitle>
+                <AlertDialogDescription className="text-slate-500">
                   Esta acción eliminará el cliente "{cliente.nombre}" y no se puede deshacer.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogCancel className="border-slate-200 text-slate-600">Cancelar</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleDelete}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  className="bg-red-600 text-white hover:bg-red-700"
                 >
                   Eliminar
                 </AlertDialogAction>
@@ -137,44 +150,44 @@ export function ClienteDetail() {
       </div>
 
       {/* Info Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Información General</CardTitle>
+      <Card className="border-slate-200 shadow-sm rounded-xl overflow-hidden">
+        <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+          <CardTitle className="text-lg font-semibold text-slate-900">Información General</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">CUIL/CUIT</p>
-              <p className="font-medium">{cliente.cuilCuit}</p>
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">CUIL/CUIT</p>
+              <p className="font-semibold text-slate-900 font-mono">{cliente.cuilCuit}</p>
             </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Fecha de inicio</p>
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">Fecha de inicio</p>
               <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <p className="font-medium">{formatDate(cliente.fechaInicio)}</p>
+                <Calendar className="h-4 w-4 text-slate-400" />
+                <p className="font-semibold text-slate-900">{formatDate(cliente.fechaInicio)}</p>
               </div>
             </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Proyectos</p>
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">Proyectos</p>
               <div className="flex items-center gap-2">
-                <FolderKanban className="h-4 w-4 text-muted-foreground" />
-                <p className="font-medium">{cliente.proyectos?.length || 0}</p>
+                <FolderKanban className="h-4 w-4 text-slate-400" />
+                <p className="font-semibold text-slate-900">{cliente.proyectos?.length || 0}</p>
               </div>
             </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Contratos</p>
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">Contratos</p>
               <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-muted-foreground" />
-                <p className="font-medium">{cliente.contratos?.length || 0}</p>
+                <FileText className="h-4 w-4 text-slate-400" />
+                <p className="font-semibold text-slate-900">{cliente.contratos?.length || 0}</p>
               </div>
             </div>
           </div>
           {cliente.notas && (
             <>
-              <Separator className="my-4" />
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Notas</p>
-                <p className="text-sm">{cliente.notas}</p>
+              <Separator className="my-6 bg-slate-100" />
+              <div className="space-y-1.5">
+                <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">Notas</p>
+                <p className="text-slate-700">{cliente.notas}</p>
               </div>
             </>
           )}
@@ -182,51 +195,59 @@ export function ClienteDetail() {
       </Card>
 
       {/* Tabs for related data */}
-      <Tabs defaultValue="proyectos">
-        <TabsList>
-          <TabsTrigger value="proyectos" className="flex items-center gap-2">
+      <Tabs defaultValue="proyectos" className="space-y-4">
+        <TabsList className="bg-white border border-slate-200 p-1 rounded-lg">
+          <TabsTrigger 
+            value="proyectos" 
+            className="flex items-center gap-2 data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 rounded-md px-4"
+          >
             <FolderKanban className="h-4 w-4" />
             Proyectos ({cliente.proyectos?.length || 0})
           </TabsTrigger>
-          <TabsTrigger value="contratos" className="flex items-center gap-2">
+          <TabsTrigger 
+            value="contratos" 
+            className="flex items-center gap-2 data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 rounded-md px-4"
+          >
             <FileText className="h-4 w-4" />
             Contratos ({cliente.contratos?.length || 0})
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="proyectos" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Proyectos</CardTitle>
-              <CardDescription>
+        <TabsContent value="proyectos" className="mt-6">
+          <Card className="border-slate-200 shadow-sm rounded-xl overflow-hidden">
+            <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+              <CardTitle className="text-lg font-semibold text-slate-900">Proyectos</CardTitle>
+              <CardDescription className="text-slate-500">
                 Proyectos asociados a este cliente
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               {cliente.proyectos && cliente.proyectos.length > 0 ? (
-                <div className="space-y-3">
+                <div className="divide-y divide-slate-100">
                   {cliente.proyectos.map((proyecto) => (
                     <div
                       key={proyecto.id}
-                      className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                      className="flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors"
                     >
-                      <div className="flex items-center gap-3">
-                        <FolderKanban className="h-5 w-5 text-muted-foreground" />
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                          <FolderKanban className="h-5 w-5 text-blue-600" />
+                        </div>
                         <div>
-                          <p className="font-medium">{proyecto.nombre}</p>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="font-medium text-slate-900">{proyecto.nombre}</p>
+                          <p className="text-sm text-slate-500">
                             {proyecto.codigo} • {formatDate(proyecto.fechaInicio)}
                           </p>
                         </div>
                       </div>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-sm font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
                         {proyecto.estado}
                       </span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-muted-foreground text-center py-8">
+                <p className="text-slate-500 text-center py-12">
                   No hay proyectos asociados a este cliente.
                 </p>
               )}
@@ -234,39 +255,41 @@ export function ClienteDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="contratos" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Contratos</CardTitle>
-              <CardDescription>
+        <TabsContent value="contratos" className="mt-6">
+          <Card className="border-slate-200 shadow-sm rounded-xl overflow-hidden">
+            <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+              <CardTitle className="text-lg font-semibold text-slate-900">Contratos</CardTitle>
+              <CardDescription className="text-slate-500">
                 Contratos firmados con este cliente
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               {cliente.contratos && cliente.contratos.length > 0 ? (
-                <div className="space-y-3">
+                <div className="divide-y divide-slate-100">
                   {cliente.contratos.map((contrato) => (
                     <div
                       key={contrato.id}
-                      className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                      className="flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors"
                     >
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-5 w-5 text-muted-foreground" />
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-lg bg-emerald-50 flex items-center justify-center">
+                          <FileText className="h-5 w-5 text-emerald-600" />
+                        </div>
                         <div>
-                          <p className="font-medium">{contrato.nombre}</p>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="font-medium text-slate-900">{contrato.nombre}</p>
+                          <p className="text-sm text-slate-500">
                             {contrato.tipo} • {formatDate(contrato.fechaFirma)}
                           </p>
                         </div>
                       </div>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-sm font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
                         {contrato.estado}
                       </span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-muted-foreground text-center py-8">
+                <p className="text-slate-500 text-center py-12">
                   No hay contratos asociados a este cliente.
                 </p>
               )}

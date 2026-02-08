@@ -47,12 +47,15 @@ export function DataTable<T extends { id: string }>({
 }: DataTableProps<T>) {
   if (isLoading) {
     return (
-      <div className="rounded-md border">
+      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
         <Table>
           <TableHeader>
-            <TableRow>
+            <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
               {columns.map((column, index) => (
-                <TableHead key={index} className={column.className}>
+                <TableHead 
+                  key={index} 
+                  className={`text-xs font-semibold text-slate-600 uppercase tracking-wider py-4 ${column.className || ''}`}
+                >
                   {column.header}
                 </TableHead>
               ))}
@@ -60,10 +63,10 @@ export function DataTable<T extends { id: string }>({
           </TableHeader>
           <TableBody>
             {Array.from({ length: 5 }).map((_, rowIndex) => (
-              <TableRow key={rowIndex}>
+              <TableRow key={rowIndex} className="border-slate-100">
                 {columns.map((_, colIndex) => (
-                  <TableCell key={colIndex}>
-                    <Skeleton className="h-5 w-full" />
+                  <TableCell key={colIndex} className="py-4">
+                    <Skeleton className="h-5 w-full bg-slate-100" />
                   </TableCell>
                 ))}
               </TableRow>
@@ -76,12 +79,15 @@ export function DataTable<T extends { id: string }>({
 
   if (data.length === 0) {
     return (
-      <div className="rounded-md border">
+      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
         <Table>
           <TableHeader>
-            <TableRow>
+            <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
               {columns.map((column, index) => (
-                <TableHead key={index} className={column.className}>
+                <TableHead 
+                  key={index} 
+                  className={`text-xs font-semibold text-slate-600 uppercase tracking-wider py-4 ${column.className || ''}`}
+                >
                   {column.header}
                 </TableHead>
               ))}
@@ -89,7 +95,10 @@ export function DataTable<T extends { id: string }>({
           </TableHeader>
           <TableBody>
             <TableRow>
-              <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
+              <TableCell 
+                colSpan={columns.length} 
+                className="h-32 text-center text-slate-500"
+              >
                 {emptyMessage}
               </TableCell>
             </TableRow>
@@ -101,12 +110,15 @@ export function DataTable<T extends { id: string }>({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-md border">
+      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
         <Table>
           <TableHeader>
-            <TableRow>
+            <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
               {columns.map((column, index) => (
-                <TableHead key={index} className={column.className}>
+                <TableHead 
+                  key={index} 
+                  className={`text-xs font-semibold text-slate-600 uppercase tracking-wider py-4 ${column.className || ''}`}
+                >
                   {column.header}
                 </TableHead>
               ))}
@@ -117,10 +129,10 @@ export function DataTable<T extends { id: string }>({
               <TableRow
                 key={item.id}
                 onClick={() => onRowClick?.(item)}
-                className={onRowClick ? 'cursor-pointer hover:bg-muted/50' : undefined}
+                className={`border-slate-100 ${onRowClick ? 'cursor-pointer hover:bg-slate-50/50 transition-colors' : ''}`}
               >
                 {columns.map((column, colIndex) => (
-                  <TableCell key={colIndex} className={column.className}>
+                  <TableCell key={colIndex} className={`py-4 ${column.className || ''}`}>
                     {column.cell
                       ? column.cell(item)
                       : column.accessorKey
