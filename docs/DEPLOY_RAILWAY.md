@@ -35,8 +35,10 @@ Este es un **monorepo**. Railway necesita **2 servicios separados**:
 | Campo | Valor |
 |-------|-------|
 | **Root Directory** | `redbee-pnl/packages/backend` |
-| **Build Command** | `pnpm install && pnpm prisma generate && pnpm build` |
-| **Start Command** | `node dist/main` |
+| **Build Command** | `pnpm install && pnpm build` |
+| **Start Command** | `pnpm start` |
+
+> **Nota:** El build de NestJS ya incluye la generación de Prisma client vía `prisma generate` en el postinstall. El script `start` ejecuta `node dist/main`.
 
 3. **Variables de entorno:**
 ```env
@@ -56,7 +58,9 @@ FRONTEND_URL=https://tu-frontend.up.railway.app
 |-------|-------|
 | **Root Directory** | `redbee-pnl/packages/frontend` |
 | **Build Command** | `pnpm install && pnpm build` |
-| **Start Command** | `pnpm preview --host --port $PORT` |
+| **Start Command** | `pnpm start` |
+
+> **Nota:** El script `start` ejecuta `vite preview --port ${PORT:-4173} --host` que sirve el build de producción.
 
 3. **Variables de entorno:**
 ```env
