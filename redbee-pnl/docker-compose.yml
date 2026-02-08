@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:14-alpine
+    container_name: redbee-pnl-db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: redbee_pnl
+      POSTGRES_USER: redbee
+      POSTGRES_PASSWORD: redbee_dev_2024
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U redbee -d redbee_pnl"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

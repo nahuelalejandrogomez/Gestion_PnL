@@ -1,0 +1,531 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum EstadoCliente {
+  ACTIVO
+  INACTIVO
+  POTENCIAL
+}
+
+enum TipoProyecto {
+  PROYECTO
+  POTENCIAL
+  SOPORTE
+  RETAINER
+}
+
+enum EstadoProyecto {
+  ACTIVO
+  PAUSADO
+  CERRADO
+  POTENCIAL
+  TENTATIVO
+}
+
+enum TipoContrato {
+  MARCO
+  SOW
+  AMENDMENT
+  MSA
+}
+
+enum EstadoContrato {
+  VIGENTE
+  VENCIDO
+  TERMINADO
+}
+
+enum Moneda {
+  ARS
+  USD
+}
+
+enum EstadoTarifario {
+  ACTIVO
+  INACTIVO
+  DRAFT
+}
+
+enum UnidadTarifaria {
+  MES
+  HORA
+  DIA
+}
+
+enum NivelPerfil {
+  JR
+  SSR
+  SR
+  LEAD
+  MANAGER
+  STAFF
+}
+
+enum EstadoPerfil {
+  ACTIVO
+  INACTIVO
+}
+
+enum EstadoRecurso {
+  ACTIVO
+  INACTIVO
+  LICENCIA
+}
+
+enum PeriodoTipo {
+  MENSUAL
+  ANUAL
+}
+
+enum TipoPnL {
+  FORECAST
+  REAL
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+enum TipoTiempo {
+  BILLABLE
+  NON_BILLABLE
+  OVERHEAD
+  BENCH
+}
+
+enum NivelSkill {
+  BASICO
+  INTERMEDIO
+  AVANZADO
+  EXPERTO
+}
+
+// ============================================
+// ENTIDADES PRINCIPALES
+// ============================================
+
+model Cliente {
+  id          String        @id @default(uuid())
+  nombre      String
+  razonSocial String
+  cuilCuit    String        @unique
+  estado      EstadoCliente @default(ACTIVO)
+  fechaInicio DateTime      @default(now())
+  fechaFin    DateTime?
+  notas       String?       @db.Text
+
+  proyectos  Proyecto[]
+  contratos  Contrato[]
+  objetivos  Objetivo[]
+  tarifarios Tarifario[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("clientes")
+}
+
+model Proyecto {
+  id                 String         @id @default(uuid())
+  clienteId          String
+  nombre             String
+  codigo             String
+  tipo               TipoProyecto   @default(PROYECTO)
+  estado             EstadoProyecto @default(ACTIVO)
+  probabilidadCierre Decimal?       @db.Decimal(5, 2)
+  fechaInicio        DateTime
+  fechaFinEstimada   DateTime?
+  fechaFinReal       DateTime?
+  tarifarioId        String
+  contratoId         String?
+  notas              String?        @db.Text
+
+  cliente          Cliente                  @relation(fields: [clienteId], references: [id])
+  tarifario        Tarifario                @relation(fields: [tarifarioId], references: [id])
+  contrato         Contrato?                @relation(fields: [contratoId], references: [id])
+  asignaciones     AsignacionRecurso[]
+  lineasPnL        LineaPnL[]
+  skillsRequeridos ProyectoSkillRequerido[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([clienteId, codigo])
+  @@map("proyectos")
+}
+
+model Contrato {
+  id                  String         @id @default(uuid())
+  clienteId           String
+  nombre              String
+  tipo                TipoContrato
+  fechaFirma          DateTime
+  fechaInicioVigencia DateTime
+  fechaFinVigencia    DateTime?
+  documentoDriveUrl   String?
+  estado              EstadoContrato @default(VIGENTE)
+  montoTotal          Decimal?       @db.Decimal(15, 2)
+  moneda              Moneda?
+  notas               String?        @db.Text
+
+  cliente    Cliente     @relation(fields: [clienteId], references: [id])
+  tarifarios Tarifario[]
+  proyectos  Proyecto[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("contratos")
+}
+
+model Tarifario {
+  id                 String          @id @default(uuid())
+  clienteId          String
+  contratoId         String?
+  nombre             String
+  fechaVigenciaDesde DateTime
+  fechaVigenciaHasta DateTime?
+  moneda             Moneda          @default(USD)
+  estado             EstadoTarifario @default(ACTIVO)
+  notas              String?         @db.Text
+
+  cliente   Cliente          @relation(fields: [clienteId], references: [id])
+  contrato  Contrato?        @relation(fields: [contratoId], references: [id])
+  lineas    LineaTarifario[]
+  proyectos Proyecto[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("tarifarios")
+}
+
+model LineaTarifario {
+  id          String          @id @default(uuid())
+  tarifarioId String
+  perfilId    String
+  rate        Decimal         @db.Decimal(15, 2)
+  unidad      UnidadTarifaria @default(MES)
+  moneda      Moneda?
+
+  tarifario Tarifario @relation(fields: [tarifarioId], references: [id], onDelete: Cascade)
+  perfil    Perfil    @relation(fields: [perfilId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tarifarioId, perfilId])
+  @@map("lineas_tarifario")
+}
+
+model Perfil {
+  id          String       @id @default(uuid())
+  nombre      String       @unique
+  categoria   String
+  nivel       NivelPerfil?
+  estado      EstadoPerfil @default(ACTIVO)
+  descripcion String?      @db.Text
+
+  lineasTarifario LineaTarifario[]
+  recursos        Recurso[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("perfiles")
+}
+
+model Recurso {
+  id                String        @id @default(uuid())
+  nombre            String
+  apellido          String
+  email             String        @unique
+  perfilId          String
+  estado            EstadoRecurso @default(ACTIVO)
+  fechaIngreso      DateTime
+  fechaEgreso       DateTime?
+  costoMensual      Decimal       @db.Decimal(15, 2)
+  monedaCosto       Moneda        @default(ARS)
+  utilizacionTarget Decimal       @default(85) @db.Decimal(5, 2)
+  bobId             String?
+  notas             String?       @db.Text
+
+  perfil              Perfil               @relation(fields: [perfilId], references: [id])
+  asignaciones        AsignacionRecurso[]
+  skills              RecursoSkill[]
+  metricasUtilizacion MetricaUtilizacion[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("recursos")
+}
+
+model AsignacionRecurso {
+  id                   String     @id @default(uuid())
+  recursoId            String
+  proyectoId           String
+  porcentajeAsignacion Decimal    @db.Decimal(5, 2)
+  tipoTiempo           TipoTiempo @default(BILLABLE)
+  fechaDesde           DateTime
+  fechaHasta           DateTime?
+  rolEnProyecto        String?
+  notas                String?    @db.Text
+
+  recurso  Recurso  @relation(fields: [recursoId], references: [id])
+  proyecto Proyecto @relation(fields: [proyectoId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("asignaciones_recursos")
+}
+
+model Objetivo {
+  id                       String      @id @default(uuid())
+  clienteId                String
+  periodoTipo              PeriodoTipo
+  anio                     Int
+  mes                      Int?
+  ftesObjetivo             Decimal     @db.Decimal(8, 2)
+  facturacionObjetivo      Decimal     @db.Decimal(15, 2)
+  moneda                   Moneda      @default(USD)
+  margenObjetivoPorcentaje Decimal     @db.Decimal(5, 2)
+  notas                    String?     @db.Text
+
+  cliente Cliente @relation(fields: [clienteId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([clienteId, anio, mes, periodoTipo])
+  @@map("objetivos")
+}
+
+model VariableGeneral {
+  id                   String  @id @default(uuid())
+  anio                 Int
+  mes                  Int
+  ipc                  Decimal @db.Decimal(8, 4)
+  tipoCambioUsd        Decimal @db.Decimal(10, 2)
+  costoEmpresaPromedio Decimal @db.Decimal(15, 2)
+  notas                String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([anio, mes])
+  @@map("variables_generales")
+}
+
+model LineaPnL {
+  id         String  @id @default(uuid())
+  proyectoId String
+  anio       Int
+  mes        Int
+  tipo       TipoPnL
+  scenarioId String?
+
+  // Revenue
+  revenue       Decimal @default(0) @db.Decimal(15, 2)
+  monedaRevenue Moneda  @default(USD)
+
+  // Costos
+  costosDirectos   Decimal @default(0) @db.Decimal(15, 2)
+  costosIndirectos Decimal @default(0) @db.Decimal(15, 2)
+  otrosCostos      Decimal @default(0) @db.Decimal(15, 2)
+  monedaCostos     Moneda  @default(ARS)
+
+  // FTEs
+  ftes Decimal @default(0) @db.Decimal(8, 2)
+
+  // Métricas calculadas
+  costoTotal            Decimal @default(0) @db.Decimal(15, 2)
+  grossProfit           Decimal @default(0) @db.Decimal(15, 2)
+  grossMarginPorcentaje Decimal @default(0) @db.Decimal(5, 2)
+  laborMarginPorcentaje Decimal @default(0) @db.Decimal(5, 2)
+  blendRate             Decimal @default(0) @db.Decimal(15, 2)
+  blendCost             Decimal @default(0) @db.Decimal(15, 2)
+
+  notas String? @db.Text
+
+  proyecto Proyecto          @relation(fields: [proyectoId], references: [id])
+  scenario ForecastScenario? @relation(fields: [scenarioId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([proyectoId, anio, mes, tipo, scenarioId])
+  @@map("lineas_pnl")
+}
+
+// ============================================
+// SKILLS Y COMPETENCIAS
+// ============================================
+
+model Skill {
+  id          String       @id @default(uuid())
+  nombre      String       @unique
+  categoria   String
+  descripcion String?      @db.Text
+  estado      EstadoPerfil @default(ACTIVO)
+
+  recursosSkills            RecursoSkill[]
+  proyectosSkillsRequeridos ProyectoSkillRequerido[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("skills")
+}
+
+model RecursoSkill {
+  id        String     @id @default(uuid())
+  recursoId String
+  skillId   String
+  nivel     NivelSkill @default(INTERMEDIO)
+
+  recurso Recurso @relation(fields: [recursoId], references: [id], onDelete: Cascade)
+  skill   Skill   @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([recursoId, skillId])
+  @@map("recursos_skills")
+}
+
+model ProyectoSkillRequerido {
+  id          String     @id @default(uuid())
+  proyectoId  String
+  skillId     String
+  nivelMinimo NivelSkill @default(INTERMEDIO)
+  cantidad    Int        @default(1)
+  notas       String?    @db.Text
+
+  proyecto Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  skill    Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([proyectoId, skillId])
+  @@map("proyectos_skills_requeridos")
+}
+
+// ============================================
+// UTILIZACIÓN Y MÉTRICAS
+// ============================================
+
+model MetricaUtilizacion {
+  id        String @id @default(uuid())
+  recursoId String
+  anio      Int
+  mes       Int
+
+  horasDisponibles Decimal @db.Decimal(8, 2)
+  horasBillable    Decimal @default(0) @db.Decimal(8, 2)
+  horasNonBillable Decimal @default(0) @db.Decimal(8, 2)
+  horasOverhead    Decimal @default(0) @db.Decimal(8, 2)
+  horasBench       Decimal @default(0) @db.Decimal(8, 2)
+
+  utilizacionTotal    Decimal @default(0) @db.Decimal(5, 2)
+  utilizacionBillable Decimal @default(0) @db.Decimal(5, 2)
+  varianzaVsTarget    Decimal @default(0) @db.Decimal(5, 2)
+
+  recurso Recurso @relation(fields: [recursoId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([recursoId, anio, mes])
+  @@map("metricas_utilizacion")
+}
+
+// ============================================
+// CAPACITY PLANNING
+// ============================================
+
+model CapacitySnapshot {
+  id    String @id @default(uuid())
+  anio  Int
+  mes   Int
+
+  ftesDisponibles       Decimal @db.Decimal(8, 2)
+  ftesAsignados         Decimal @db.Decimal(8, 2)
+  ftesDisponiblesLibres Decimal @db.Decimal(8, 2)
+
+  ftesBillable    Decimal @db.Decimal(8, 2)
+  ftesNonBillable Decimal @db.Decimal(8, 2)
+  ftesOverhead    Decimal @db.Decimal(8, 2)
+  ftesBench       Decimal @db.Decimal(8, 2)
+
+  ftesDemandaTentativa  Decimal @default(0) @db.Decimal(8, 2)
+  ftesDemandaConfirmada Decimal @default(0) @db.Decimal(8, 2)
+
+  gapFTEs Decimal @default(0) @db.Decimal(8, 2)
+
+  notas String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([anio, mes])
+  @@map("capacity_snapshots")
+}
+
+// ============================================
+// FORECAST SCENARIOS
+// ============================================
+
+model ForecastScenario {
+  id           String  @id @default(uuid())
+  nombre       String
+  descripcion  String? @db.Text
+  probabilidad Decimal? @db.Decimal(5, 2)
+  activo       Boolean @default(true)
+
+  lineasPnL LineaPnL[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("forecast_scenarios")
+}
+
+// ============================================
+// AUDITORÍA
+// ============================================
+
+model AuditLog {
+  id                String      @id @default(uuid())
+  tabla             String
+  registroId        String
+  accion            AuditAction
+  usuarioId         String?
+  camposModificados Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([tabla, registroId])
+  @@map("audit_logs")
+}
