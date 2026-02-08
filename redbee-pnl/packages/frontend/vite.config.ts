@@ -19,4 +19,7 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    allowedHosts: ['frontend-production-d65e.up.railway.app', '.railway.app'],
+  },
 })
