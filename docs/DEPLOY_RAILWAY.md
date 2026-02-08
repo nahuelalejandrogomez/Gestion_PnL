@@ -1,68 +1,78 @@
 # Deploy en Railway - Guía
 
+## ⚠️ IMPORTANTE: Monorepo Setup
+
+Este es un **monorepo**. Railway necesita **2 servicios separados**:
+1. **Backend** (API NestJS)
+2. **Frontend** (React SPA)
+
+**NO deployar desde la raíz del repo.** Cada servicio debe apuntar a su carpeta.
+
+---
+
 ## 📋 Pre-requisitos
 
 - Cuenta en [Railway](https://railway.app)
 - Repo en GitHub conectado
-- PostgreSQL como servicio en Railway
 
 ---
 
-## 🗄️ Paso 1: Crear Base de Datos
+## 🚀 Paso a Paso
 
-1. En Railway, click "New Project" → "Provision PostgreSQL"
-2. Copiar `DATABASE_URL` de la sección "Connect"
+### Paso 1: Crear Proyecto
+1. Ir a [railway.app](https://railway.app)
+2. "New Project" → "Deploy from GitHub repo"
+3. Seleccionar `nahuelalejandrogomez/Gestion_PnL`
 
----
+### Paso 2: Agregar PostgreSQL
+1. En el proyecto, click "New" → "Database" → "PostgreSQL"
+2. Copiar la variable `DATABASE_URL` (Connect → Connection URL)
 
-## ⚙️ Paso 2: Deploy Backend
-
-### Configuración del servicio
+### Paso 3: Crear Servicio Backend
+1. Click "New" → "GitHub Repo" → seleccionar el mismo repo
+2. **Settings del servicio:**
 
 | Campo | Valor |
 |-------|-------|
-| Root Directory | `redbee-pnl/packages/backend` |
-| Build Command | `pnpm install && pnpm prisma generate && pnpm build` |
-| Start Command | `pnpm start:prod` |
+| **Root Directory** | `redbee-pnl/packages/backend` |
+| **Build Command** | `pnpm install && pnpm prisma generate && pnpm build` |
+| **Start Command** | `node dist/main` |
 
-### Variables de entorno (obligatorias)
-
+3. **Variables de entorno:**
 ```env
-DATABASE_URL=postgresql://postgres:xxx@xxx.railway.internal:5432/railway
-FRONTEND_URL=https://tu-frontend.up.railway.app
-PORT=3001
+DATABASE_URL=<copiar de PostgreSQL>
 NODE_ENV=production
+PORT=3001
+FRONTEND_URL=https://tu-frontend.up.railway.app
 ```
 
-### Verificar deploy
-```bash
-curl https://tu-backend.up.railway.app/api/health
-# Debería retornar: {"status":"ok"}
-```
+4. **Networking** → "Generate Domain"
 
----
-
-## 🎨 Paso 3: Deploy Frontend
-
-### Configuración del servicio
+### Paso 4: Crear Servicio Frontend
+1. Click "New" → "GitHub Repo" → seleccionar el mismo repo
+2. **Settings del servicio:**
 
 | Campo | Valor |
 |-------|-------|
-| Root Directory | `redbee-pnl/packages/frontend` |
-| Build Command | `pnpm install && pnpm build` |
-| Start Command | `pnpm preview --host --port $PORT` |
+| **Root Directory** | `redbee-pnl/packages/frontend` |
+| **Build Command** | `pnpm install && pnpm build` |
+| **Start Command** | `pnpm preview --host --port $PORT` |
 
-### Variables de entorno (obligatorias)
-
+3. **Variables de entorno:**
 ```env
 VITE_API_URL=https://tu-backend.up.railway.app/api
 ```
 
-**⚠️ Importante:** Las variables `VITE_*` se inyectan en build time, no en runtime.
+4. **Networking** → "Generate Domain"
+
+### Paso 5: Actualizar URLs Cruzadas
+1. Copiar dominio del frontend → pegar en `FRONTEND_URL` del backend
+2. Copiar dominio del backend → pegar en `VITE_API_URL` del frontend
+3. **Redeploy ambos servicios** (el frontend necesita rebuild por VITE_*)
 
 ---
 
-## 🔧 Troubleshooting Común
+## 🔧 Troubleshooting
 
 ### Error: "Cannot find module '@prisma/client'"
 ```bash
