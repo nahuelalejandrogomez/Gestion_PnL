@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Save, X, Percent, DollarSign } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Save, X, Percent, DollarSign, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -13,7 +13,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { usePlannerData, usePlannerSave, usePlannerDeleteAsignacion, PLANNER_QUERY_KEY, useRecursosCostos, useUpsertRecursoCosto, useDeleteRecursoCosto } from '../hooks/usePlanner';
 import { useAsignacionMutations } from '../hooks/useAsignacionMutations';
-import { useConfig, DEFAULT_CONFIG } from '@/features/config';
+import { useConfig, DEFAULT_CONFIG, useFxRates, buildFxMap } from '@/features/config';
 import { PlannerCell } from './PlannerCell';
 import { ResourceCombobox } from './ResourceCombobox';
 import type { PlannerRow } from '../types/asignacion.types';
@@ -22,6 +22,7 @@ const MONTH_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'S
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 type ViewMode = 'percentage' | 'cost';
+type CurrencyMode = 'ARS' | 'USD';
 
 // Format currency (ARS/USD) without decimals
 function formatCurrency(value: number, currency: string): string {
@@ -42,6 +43,7 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [dirtyCells, setDirtyCells] = useState<Map<string, number>>(new Map());
   const [viewMode, setViewMode] = useState<ViewMode>('percentage');
+  const [currencyMode, setCurrencyMode] = useState<CurrencyMode>('ARS');
   const paintRef = useRef<{ active: boolean; value: number }>({ active: false, value: 0 });
 
   const queryClient = useQueryClient();
@@ -54,6 +56,14 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
   const { data: config, isError: configError } = useConfig();
   const costoEmpresaPct = config?.costoEmpresaPct ?? DEFAULT_CONFIG.costoEmpresaPct;
   const isUsingDefaultConfig = configError || !config;
+
+  // FX rates for currency conversion
+  const { data: fxData } = useFxRates(year);
+  const fxMap = useMemo(() => fxData ? buildFxMap(fxData.rates) : {}, [fxData]);
+  const fxFallbackMonths = useMemo(() => {
+    if (!fxData) return new Set<number>();
+    return new Set(fxData.rates.filter(r => r.isFallback).map(r => r.month));
+  }, [fxData]);
 
   // Salary overrides for cost view
   const { data: costosData } = useRecursosCostos(proyectoId, year);
@@ -270,18 +280,52 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
     });
   };
 
+  // Get FX rate for a month (returns null if not available)
+  const getFxRate = useCallback(
+    (month: number): number | null => {
+      return fxMap[month] ?? null;
+    },
+    [fxMap],
+  );
+
+  // Calculate cell cost with FX conversion
+  // Returns cost in the selected currency (currencyMode)
   const getCellCost = useCallback(
     (row: PlannerRow, month: number): number => {
       const { value: baseSalary } = getBaseSalary(row, month);
       if (!baseSalary || baseSalary <= 0) return 0;
       const pct = getCellValue(row, month);
       if (pct === 0) return 0;
-      // costoTotal100 = baseSalary * (1 + costoEmpresaPct/100)
-      const costoTotal100 = baseSalary * (1 + costoEmpresaPct / 100);
-      // costoMesProyecto = costoTotal100 * (porcentajeAsignacion / 100)
-      return costoTotal100 * (pct / 100);
+
+      const fx = getFxRate(month);
+      const resourceCurrency = row.monedaCosto || 'ARS';
+
+      // Step 1: Convert base salary to ARS
+      let costoBaseArs: number;
+      if (resourceCurrency === 'USD') {
+        // Resource is in USD, convert to ARS
+        if (fx === null || fx <= 0) return 0; // Can't convert without FX
+        costoBaseArs = baseSalary * fx;
+      } else {
+        // Resource is in ARS
+        costoBaseArs = baseSalary;
+      }
+
+      // Step 2: Apply overhead (costo empresa)
+      const costoTotal100Ars = costoBaseArs * (1 + costoEmpresaPct / 100);
+
+      // Step 3: Apply allocation percentage
+      const costoProyectoArs = costoTotal100Ars * (pct / 100);
+
+      // Step 4: If viewing in USD, convert back
+      if (currencyMode === 'USD') {
+        if (fx === null || fx <= 0) return 0;
+        return costoProyectoArs / fx;
+      }
+
+      return costoProyectoArs;
     },
-    [getCellValue, costoEmpresaPct, getBaseSalary],
+    [getCellValue, costoEmpresaPct, getBaseSalary, getFxRate, currencyMode],
   );
 
   // Get row annual total cost
@@ -306,22 +350,19 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
     [getCellCost],
   );
 
-  // Column cost totals (by currency)
-  const getColumnCostsByCurrency = useMemo(() => {
-    return (month: number): { ARS: number; USD: number } => {
-      const totals = { ARS: 0, USD: 0 };
+  // Column cost total (all costs are already converted to currencyMode by getCellCost)
+  const getColumnCostTotal = useCallback(
+    (month: number): number => {
+      let total = 0;
       for (const row of rows) {
-        const cost = getCellCost(row, month);
-        if (cost > 0) {
-          const currency = row.monedaCosto === 'USD' ? 'USD' : 'ARS';
-          totals[currency] += cost;
-        }
+        total += getCellCost(row, month);
       }
-      return totals;
-    };
-  }, [rows, getCellCost]);
+      return total;
+    },
+    [rows, getCellCost],
+  );
 
-  // Check if rows have mixed currencies
+  // Check if rows have mixed native currencies (for UI info only)
   const currencyInfo = useMemo(() => {
     const currencies = new Set(rows.map((r) => r.monedaCosto || 'ARS'));
     const hasMixed = currencies.size > 1;
@@ -390,6 +431,32 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
             </ToggleGroupItem>
           </ToggleGroup>
           
+          {/* Currency toggle (only in cost view) */}
+          {viewMode === 'cost' && (
+            <ToggleGroup
+              type="single"
+              value={currencyMode}
+              onValueChange={(v) => v && setCurrencyMode(v as CurrencyMode)}
+              size="sm"
+              variant="outline"
+            >
+              <ToggleGroupItem value="ARS" aria-label="Ver en ARS">
+                <span className="text-xs font-medium">ARS</span>
+              </ToggleGroupItem>
+              <ToggleGroupItem value="USD" aria-label="Ver en USD">
+                <span className="text-xs font-medium">USD</span>
+              </ToggleGroupItem>
+            </ToggleGroup>
+          )}
+          
+          {/* FX fallback warning */}
+          {viewMode === 'cost' && fxFallbackMonths.size > 0 && (
+            <Badge variant="outline" className="text-orange-600 border-orange-300 bg-orange-50 text-xs flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              TC sin configurar: {Array.from(fxFallbackMonths).map(m => MONTH_LABELS[m - 1]).join(', ')}
+            </Badge>
+          )}
+          
           {/* Config indicator */}
           {viewMode === 'cost' && isUsingDefaultConfig && (
             <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 text-xs">
@@ -400,6 +467,21 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
             <span className="text-xs text-stone-400">
               Costo empresa: {costoEmpresaPct}%
             </span>
+          )}
+          
+          {/* Mixed currencies info */}
+          {viewMode === 'cost' && currencyInfo.hasMixed && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="outline" className="text-blue-600 border-blue-300 bg-blue-50 text-xs cursor-help">
+                  FX activo
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="text-xs">Recursos en {currencyInfo.currencies.join(' y ')}</p>
+                <p className="text-xs text-stone-400">Convertidos a {currencyMode} con TC configurado</p>
+              </TooltipContent>
+            </Tooltip>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -610,7 +692,7 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
                                   <button className={`w-full relative text-xs font-medium hover:underline transition-colors ${
                                     cost > 0 ? 'text-stone-700' : 'text-stone-400'
                                   }`}>
-                                    {formatCurrency(cost, row.monedaCosto)}
+                                    {formatCurrency(cost, currencyMode)}
                                     {isOverride && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-amber-500 rounded-full" />}
                                   </button>
                                 </PopoverTrigger>
@@ -620,7 +702,7 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
                                       Sueldo mes {m}/{year}
                                     </label>
                                     <p className="text-xs text-stone-400">
-                                      {pct}% asignado · Costo: {formatCurrency(cost, row.monedaCosto)}
+                                      {pct}% asignado · Costo: {formatCurrency(cost, currencyMode)}
                                     </p>
                                     <Input
                                       type="number"
@@ -668,13 +750,13 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <span className="text-xs font-semibold text-stone-700">
-                                {formatCurrency(getRowAnnualCost(row), row.monedaCosto)}
+                                {formatCurrency(getRowAnnualCost(row), currencyMode)}
                               </span>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p className="text-xs">Total anual: {formatCurrency(getRowAnnualCost(row), row.monedaCosto)}</p>
+                              <p className="text-xs">Total anual: {formatCurrency(getRowAnnualCost(row), currencyMode)}</p>
                               <p className="text-xs text-stone-400">
-                                Promedio mensual: {formatCurrency(getRowMonthlyAvgCost(row), row.monedaCosto)}
+                                Promedio mensual: {formatCurrency(getRowMonthlyAvgCost(row), currencyMode)}
                               </p>
                             </TooltipContent>
                           </Tooltip>
@@ -750,19 +832,17 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
                           </TooltipTrigger>
                           <TooltipContent>
                             <p className="text-xs">Monedas mixtas: {currencyInfo.currencies.join(', ')}</p>
-                            <p className="text-xs text-stone-400">Totales separados por moneda</p>
+                            <p className="text-xs text-stone-400">Monedas nativas mixtas, convertido a {currencyMode}</p>
                           </TooltipContent>
                         </Tooltip>
                       ) : (
-                        'Costos Totales'
+                        `Costos Totales (${currencyMode})`
                       )}
                     </td>
                     {MONTHS.map((m) => {
-                      const costs = getColumnCostsByCurrency(m);
-                      const hasARS = costs.ARS > 0;
-                      const hasUSD = costs.USD > 0;
+                      const total = getColumnCostTotal(m);
                       
-                      if (!hasARS && !hasUSD) {
+                      if (total <= 0) {
                         return (
                           <td key={m} className="text-center text-xs font-medium text-stone-400 py-2">
                             -
@@ -770,62 +850,20 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
                         );
                       }
                       
-                      if (currencyInfo.hasMixed) {
-                        // Show both currencies in tooltip
-                        return (
-                          <td key={m} className="text-center text-xs py-2">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="font-medium text-stone-600 cursor-help">
-                                  —
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {hasARS && <p className="text-xs">ARS: {formatCurrency(costs.ARS, 'ARS')}</p>}
-                                {hasUSD && <p className="text-xs">USD: {formatCurrency(costs.USD, 'USD')}</p>}
-                              </TooltipContent>
-                            </Tooltip>
-                          </td>
-                        );
-                      }
-                      
-                      // Single currency - show total directly
-                      const total = hasARS ? costs.ARS : costs.USD;
-                      const currency = hasARS ? 'ARS' : 'USD';
                       return (
                         <td key={m} className="text-center text-xs font-semibold text-stone-700 py-2">
-                          {formatCurrency(total, currency)}
+                          {formatCurrency(total, currencyMode)}
                         </td>
                       );
                     })}
                     <td className="text-center text-xs font-semibold text-stone-700 py-2">
                       {(() => {
-                        // Calculate annual totals
-                        let totalARS = 0;
-                        let totalUSD = 0;
+                        // Calculate annual total (already in currencyMode)
+                        let grandTotal = 0;
                         for (const m of MONTHS) {
-                          const costs = getColumnCostsByCurrency(m);
-                          totalARS += costs.ARS;
-                          totalUSD += costs.USD;
+                          grandTotal += getColumnCostTotal(m);
                         }
-                        
-                        if (currencyInfo.hasMixed) {
-                          return (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="cursor-help">—</span>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {totalARS > 0 && <p className="text-xs">ARS: {formatCurrency(totalARS, 'ARS')}</p>}
-                                {totalUSD > 0 && <p className="text-xs">USD: {formatCurrency(totalUSD, 'USD')}</p>}
-                              </TooltipContent>
-                            </Tooltip>
-                          );
-                        }
-                        
-                        const total = totalARS > 0 ? totalARS : totalUSD;
-                        const currency = totalARS > 0 ? 'ARS' : 'USD';
-                        return total > 0 ? formatCurrency(total, currency) : '-';
+                        return grandTotal > 0 ? formatCurrency(grandTotal, currencyMode) : '-';
                       })()}
                     </td>
                     <td />

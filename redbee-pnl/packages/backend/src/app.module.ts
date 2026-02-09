@@ -8,6 +8,7 @@ import { RecursosModule } from './modules/recursos/recursos.module';
 import { AsignacionesModule } from './modules/asignaciones/asignaciones.module';
 import { PnlModule } from './modules/pnl/pnl.module';
 import { ConfigModule } from './modules/config/config.module';
+import { FxModule } from './modules/fx/fx.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { ConfigModule } from './modules/config/config.module';
     AsignacionesModule,
     PnlModule,
     ConfigModule,
+    FxModule,
   ],
   controllers: [AppController],
 })

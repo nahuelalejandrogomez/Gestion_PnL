@@ -311,6 +311,29 @@ model RecursoCostoMes {
   @@map("recursos_costos_mes")
 }
 
+// Tipo de cambio mensual USD/ARS
+// usdArs = cantidad de ARS por 1 USD (ej: 1000 significa 1 USD = 1000 ARS)
+// tipo: REAL (histórico confirmado) o PLAN (proyección)
+// Regla: si existe REAL, usar REAL; si no, usar PLAN; si no hay ninguno, fallback al último disponible
+enum FxRateTipo {
+  REAL
+  PLAN
+}
+
+model FxRateMensual {
+  id     String     @id @default(uuid())
+  year   Int
+  month  Int        // 1..12
+  usdArs Decimal    @db.Decimal(12, 4) // ARS por 1 USD
+  tipo   FxRateTipo
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([year, month, tipo])
+  @@map("fx_rates_mensuales")
+}
+
 model AsignacionRecurso {
   id                   String     @id @default(uuid())
   recursoId            String
