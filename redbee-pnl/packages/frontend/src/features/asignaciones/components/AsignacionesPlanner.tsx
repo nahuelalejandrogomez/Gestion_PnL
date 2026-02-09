@@ -307,12 +307,12 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
           {/* Config indicator */}
           {viewMode === 'cost' && isUsingDefaultConfig && (
             <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 text-xs">
-              overhead: {costoEmpresaPct}% (default)
+              Costo empresa: {costoEmpresaPct}% (default)
             </Badge>
           )}
           {viewMode === 'cost' && !isUsingDefaultConfig && (
             <span className="text-xs text-stone-400">
-              overhead: {costoEmpresaPct}%
+              Costo empresa: {costoEmpresaPct}%
             </span>
           )}
         </div>
