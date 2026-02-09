@@ -1,7 +1,9 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Save, X } from 'lucide-react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, Save, X, Percent, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Badge } from '@/components/ui/badge';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -9,12 +11,26 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { usePlannerData, usePlannerSave, usePlannerDeleteAsignacion, PLANNER_QUERY_KEY } from '../hooks/usePlanner';
 import { useAsignacionMutations } from '../hooks/useAsignacionMutations';
+import { useConfig, DEFAULT_CONFIG } from '@/features/config';
 import { PlannerCell } from './PlannerCell';
 import { ResourceCombobox } from './ResourceCombobox';
 import type { PlannerRow } from '../types/asignacion.types';
 
 const MONTH_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+type ViewMode = 'percentage' | 'cost';
+
+// Format currency (ARS/USD) without decimals
+function formatCurrency(value: number, currency: string): string {
+  if (value === 0) return '-';
+  return new Intl.NumberFormat('es-AR', {
+    style: 'currency',
+    currency: currency === 'USD' ? 'USD' : 'ARS',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+}
 
 interface Props {
   proyectoId: string;
@@ -23,6 +39,7 @@ interface Props {
 export function AsignacionesPlanner({ proyectoId }: Props) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [dirtyCells, setDirtyCells] = useState<Map<string, number>>(new Map());
+  const [viewMode, setViewMode] = useState<ViewMode>('percentage');
   const paintRef = useRef<{ active: boolean; value: number }>({ active: false, value: 0 });
 
   const queryClient = useQueryClient();
@@ -30,6 +47,11 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
   const saveMutation = usePlannerSave(proyectoId);
   const deleteAsignacion = usePlannerDeleteAsignacion();
   const { createAsignacion } = useAsignacionMutations();
+  
+  // Config for cost calculations
+  const { data: config, isError: configError } = useConfig();
+  const costoEmpresaPct = config?.costoEmpresaPct ?? DEFAULT_CONFIG.costoEmpresaPct;
+  const isUsingDefaultConfig = configError || !config;
 
   // Stop paint on mouseup
   useEffect(() => {
@@ -162,6 +184,70 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
     return (getColumnTotal(month) / 100).toFixed(1);
   };
 
+  // Cost calculation helpers
+  const getCellCost = useCallback(
+    (row: PlannerRow, month: number): number => {
+      if (!row.costoMensual || row.costoMensual <= 0) return 0;
+      const pct = getCellValue(row, month);
+      if (pct === 0) return 0;
+      // costoTotal100 = costoMensual * (1 + costoEmpresaPct/100)
+      const costoTotal100 = row.costoMensual * (1 + costoEmpresaPct / 100);
+      // costoMesProyecto = costoTotal100 * (porcentajeAsignacion / 100)
+      return costoTotal100 * (pct / 100);
+    },
+    [getCellValue, costoEmpresaPct],
+  );
+
+  // Get row annual total cost
+  const getRowAnnualCost = useCallback(
+    (row: PlannerRow): number => {
+      return MONTHS.reduce((sum, m) => sum + getCellCost(row, m), 0);
+    },
+    [getCellCost],
+  );
+
+  // Get row monthly average cost (only months with allocation)
+  const getRowMonthlyAvgCost = useCallback(
+    (row: PlannerRow): number => {
+      let sum = 0;
+      let count = 0;
+      for (const m of MONTHS) {
+        const cost = getCellCost(row, m);
+        if (cost > 0) { sum += cost; count++; }
+      }
+      return count > 0 ? sum / count : 0;
+    },
+    [getCellCost],
+  );
+
+  // Column cost totals (by currency)
+  const getColumnCostsByCurrency = useMemo(() => {
+    return (month: number): { ARS: number; USD: number } => {
+      const totals = { ARS: 0, USD: 0 };
+      for (const row of rows) {
+        const cost = getCellCost(row, month);
+        if (cost > 0) {
+          const currency = row.monedaCosto === 'USD' ? 'USD' : 'ARS';
+          totals[currency] += cost;
+        }
+      }
+      return totals;
+    };
+  }, [rows, getCellCost]);
+
+  // Check if rows have mixed currencies
+  const currencyInfo = useMemo(() => {
+    const currencies = new Set(rows.map((r) => r.monedaCosto || 'ARS'));
+    const hasMixed = currencies.size > 1;
+    const singleCurrency = currencies.size === 1 ? Array.from(currencies)[0] : null;
+    return { hasMixed, singleCurrency, currencies: Array.from(currencies) };
+  }, [rows]);
+
+  // Check for rows without cost
+  const rowsWithoutCost = useMemo(() => {
+    return rows.filter((r) => !r.costoMensual || r.costoMensual <= 0);
+  }, [rows]);
+
   const assignedRecursoIds = new Set(rows.map((r) => r.recursoId));
 
   if (isLoading) {
@@ -177,25 +263,58 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
   return (
     <div className="space-y-4">
       {/* Header bar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-stone-500 hover:text-stone-800"
-            onClick={() => { setYear((y) => y - 1); setDirtyCells(new Map()); }}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-4">
+          {/* Year navigation */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-stone-500 hover:text-stone-800"
+              onClick={() => { setYear((y) => y - 1); setDirtyCells(new Map()); }}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-lg font-semibold text-stone-800 min-w-[4ch] text-center">{year}</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-stone-500 hover:text-stone-800"
+              onClick={() => { setYear((y) => y + 1); setDirtyCells(new Map()); }}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          
+          {/* View mode toggle */}
+          <ToggleGroup
+            type="single"
+            value={viewMode}
+            onValueChange={(v) => v && setViewMode(v as ViewMode)}
+            size="sm"
+            variant="outline"
           >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-lg font-semibold text-stone-800 min-w-[4ch] text-center">{year}</span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-stone-500 hover:text-stone-800"
-            onClick={() => { setYear((y) => y + 1); setDirtyCells(new Map()); }}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+            <ToggleGroupItem value="percentage" aria-label="Ver porcentajes">
+              <Percent className="h-4 w-4 mr-1" />
+              <span className="text-xs">%</span>
+            </ToggleGroupItem>
+            <ToggleGroupItem value="cost" aria-label="Ver costos">
+              <DollarSign className="h-4 w-4 mr-1" />
+              <span className="text-xs">Costos</span>
+            </ToggleGroupItem>
+          </ToggleGroup>
+          
+          {/* Config indicator */}
+          {viewMode === 'cost' && isUsingDefaultConfig && (
+            <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 text-xs">
+              overhead: {costoEmpresaPct}% (default)
+            </Badge>
+          )}
+          {viewMode === 'cost' && !isUsingDefaultConfig && (
+            <span className="text-xs text-stone-400">
+              overhead: {costoEmpresaPct}%
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {dirtyCells.size > 0 && (
@@ -221,6 +340,13 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
         </div>
       </div>
 
+      {/* Warning for resources without cost */}
+      {viewMode === 'cost' && rowsWithoutCost.length > 0 && (
+        <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+          ⚠️ {rowsWithoutCost.length} recurso{rowsWithoutCost.length !== 1 ? 's' : ''} sin costo configurado: mostrar "—"
+        </div>
+      )}
+
       {/* Grid */}
       {rows.length === 0 ? (
         <p className="text-stone-500 text-center py-12">
@@ -235,16 +361,21 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
                   Recurso
                 </th>
                 {MONTHS.map((m, i) => (
-                  <th key={m} className="text-center px-1 py-2 font-medium text-stone-500 w-16">
+                  <th key={m} className={`text-center px-1 py-2 font-medium text-stone-500 ${viewMode === 'cost' ? 'w-24' : 'w-16'}`}>
                     {MONTH_LABELS[i]}
                   </th>
                 ))}
-                <th className="text-center px-2 py-2 font-medium text-stone-500 w-16">Prom</th>
+                <th className={`text-center px-2 py-2 font-medium text-stone-500 ${viewMode === 'cost' ? 'w-28' : 'w-16'}`}>
+                  {viewMode === 'cost' ? 'Total Anual' : 'Prom'}
+                </th>
                 <th className="w-8" />
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
+              {rows.map((row) => {
+                const hasNoCost = !row.costoMensual || row.costoMensual <= 0;
+                
+                return (
                 <tr key={row.asignacionId} className="border-b border-stone-50 hover:bg-stone-50/30">
                   <td className="px-3 py-1 sticky left-0 bg-white z-10">
                     <Tooltip>
@@ -259,22 +390,91 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
                       <TooltipContent>
                         <p>{row.recursoApellido}, {row.recursoNombre}</p>
                         <p className="text-xs text-stone-400">{row.perfilNombre} · {row.tipoTiempo}</p>
+                        {viewMode === 'cost' && (
+                          <p className="text-xs text-stone-400 mt-1">
+                            Costo base: {formatCurrency(row.costoMensual, row.monedaCosto)} ({row.monedaCosto})
+                          </p>
+                        )}
                       </TooltipContent>
                     </Tooltip>
                   </td>
-                  {MONTHS.map((m) => (
-                    <PlannerCell
-                      key={m}
-                      value={getCellValue(row, m)}
-                      isDirty={dirtyCells.has(getCellKey(row.asignacionId, m))}
-                      onChange={(v) => handleCellChange(row.asignacionId, m, v)}
-                      onPaintStart={(v) => handlePaintStart(v)}
-                      onPaintEnter={() => handlePaintEnter(row.asignacionId, m)}
-                    />
-                  ))}
-                  <td className="text-center text-xs text-stone-500 font-medium">
-                    {getRowAverage(row) > 0 ? `${getRowAverage(row)}%` : '-'}
-                  </td>
+                  
+                  {viewMode === 'percentage' ? (
+                    // Percentage view - editable cells
+                    <>
+                      {MONTHS.map((m) => (
+                        <PlannerCell
+                          key={m}
+                          value={getCellValue(row, m)}
+                          isDirty={dirtyCells.has(getCellKey(row.asignacionId, m))}
+                          onChange={(v) => handleCellChange(row.asignacionId, m, v)}
+                          onPaintStart={(v) => handlePaintStart(v)}
+                          onPaintEnter={() => handlePaintEnter(row.asignacionId, m)}
+                        />
+                      ))}
+                      <td className="text-center text-xs text-stone-500 font-medium">
+                        {getRowAverage(row) > 0 ? `${getRowAverage(row)}%` : '-'}
+                      </td>
+                    </>
+                  ) : (
+                    // Cost view - read-only cells showing cost
+                    <>
+                      {MONTHS.map((m) => {
+                        const cost = getCellCost(row, m);
+                        const pct = getCellValue(row, m);
+                        return (
+                          <td key={m} className="text-center px-1 py-1">
+                            {hasNoCost ? (
+                              <span className="text-stone-300">—</span>
+                            ) : pct === 0 ? (
+                              <span className="text-stone-300">-</span>
+                            ) : (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className={`text-xs font-medium ${
+                                    cost > 0 
+                                      ? 'text-stone-700' 
+                                      : 'text-stone-400'
+                                  }`}>
+                                    {formatCurrency(cost, row.monedaCosto)}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="text-xs">{pct}% asignado</p>
+                                  <p className="text-xs text-stone-400">
+                                    Base: {formatCurrency(row.costoMensual, row.monedaCosto)}
+                                  </p>
+                                  <p className="text-xs text-stone-400">
+                                    + {costoEmpresaPct}% overhead
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </td>
+                        );
+                      })}
+                      <td className="text-center px-1 py-1">
+                        {hasNoCost ? (
+                          <span className="text-stone-300">—</span>
+                        ) : (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-xs font-semibold text-stone-700">
+                                {formatCurrency(getRowAnnualCost(row), row.monedaCosto)}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">Total anual: {formatCurrency(getRowAnnualCost(row), row.monedaCosto)}</p>
+                              <p className="text-xs text-stone-400">
+                                Promedio mensual: {formatCurrency(getRowMonthlyAvgCost(row), row.monedaCosto)}
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </td>
+                    </>
+                  )}
+                  
                   <td className="px-1">
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
@@ -302,21 +502,130 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
                     </AlertDialog>
                   </td>
                 </tr>
-              ))}
+              );
+              })}
             </tbody>
             <tfoot>
-              <tr className="bg-stone-50 border-t border-stone-200">
-                <td className="px-3 py-2 text-xs font-medium text-stone-500 sticky left-0 bg-stone-50 z-10">
-                  FTEs
-                </td>
-                {MONTHS.map((m) => (
-                  <td key={m} className="text-center text-xs font-medium text-stone-600 py-2">
-                    {Number(getColumnFte(m)) > 0 ? getColumnFte(m) : '-'}
+              {viewMode === 'percentage' ? (
+                <tr className="bg-stone-50 border-t border-stone-200">
+                  <td className="px-3 py-2 text-xs font-medium text-stone-500 sticky left-0 bg-stone-50 z-10">
+                    FTEs
                   </td>
-                ))}
-                <td />
-                <td />
-              </tr>
+                  {MONTHS.map((m) => (
+                    <td key={m} className="text-center text-xs font-medium text-stone-600 py-2">
+                      {Number(getColumnFte(m)) > 0 ? getColumnFte(m) : '-'}
+                    </td>
+                  ))}
+                  <td />
+                  <td />
+                </tr>
+              ) : (
+                // Cost view footer - show totals by currency
+                <>
+                  <tr className="bg-stone-50 border-t border-stone-200">
+                    <td className="px-3 py-2 text-xs font-medium text-stone-500 sticky left-0 bg-stone-50 z-10">
+                      {currencyInfo.hasMixed ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>Costos Totales <span className="text-amber-500">*</span></span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Monedas mixtas: {currencyInfo.currencies.join(', ')}</p>
+                            <p className="text-xs text-stone-400">Totales separados por moneda</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        'Costos Totales'
+                      )}
+                    </td>
+                    {MONTHS.map((m) => {
+                      const costs = getColumnCostsByCurrency(m);
+                      const hasARS = costs.ARS > 0;
+                      const hasUSD = costs.USD > 0;
+                      
+                      if (!hasARS && !hasUSD) {
+                        return (
+                          <td key={m} className="text-center text-xs font-medium text-stone-400 py-2">
+                            -
+                          </td>
+                        );
+                      }
+                      
+                      if (currencyInfo.hasMixed) {
+                        // Show both currencies in tooltip
+                        return (
+                          <td key={m} className="text-center text-xs py-2">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="font-medium text-stone-600 cursor-help">
+                                  —
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {hasARS && <p className="text-xs">ARS: {formatCurrency(costs.ARS, 'ARS')}</p>}
+                                {hasUSD && <p className="text-xs">USD: {formatCurrency(costs.USD, 'USD')}</p>}
+                              </TooltipContent>
+                            </Tooltip>
+                          </td>
+                        );
+                      }
+                      
+                      // Single currency - show total directly
+                      const total = hasARS ? costs.ARS : costs.USD;
+                      const currency = hasARS ? 'ARS' : 'USD';
+                      return (
+                        <td key={m} className="text-center text-xs font-semibold text-stone-700 py-2">
+                          {formatCurrency(total, currency)}
+                        </td>
+                      );
+                    })}
+                    <td className="text-center text-xs font-semibold text-stone-700 py-2">
+                      {(() => {
+                        // Calculate annual totals
+                        let totalARS = 0;
+                        let totalUSD = 0;
+                        for (const m of MONTHS) {
+                          const costs = getColumnCostsByCurrency(m);
+                          totalARS += costs.ARS;
+                          totalUSD += costs.USD;
+                        }
+                        
+                        if (currencyInfo.hasMixed) {
+                          return (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-help">—</span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {totalARS > 0 && <p className="text-xs">ARS: {formatCurrency(totalARS, 'ARS')}</p>}
+                                {totalUSD > 0 && <p className="text-xs">USD: {formatCurrency(totalUSD, 'USD')}</p>}
+                              </TooltipContent>
+                            </Tooltip>
+                          );
+                        }
+                        
+                        const total = totalARS > 0 ? totalARS : totalUSD;
+                        const currency = totalARS > 0 ? 'ARS' : 'USD';
+                        return total > 0 ? formatCurrency(total, currency) : '-';
+                      })()}
+                    </td>
+                    <td />
+                  </tr>
+                  {/* FTEs row in cost view too */}
+                  <tr className="bg-stone-50 border-t border-stone-100">
+                    <td className="px-3 py-1 text-xs text-stone-400 sticky left-0 bg-stone-50 z-10">
+                      FTEs
+                    </td>
+                    {MONTHS.map((m) => (
+                      <td key={m} className="text-center text-xs text-stone-400 py-1">
+                        {Number(getColumnFte(m)) > 0 ? getColumnFte(m) : '-'}
+                      </td>
+                    ))}
+                    <td />
+                    <td />
+                  </tr>
+                </>
+              )}
             </tfoot>
           </table>
         </div>

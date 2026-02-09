@@ -7,6 +7,7 @@ import { PerfilesModule } from './modules/perfiles/perfiles.module';
 import { RecursosModule } from './modules/recursos/recursos.module';
 import { AsignacionesModule } from './modules/asignaciones/asignaciones.module';
 import { PnlModule } from './modules/pnl/pnl.module';
+import { ConfigModule } from './modules/config/config.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { PnlModule } from './modules/pnl/pnl.module';
     RecursosModule,
     AsignacionesModule,
     PnlModule,
+    ConfigModule,
   ],
   controllers: [AppController],
 })

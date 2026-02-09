@@ -8,6 +8,18 @@ datasource db {
 }
 
 // ============================================
+// APP CONFIG (key/value global settings)
+// ============================================
+
+model AppConfig {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("app_config")
+}
+
+// ============================================
 // ENUMS
 // ============================================
 

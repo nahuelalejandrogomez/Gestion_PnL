@@ -4,6 +4,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { Layout } from './components/layout/Layout';
 import { ClientesList, ClienteDetail } from './features/clientes';
 import { ProyectosList, ProyectoDetail } from './features/proyectos';
+import { ConfiguracionPage } from './features/config';
 
 function DashboardPage() {
   return (
@@ -48,10 +49,7 @@ export function App() {
               path="/rolling"
               element={<PlaceholderPage title="Rolling" />}
             />
-            <Route
-              path="/configuracion"
-              element={<PlaceholderPage title="Configuración" />}
-            />
+            <Route path="/configuracion" element={<ConfiguracionPage />} />
           </Route>
         </Routes>
         <Toaster position="top-right" />
