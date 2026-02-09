@@ -283,12 +283,32 @@ model Recurso {
   asignaciones        AsignacionRecurso[]
   skills              RecursoSkill[]
   metricasUtilizacion MetricaUtilizacion[]
+  costosMensuales     RecursoCostoMes[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   @@map("recursos")
+}
+
+// Override de costo mensual por recurso (planificación de aumentos)
+// Si existe un registro para (recursoId, year, month), se usa este costo
+// en lugar del Recurso.costoMensual base
+model RecursoCostoMes {
+  id           String  @id @default(uuid())
+  recursoId    String
+  year         Int
+  month        Int     // 1..12
+  costoMensual Decimal @db.Decimal(15, 2)
+
+  recurso Recurso @relation(fields: [recursoId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([recursoId, year, month])
+  @@map("recursos_costos_mes")
 }
 
 model AsignacionRecurso {

@@ -4,12 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useQueryClient } from '@tanstack/react-query';
-import { usePlannerData, usePlannerSave, usePlannerDeleteAsignacion, PLANNER_QUERY_KEY } from '../hooks/usePlanner';
+import { usePlannerData, usePlannerSave, usePlannerDeleteAsignacion, PLANNER_QUERY_KEY, useRecursosCostos, useUpsertRecursoCosto, useDeleteRecursoCosto } from '../hooks/usePlanner';
 import { useAsignacionMutations } from '../hooks/useAsignacionMutations';
 import { useConfig, DEFAULT_CONFIG } from '@/features/config';
 import { PlannerCell } from './PlannerCell';
@@ -52,6 +54,21 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
   const { data: config, isError: configError } = useConfig();
   const costoEmpresaPct = config?.costoEmpresaPct ?? DEFAULT_CONFIG.costoEmpresaPct;
   const isUsingDefaultConfig = configError || !config;
+
+  // Salary overrides for cost view
+  const { data: costosData } = useRecursosCostos(proyectoId, year);
+  const upsertCostoMutation = useUpsertRecursoCosto(proyectoId, year);
+  const deleteCostoMutation = useDeleteRecursoCosto(proyectoId, year);
+  const salaryOverrides = costosData?.overrides ?? {};
+
+  // Salary edit popover state
+  const [salaryEditOpen, setSalaryEditOpen] = useState<{ recursoId: string; month: number } | null>(null);
+  const [salaryEditValue, setSalaryEditValue] = useState<string>('');
+
+  const handleSalaryEditClose = () => {
+    setSalaryEditOpen(null);
+    setSalaryEditValue('');
+  };
 
   // Stop paint on mouseup
   useEffect(() => {
@@ -184,18 +201,80 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
     return (getColumnTotal(month) / 100).toFixed(1);
   };
 
+  // Annual average FTEs
+  const getAnnualAvgFte = (): string => {
+    let sum = 0;
+    let count = 0;
+    for (const m of MONTHS) {
+      const fte = Number(getColumnFte(m));
+      if (fte > 0) {
+        sum += fte;
+        count++;
+      }
+    }
+    return count > 0 ? (sum / count).toFixed(1) : '0';
+  };
+
   // Cost calculation helpers
+  
+  // Get the base salary for a recurso in a specific month (override or base)
+  const getBaseSalary = useCallback(
+    (row: PlannerRow, month: number): { value: number; isOverride: boolean } => {
+      const override = salaryOverrides[row.recursoId]?.[month];
+      if (override !== undefined) {
+        return { value: override, isOverride: true };
+      }
+      return { value: row.costoMensual, isOverride: false };
+    },
+    [salaryOverrides],
+  );
+
+  // Salary edit handlers (defined after getBaseSalary)
+  const handleSalaryEditOpen = useCallback(
+    (row: PlannerRow, month: number) => {
+      const { value } = getBaseSalary(row, month);
+      setSalaryEditValue(String(value));
+      setSalaryEditOpen({ recursoId: row.recursoId, month });
+    },
+    [getBaseSalary],
+  );
+
+  const handleSalaryEditSave = () => {
+    if (!salaryEditOpen) return;
+    const value = parseFloat(salaryEditValue);
+    if (isNaN(value) || value < 0) return;
+    
+    upsertCostoMutation.mutate({
+      recursoId: salaryEditOpen.recursoId,
+      month: salaryEditOpen.month,
+      costoMensual: value,
+    }, {
+      onSuccess: () => handleSalaryEditClose(),
+    });
+  };
+
+  const handleSalaryEditDelete = () => {
+    if (!salaryEditOpen) return;
+    deleteCostoMutation.mutate({
+      recursoId: salaryEditOpen.recursoId,
+      month: salaryEditOpen.month,
+    }, {
+      onSuccess: () => handleSalaryEditClose(),
+    });
+  };
+
   const getCellCost = useCallback(
     (row: PlannerRow, month: number): number => {
-      if (!row.costoMensual || row.costoMensual <= 0) return 0;
+      const { value: baseSalary } = getBaseSalary(row, month);
+      if (!baseSalary || baseSalary <= 0) return 0;
       const pct = getCellValue(row, month);
       if (pct === 0) return 0;
-      // costoTotal100 = costoMensual * (1 + costoEmpresaPct/100)
-      const costoTotal100 = row.costoMensual * (1 + costoEmpresaPct / 100);
+      // costoTotal100 = baseSalary * (1 + costoEmpresaPct/100)
+      const costoTotal100 = baseSalary * (1 + costoEmpresaPct / 100);
       // costoMesProyecto = costoTotal100 * (porcentajeAsignacion / 100)
       return costoTotal100 * (pct / 100);
     },
-    [getCellValue, costoEmpresaPct],
+    [getCellValue, costoEmpresaPct, getBaseSalary],
   );
 
   // Get row annual total cost
@@ -417,38 +496,160 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
                       </td>
                     </>
                   ) : (
-                    // Cost view - read-only cells showing cost
+                    // Cost view - cells with optional salary edit popover
                     <>
                       {MONTHS.map((m) => {
                         const cost = getCellCost(row, m);
                         const pct = getCellValue(row, m);
+                        const { isOverride } = getBaseSalary(row, m);
+                        const isPopoverOpen = salaryEditOpen?.recursoId === row.recursoId && salaryEditOpen?.month === m;
+                        
                         return (
                           <td key={m} className="text-center px-1 py-1">
-                            {hasNoCost ? (
-                              <span className="text-stone-300">—</span>
+                            {hasNoCost && !isOverride ? (
+                              // No cost yet - show popover to add
+                              <Popover 
+                                open={isPopoverOpen} 
+                                onOpenChange={(open) => open ? handleSalaryEditOpen(row, m) : handleSalaryEditClose()}
+                              >
+                                <PopoverTrigger asChild>
+                                  <button className="w-full text-stone-300 hover:text-stone-500 transition-colors text-xs">
+                                    —
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-56 p-3" align="center">
+                                  <div className="space-y-2">
+                                    <label className="text-xs font-medium text-stone-600">
+                                      Sueldo mes {m}/{year}
+                                    </label>
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      value={salaryEditValue}
+                                      onChange={(e) => setSalaryEditValue(e.target.value)}
+                                      className="h-8 text-sm"
+                                      placeholder="0"
+                                      autoFocus
+                                    />
+                                    <div className="flex gap-2 pt-1">
+                                      <Button
+                                        size="sm"
+                                        className="flex-1 h-7 text-xs"
+                                        onClick={handleSalaryEditSave}
+                                        disabled={upsertCostoMutation.isPending}
+                                      >
+                                        Guardar
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
                             ) : pct === 0 ? (
-                              <span className="text-stone-300">-</span>
+                              // Has cost but no allocation - show popover with clickable dash
+                              <Popover 
+                                open={isPopoverOpen} 
+                                onOpenChange={(open) => open ? handleSalaryEditOpen(row, m) : handleSalaryEditClose()}
+                              >
+                                <PopoverTrigger asChild>
+                                  <button className={`w-full relative text-stone-300 hover:text-stone-500 transition-colors text-xs ${isOverride ? 'font-semibold text-amber-500' : ''}`}>
+                                    -
+                                    {isOverride && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-amber-500 rounded-full" />}
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-56 p-3" align="center">
+                                  <div className="space-y-2">
+                                    <label className="text-xs font-medium text-stone-600">
+                                      Sueldo mes {m}/{year}
+                                    </label>
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      value={salaryEditValue}
+                                      onChange={(e) => setSalaryEditValue(e.target.value)}
+                                      className="h-8 text-sm"
+                                      autoFocus
+                                    />
+                                    <div className="flex gap-2 pt-1">
+                                      <Button
+                                        size="sm"
+                                        className="flex-1 h-7 text-xs"
+                                        onClick={handleSalaryEditSave}
+                                        disabled={upsertCostoMutation.isPending}
+                                      >
+                                        Guardar
+                                      </Button>
+                                      {isOverride && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-7 text-xs"
+                                          onClick={handleSalaryEditDelete}
+                                          disabled={deleteCostoMutation.isPending}
+                                        >
+                                          Restaurar
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
                             ) : (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className={`text-xs font-medium ${
-                                    cost > 0 
-                                      ? 'text-stone-700' 
-                                      : 'text-stone-400'
+                              // Has cost and allocation - show cost with edit popover
+                              <Popover 
+                                open={isPopoverOpen} 
+                                onOpenChange={(open) => open ? handleSalaryEditOpen(row, m) : handleSalaryEditClose()}
+                              >
+                                <PopoverTrigger asChild>
+                                  <button className={`w-full relative text-xs font-medium hover:underline transition-colors ${
+                                    cost > 0 ? 'text-stone-700' : 'text-stone-400'
                                   }`}>
                                     {formatCurrency(cost, row.monedaCosto)}
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p className="text-xs">{pct}% asignado</p>
-                                  <p className="text-xs text-stone-400">
-                                    Base: {formatCurrency(row.costoMensual, row.monedaCosto)}
-                                  </p>
-                                  <p className="text-xs text-stone-400">
-                                    + {costoEmpresaPct}% overhead
-                                  </p>
-                                </TooltipContent>
-                              </Tooltip>
+                                    {isOverride && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-amber-500 rounded-full" />}
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-56 p-3" align="center">
+                                  <div className="space-y-2">
+                                    <label className="text-xs font-medium text-stone-600">
+                                      Sueldo mes {m}/{year}
+                                    </label>
+                                    <p className="text-xs text-stone-400">
+                                      {pct}% asignado · Costo: {formatCurrency(cost, row.monedaCosto)}
+                                    </p>
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      value={salaryEditValue}
+                                      onChange={(e) => setSalaryEditValue(e.target.value)}
+                                      className="h-8 text-sm"
+                                      autoFocus
+                                    />
+                                    <div className="flex gap-2 pt-1">
+                                      <Button
+                                        size="sm"
+                                        className="flex-1 h-7 text-xs"
+                                        onClick={handleSalaryEditSave}
+                                        disabled={upsertCostoMutation.isPending}
+                                      >
+                                        Guardar
+                                      </Button>
+                                      {isOverride && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-7 text-xs"
+                                          onClick={handleSalaryEditDelete}
+                                          disabled={deleteCostoMutation.isPending}
+                                        >
+                                          Restaurar
+                                        </Button>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-stone-400">
+                                      Base: {formatCurrency(row.costoMensual, row.monedaCosto)} + {costoEmpresaPct}% overhead
+                                    </p>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
                             )}
                           </td>
                         );
@@ -516,7 +717,18 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
                       {Number(getColumnFte(m)) > 0 ? getColumnFte(m) : '-'}
                     </td>
                   ))}
-                  <td />
+                  <td className="text-center text-xs font-semibold text-stone-600 py-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="cursor-help">
+                          {Number(getAnnualAvgFte()) > 0 ? getAnnualAvgFte() : '-'}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs">Promedio de FTEs del año</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </td>
                   <td />
                 </tr>
               ) : (
@@ -621,7 +833,18 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
                         {Number(getColumnFte(m)) > 0 ? getColumnFte(m) : '-'}
                       </td>
                     ))}
-                    <td />
+                    <td className="text-center text-xs font-medium text-stone-500 py-1">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="cursor-help">
+                            {Number(getAnnualAvgFte()) > 0 ? getAnnualAvgFte() : '-'}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-xs">Promedio de FTEs del año</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </td>
                     <td />
                   </tr>
                 </>

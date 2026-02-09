@@ -10,6 +10,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ProyectosService } from './proyectos.service';
+import { RecursosService } from '../recursos/recursos.service';
 import { CreateProyectoDto } from './dto/create-proyecto.dto';
 import { UpdateProyectoDto } from './dto/update-proyecto.dto';
 import { QueryProyectoDto } from './dto/query-proyecto.dto';
@@ -18,7 +19,10 @@ import { QueryProyectoDto } from './dto/query-proyecto.dto';
 export class ProyectosController {
   private readonly logger = new Logger(ProyectosController.name);
 
-  constructor(private readonly proyectosService: ProyectosService) {}
+  constructor(
+    private readonly proyectosService: ProyectosService,
+    private readonly recursosService: RecursosService,
+  ) {}
 
   @Get()
   findAll(@Query() query: QueryProyectoDto) {
@@ -49,5 +53,22 @@ export class ProyectosController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.proyectosService.remove(id);
+  }
+
+  // =====================
+  // RECURSOS SALARY OVERRIDES (by proyecto)
+  // =====================
+
+  /**
+   * GET /proyectos/:id/recursos-costos?year=YYYY
+   * Get salary overrides for all recursos assigned to this proyecto in the given year
+   * Returns: { overrides: { [recursoId]: { [month]: costoMensual } } }
+   */
+  @Get(':id/recursos-costos')
+  getRecursosCostos(
+    @Param('id') id: string,
+    @Query('year') year: string,
+  ) {
+    return this.recursosService.getCostosByProyecto(id, Number(year) || new Date().getFullYear());
   }
 }

@@ -1,7 +1,7 @@
 # Project State - Redbee P&L
 
-**Última actualización:** 8 de febrero de 2026
-**Versión:** 0.5.1 (Import Recursos/Perfiles)
+**Última actualización:** 10 de febrero de 2026
+**Versión:** 0.6.0 (Planner de Asignaciones mejorado + Costos)
 
 ---
 
@@ -66,6 +66,37 @@
   - Sin seniority: $1.000.000 | JR: $800.000 | SSR: $1.200.000 | SR: $1.800.000 | Staff: $2.500.000 | Manager: $3.000.000
 - Seniority del CSV NO se guarda en DB (el mismo cargo puede tener múltiples seniorities); se usa solo para determinar costoMensual
 - Ejecutado contra Railway DB (producción)
+
+### ✅ Fase 5.5 – Planner de Asignaciones mejorado + Costos
+**Mejoras Planner (bugfixes):**
+- Agregar recurso actualiza la grilla inmediatamente (invalidación de queries)
+- Guardar funciona correctamente (fix parsing UUID en key de celdas sucias)
+
+**Vista de Costos:**
+- Toggle en header del Planner: % Asignación / Costos
+- Fórmula: `costoMesProyecto = baseSalary × (1 + costoEmpresaPct/100) × (porcentaje/100)`
+- Columna "Total Anual" con suma de costos del año
+- Soporte de monedas mixtas (ARS/USD) con totales separados
+- Indicador visual de recursos sin costo base
+
+**Configuración Global (AppConfig):**
+- Modelo `AppConfig` para almacenar configuraciones clave-valor
+- `costoEmpresaPct` configurable (default 45%) - porcentaje de overhead de empresa
+- API: `GET /api/config`, `PUT /api/config/:key`, `DELETE /api/config/:key`
+- UI: Página de Configuración en `/configuracion` (sidebar)
+
+**Overrides de Salario Mensual (RecursoCostoMes):**
+- Modelo `RecursoCostoMes` para guardar sueldos custom por recurso/mes/año
+- Permite planificar aumentos de sueldo mes a mes
+- API: `GET/PUT/DELETE /api/recursos/:id/costos?year=YYYY`
+- API batch: `GET /api/proyectos/:proyectoId/recursos-costos?year=YYYY`
+- UI: Click en celda de costo abre Popover para editar sueldo de ese mes
+- Indicador visual (dot amber) en celdas con override
+- Botón "Restaurar" para eliminar override y volver al salario base
+
+**Total Anual FTEs:**
+- Columna final en fila de FTEs muestra promedio anual
+- Tooltip explicativo: "Promedio de FTEs del año"
 
 ---
 

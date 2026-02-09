@@ -81,3 +81,63 @@ export function usePlannerDeleteAsignacion() {
     },
   });
 }
+
+// =====================
+// SALARY OVERRIDES
+// =====================
+
+export const RECURSOS_COSTOS_QUERY_KEY = 'recursos-costos';
+
+/**
+ * Get salary overrides for all recursos of a proyecto in a given year
+ */
+export function useRecursosCostos(proyectoId: string, year: number) {
+  return useQuery({
+    queryKey: [RECURSOS_COSTOS_QUERY_KEY, proyectoId, year],
+    queryFn: () => asignacionesApi.getRecursosCostos(proyectoId, year),
+    enabled: !!proyectoId,
+  });
+}
+
+/**
+ * Mutation to upsert a salary override for a recurso
+ */
+export function useUpsertRecursoCosto(proyectoId: string, year: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ recursoId, month, costoMensual }: { recursoId: string; month: number; costoMensual: number }) =>
+      asignacionesApi.upsertRecursoCosto(recursoId, year, [{ month, costoMensual }]),
+    onSuccess: () => {
+      // Invalidate recursos costos and planner to recalculate costs
+      queryClient.invalidateQueries({ queryKey: [RECURSOS_COSTOS_QUERY_KEY, proyectoId, year] });
+      queryClient.invalidateQueries({ queryKey: [PLANNER_QUERY_KEY, proyectoId, year] });
+      toast.success('Sueldo actualizado');
+    },
+    onError: (error: Error & { response?: { data?: { message?: string } } }) => {
+      console.error('[Salary Override Error]', error);
+      toast.error(error.response?.data?.message || 'Error al actualizar sueldo');
+    },
+  });
+}
+
+/**
+ * Mutation to delete a salary override
+ */
+export function useDeleteRecursoCosto(proyectoId: string, year: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ recursoId, month }: { recursoId: string; month: number }) =>
+      asignacionesApi.deleteRecursoCosto(recursoId, year, month),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [RECURSOS_COSTOS_QUERY_KEY, proyectoId, year] });
+      queryClient.invalidateQueries({ queryKey: [PLANNER_QUERY_KEY, proyectoId, year] });
+      toast.success('Override eliminado - usando sueldo base');
+    },
+    onError: (error: Error & { response?: { data?: { message?: string } } }) => {
+      console.error('[Delete Salary Override Error]', error);
+      toast.error(error.response?.data?.message || 'Error al eliminar override');
+    },
+  });
+}

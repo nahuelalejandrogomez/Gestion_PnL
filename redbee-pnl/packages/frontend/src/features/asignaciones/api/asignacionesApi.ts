@@ -8,6 +8,7 @@ import type {
   Perfil,
   PlannerData,
   UpsertMesBatchDto,
+  RecursosCostosResponse,
 } from '../types/asignacion.types';
 
 export const asignacionesApi = {
@@ -59,6 +60,39 @@ export const asignacionesApi = {
     const { data } = await api.put<{ updated: number }>(
       `/asignaciones/proyecto/${proyectoId}/planner`,
       dto,
+    );
+    return data;
+  },
+
+  // Salary overrides endpoints
+  getRecursosCostos: async (proyectoId: string, year: number): Promise<RecursosCostosResponse> => {
+    const { data } = await api.get<RecursosCostosResponse>(
+      `/proyectos/${proyectoId}/recursos-costos`,
+      { params: { year } },
+    );
+    return data;
+  },
+
+  upsertRecursoCosto: async (
+    recursoId: string,
+    year: number,
+    items: { month: number; costoMensual: number }[],
+  ): Promise<{ updated: number }> => {
+    const { data } = await api.put<{ updated: number }>(
+      `/recursos/${recursoId}/costos`,
+      { items },
+      { params: { year } },
+    );
+    return data;
+  },
+
+  deleteRecursoCosto: async (
+    recursoId: string,
+    year: number,
+    month: number,
+  ): Promise<{ deleted: boolean }> => {
+    const { data } = await api.delete<{ deleted: boolean }>(
+      `/recursos/${recursoId}/costos/${year}/${month}`,
     );
     return data;
   },

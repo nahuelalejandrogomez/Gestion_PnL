@@ -106,3 +106,8 @@ export interface PlannerData {
 export interface UpsertMesBatchDto {
   items: { asignacionId: string; year: number; month: number; porcentajeAsignacion: number }[];
 }
+
+// Salary overrides types
+export interface RecursosCostosResponse {
+  overrides: Record<string, Record<number, number>>; // { [recursoId]: { [month]: costoMensual } }
+}

@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateRecursoDto } from './dto/create-recurso.dto';
 import { UpdateRecursoDto } from './dto/update-recurso.dto';
 import { QueryRecursoDto } from './dto/query-recurso.dto';
+import { UpsertRecursoCostosDto } from './dto/recurso-costo-mes.dto';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
@@ -107,5 +108,115 @@ export class RecursosService {
       where: { id },
       data: { deletedAt: new Date() },
     });
+  }
+
+  // =====================
+  // RECURSO COSTO MES (salary overrides)
+  // =====================
+
+  /**
+   * Get salary overrides for all recursos of a proyecto in a given year
+   * Returns map: { [recursoId]: { [month]: costoMensual } }
+   */
+  async getCostosByProyecto(proyectoId: string, year: number) {
+    // Get all recursoIds assigned to this project
+    const asignaciones = await this.prisma.asignacionRecurso.findMany({
+      where: { proyectoId },
+      select: { recursoId: true },
+      distinct: ['recursoId'],
+    });
+
+    const recursoIds = asignaciones.map((a) => a.recursoId);
+
+    if (recursoIds.length === 0) {
+      return { overrides: {} };
+    }
+
+    // Get all overrides for these recursos in the given year
+    const costos = await this.prisma.recursoCostoMes.findMany({
+      where: {
+        recursoId: { in: recursoIds },
+        year,
+      },
+    });
+
+    // Build map: { [recursoId]: { [month]: costoMensual } }
+    const overrides: Record<string, Record<number, number>> = {};
+    for (const c of costos) {
+      if (!overrides[c.recursoId]) {
+        overrides[c.recursoId] = {};
+      }
+      overrides[c.recursoId][c.month] = Number(c.costoMensual);
+    }
+
+    return { overrides };
+  }
+
+  /**
+   * Upsert salary overrides for a recurso in a given year
+   */
+  async upsertCostos(recursoId: string, year: number, dto: UpsertRecursoCostosDto) {
+    // Validate recurso exists
+    await this.findOne(recursoId);
+
+    // Validate year
+    if (year < 2020 || year > 2100) {
+      throw new BadRequestException('Year must be between 2020 and 2100');
+    }
+
+    // Upsert each item
+    const results = await Promise.all(
+      dto.items.map((item) =>
+        this.prisma.recursoCostoMes.upsert({
+          where: {
+            recursoId_year_month: {
+              recursoId,
+              year,
+              month: item.month,
+            },
+          },
+          update: {
+            costoMensual: item.costoMensual,
+          },
+          create: {
+            recursoId,
+            year,
+            month: item.month,
+            costoMensual: item.costoMensual,
+          },
+        }),
+      ),
+    );
+
+    return { updated: results.length };
+  }
+
+  /**
+   * Delete a salary override
+   */
+  async deleteCosto(recursoId: string, year: number, month: number) {
+    await this.findOne(recursoId);
+
+    try {
+      await this.prisma.recursoCostoMes.delete({
+        where: {
+          recursoId_year_month: {
+            recursoId,
+            year,
+            month,
+          },
+        },
+      });
+      return { deleted: true };
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        // Record not found - that's OK, nothing to delete
+        return { deleted: false };
+      }
+      throw error;
+    }
   }
 }
