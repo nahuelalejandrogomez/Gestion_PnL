@@ -1,7 +1,7 @@
 # Project State - Redbee P&L
 
 **Última actualización:** 8 de febrero de 2026
-**Versión:** 0.5.0 (Fases 4-5 completadas)
+**Versión:** 0.5.1 (Import Recursos/Perfiles)
 
 ---
 
@@ -54,6 +54,18 @@
   - Revenue hardcodeado en 0 (requiere módulo Tarifarios)
 - Frontend: selector de mes/año, cards resumen (costos, FTEs, horas, recursos), tabla de detalle
 - Integrado en ProyectoDetail tab "P&L"
+
+### ✅ Import Recursos/Perfiles desde CSV
+- Seed script idempotente: `packages/backend/prisma/seed.ts`
+- Fuente: CSV export de BambooHR (General Report)
+- Filtrado: solo empleados activos (sin fecha de separación laboral), email @redb.ee
+- **34 Perfiles** creados (uno por Cargo único, nivel = null)
+  - Categorías derivadas: Engineering, Design, Marketing, Business, People, Admin, C-Level, Management
+- **197 Recursos** importados con upsert por email
+- **Costos ficticios** (ARS) por seniority CSV, NO datos reales:
+  - Sin seniority: $1.000.000 | JR: $800.000 | SSR: $1.200.000 | SR: $1.800.000 | Staff: $2.500.000 | Manager: $3.000.000
+- Seniority del CSV NO se guarda en DB (el mismo cargo puede tener múltiples seniorities); se usa solo para determinar costoMensual
+- Ejecutado contra Railway DB (producción)
 
 ---
 
