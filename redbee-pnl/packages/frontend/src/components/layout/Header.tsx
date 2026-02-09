@@ -1,4 +1,5 @@
 import { Menu } from 'lucide-react';
+import logo from '@/assets/REDBEE-MARCA.png';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -14,7 +15,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
         <Menu className="h-5 w-5" />
       </button>
       <div className="flex items-center gap-2">
-        <span className="font-semibold text-lg text-foreground">Redbee</span>
+        <img src={logo} alt="Redbee" className="h-6 w-auto" />
         <span className="text-muted-foreground text-sm">P&L Manager</span>
       </div>
     </header>
