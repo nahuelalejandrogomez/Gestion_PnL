@@ -78,6 +78,11 @@ export const asignacionesApi = {
     year: number,
     items: { month: number; costoMensual: number }[],
   ): Promise<{ updated: number }> => {
+    console.log('[API] upsertRecursoCosto:', {
+      url: `/recursos/${recursoId}/costos`,
+      year,
+      items,
+    });
     const { data } = await api.put<{ updated: number }>(
       `/recursos/${recursoId}/costos`,
       { items },

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, BadRequestException, Logger } from '@nestjs/common';
 import { RecursosService } from './recursos.service';
 import { CreateRecursoDto } from './dto/create-recurso.dto';
 import { UpdateRecursoDto } from './dto/update-recurso.dto';
@@ -7,6 +7,8 @@ import { UpsertRecursoCostosDto } from './dto/recurso-costo-mes.dto';
 
 @Controller('recursos')
 export class RecursosController {
+  private readonly logger = new Logger(RecursosController.name);
+  
   constructor(private readonly recursosService: RecursosService) {}
 
   @Get()
@@ -48,7 +50,14 @@ export class RecursosController {
     @Query('year') year: string,
     @Body() dto: UpsertRecursoCostosDto,
   ) {
-    return this.recursosService.upsertCostos(id, Number(year), dto);
+    this.logger.log(`[upsertCostos] recursoId=${id}, year=${year}, dto=${JSON.stringify(dto)}`);
+    
+    const yearNum = Number(year);
+    if (!year || isNaN(yearNum)) {
+      throw new BadRequestException('Query param "year" is required and must be a number');
+    }
+    
+    return this.recursosService.upsertCostos(id, yearNum, dto);
   }
 
   /**

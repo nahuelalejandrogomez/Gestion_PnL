@@ -164,31 +164,41 @@ export class RecursosService {
       throw new BadRequestException('Year must be between 2020 and 2100');
     }
 
-    // Upsert each item
-    const results = await Promise.all(
-      dto.items.map((item) =>
-        this.prisma.recursoCostoMes.upsert({
-          where: {
-            recursoId_year_month: {
+    // Validate items
+    if (!dto.items || !Array.isArray(dto.items) || dto.items.length === 0) {
+      throw new BadRequestException('items array is required and cannot be empty');
+    }
+
+    try {
+      // Upsert each item
+      const results = await Promise.all(
+        dto.items.map((item) =>
+          this.prisma.recursoCostoMes.upsert({
+            where: {
+              recursoId_year_month: {
+                recursoId,
+                year,
+                month: item.month,
+              },
+            },
+            update: {
+              costoMensual: item.costoMensual,
+            },
+            create: {
               recursoId,
               year,
               month: item.month,
+              costoMensual: item.costoMensual,
             },
-          },
-          update: {
-            costoMensual: item.costoMensual,
-          },
-          create: {
-            recursoId,
-            year,
-            month: item.month,
-            costoMensual: item.costoMensual,
-          },
-        }),
-      ),
-    );
+          }),
+        ),
+      );
 
-    return { updated: results.length };
+      return { updated: results.length };
+    } catch (error) {
+      console.error('[RecursosService.upsertCostos] Prisma error:', error);
+      throw new BadRequestException(`Failed to save salary override: ${error.message}`);
+    }
   }
 
   /**

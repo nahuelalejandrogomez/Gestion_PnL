@@ -179,14 +179,14 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
     });
   };
 
-  const getRowAverage = (row: PlannerRow): number => {
-    let sum = 0;
-    let count = 0;
+  // TOTAL anual de FTE por persona: suma de (porcentaje / 100) de cada mes
+  const getRowTotalFte = (row: PlannerRow): number => {
+    let total = 0;
     for (const m of MONTHS) {
       const v = getCellValue(row, m);
-      if (v > 0) { sum += v; count++; }
+      total += v / 100; // Convert percentage to FTE
     }
-    return count > 0 ? Math.round(sum / count) : 0;
+    return total;
   };
 
   const getColumnTotal = (month: number): number => {
@@ -201,18 +201,13 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
     return (getColumnTotal(month) / 100).toFixed(1);
   };
 
-  // Annual average FTEs
-  const getAnnualAvgFte = (): string => {
-    let sum = 0;
-    let count = 0;
+  // TOTAL anual de FTEs del proyecto: suma de FTEs de todos los meses
+  const getAnnualTotalFte = (): string => {
+    let total = 0;
     for (const m of MONTHS) {
-      const fte = Number(getColumnFte(m));
-      if (fte > 0) {
-        sum += fte;
-        count++;
-      }
+      total += Number(getColumnFte(m));
     }
-    return count > 0 ? (sum / count).toFixed(1) : '0';
+    return total.toFixed(1);
   };
 
   // Cost calculation helpers
@@ -242,7 +237,19 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
   const handleSalaryEditSave = () => {
     if (!salaryEditOpen) return;
     const value = parseFloat(salaryEditValue);
-    if (isNaN(value) || value < 0) return;
+    
+    console.log('[Planner] handleSalaryEditSave:', {
+      recursoId: salaryEditOpen.recursoId,
+      month: salaryEditOpen.month,
+      rawValue: salaryEditValue,
+      parsedValue: value,
+      year,
+    });
+    
+    if (isNaN(value) || value < 0) {
+      console.warn('[Planner] Invalid salary value:', salaryEditValue);
+      return;
+    }
     
     upsertCostoMutation.mutate({
       recursoId: salaryEditOpen.recursoId,
@@ -445,7 +452,7 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
                   </th>
                 ))}
                 <th className={`text-center px-2 py-2 font-medium text-stone-500 ${viewMode === 'cost' ? 'w-28' : 'w-16'}`}>
-                  {viewMode === 'cost' ? 'Total Anual' : 'Prom'}
+                  {viewMode === 'cost' ? 'Total Anual' : 'TOTAL'}
                 </th>
                 <th className="w-8" />
               </tr>
@@ -492,7 +499,7 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
                         />
                       ))}
                       <td className="text-center text-xs text-stone-500 font-medium">
-                        {getRowAverage(row) > 0 ? `${getRowAverage(row)}%` : '-'}
+                        {getRowTotalFte(row) > 0 ? getRowTotalFte(row).toFixed(1) : '-'}
                       </td>
                     </>
                   ) : (
@@ -721,11 +728,11 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <span className="cursor-help">
-                          {Number(getAnnualAvgFte()) > 0 ? getAnnualAvgFte() : '-'}
+                          {Number(getAnnualTotalFte()) > 0 ? getAnnualTotalFte() : '-'}
                         </span>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p className="text-xs">Promedio de FTEs del año</p>
+                        <p className="text-xs">Total de FTE-meses del año</p>
                       </TooltipContent>
                     </Tooltip>
                   </td>
@@ -837,11 +844,11 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className="cursor-help">
-                            {Number(getAnnualAvgFte()) > 0 ? getAnnualAvgFte() : '-'}
+                            {Number(getAnnualTotalFte()) > 0 ? getAnnualTotalFte() : '-'}
                           </span>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p className="text-xs">Promedio de FTEs del año</p>
+                          <p className="text-xs">Total de FTE-meses del año</p>
                         </TooltipContent>
                       </Tooltip>
                     </td>
