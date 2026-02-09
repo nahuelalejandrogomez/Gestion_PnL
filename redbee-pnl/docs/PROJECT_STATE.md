@@ -1,7 +1,7 @@
 # Project State - Redbee P&L
 
 **Última actualización:** 8 de febrero de 2026
-**Versión:** 0.3.0 (Fase 3 completada)
+**Versión:** 0.5.0 (Fases 4-5 completadas)
 
 ---
 
@@ -34,13 +34,38 @@
 - Vista de detalle con tabs: Resumen, Asignaciones (placeholder), P&L (placeholder)
 - Navegación bidireccional: ClienteDetail → ProyectoDetail y viceversa
 
+### ✅ Fase 4 – Asignaciones + Recursos + Perfiles
+- Módulo Perfiles (backend minimal): `GET /api/perfiles`, `POST /api/perfiles`
+- Módulo Recursos (backend CRUD): `GET`, `POST`, `PUT`, `DELETE /api/recursos`
+- Módulo Asignaciones (backend CRUD): `GET`, `POST`, `PUT`, `DELETE /api/asignaciones`
+  - Validación de sobre-asignación: bloquea si recurso supera 150% de dedicación total
+  - Validación de fechas (fechaHasta >= fechaDesde)
+  - Hard delete (modelo sin campo deletedAt)
+- Frontend Asignaciones: listado en tab de ProyectoDetail, formulario create/edit en Dialog
+  - Selector de recurso con perfil, tipo de tiempo (Billable/Non-billable/Overhead/Bench)
+  - Porcentaje de dedicación (0-200%), fechas, rol en proyecto
+- Frontend integrado en ProyectoDetail tab "Asignaciones"
+
+### ✅ Fase 5 – P&L Engine (costos)
+- Backend: `GET /api/pnl/proyecto/:id?anio=&mes=`
+  - Cálculo on-the-fly de costos directos desde asignaciones activas
+  - Fórmula: costoAsignacion = costoMensual × (porcentajeAsignacion / 100)
+  - FTEs = porcentajeAsignacion / 100, horasMes = FTEs × 176
+  - Revenue hardcodeado en 0 (requiere módulo Tarifarios)
+- Frontend: selector de mes/año, cards resumen (costos, FTEs, horas, recursos), tabla de detalle
+- Integrado en ProyectoDetail tab "P&L"
+
 ---
 
-## Assumptions / TODOs (Fase 3)
+## Assumptions / TODOs (Fases 3-5)
 
 - **tarifarioId**: Se hizo opcional en el schema Prisma (`String?`) para permitir crear proyectos sin tarifario. Revertir a `String` (required) cuando el módulo Tarifarios esté implementado.
 - **Endpoint `GET /api/clientes/:id/proyectos`**: No implementado como nested. Se usa `GET /api/proyectos?clienteId=xxx` en su lugar.
 - **probabilidadCierre**: Permitido como nullable, validado 0-100 cuando se envía. No se fuerza relación con estado TENTATIVO (SPECS no lo exige).
+- **Revenue P&L = 0**: El cálculo de ingresos requiere el módulo Tarifarios (tarifas por perfil/cliente). Hasta que se implemente, `revenue: 0`, `margen: null`, `requiresTarifarios: true`.
+- **Perfiles/Recursos**: Módulos mínimos creados como dependencia de Asignaciones. No tienen UI standalone (solo selectores dentro del form de asignaciones).
+- **porcentajeAsignacion**: Campo del schema real (0-200). El prompt original decía "dedicacion 0-1" pero se usó el campo real del schema.
+- **Sobre-asignación**: Se bloquea por encima de 150% total por recurso (SPECS). El schema permite hasta 200% por asignación individual.
 
 ---
 
@@ -57,14 +82,13 @@
 
 ---
 
-## Módulos Pendientes (Fases 4+)
+## Módulos Pendientes (Fases 6+)
 
 | Módulo | Descripción |
 |--------|-------------|
 | Contratos | SOW, amendments, fechas, montos |
-| Tarifarios | Perfiles, tarifas USD/ARS por cliente |
-| Recursos | Personas, asignaciones a proyectos |
-| P&L | Cálculo de ingresos/costos, visualización |
+| Tarifarios | Perfiles, tarifas USD/ARS por cliente. Necesario para calcular revenue en P&L |
+| P&L Revenue | Completar cálculo de ingresos cuando Tarifarios esté listo |
 | Rolling | Forecast mensual por proyecto |
 | Dashboard | Métricas, charts, resumen ejecutivo |
 
@@ -82,4 +106,4 @@
 
 ## Próximo Paso
 
-Continuar con **Fase 4: Módulo Contratos** según `AnalisisInicial/SPECS.md`.
+Continuar con **Fase 6: Módulo Contratos** o **Tarifarios** según `AnalisisInicial/SPECS.md`. Tarifarios desbloquea el cálculo de revenue en P&L.

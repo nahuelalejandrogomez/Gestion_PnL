@@ -21,6 +21,8 @@ import { useProyecto } from '../hooks/useProyecto';
 import { useProyectoMutations } from '../hooks/useProyectoMutations';
 import { ProyectoBadge } from './ProyectoBadge';
 import { ProyectoForm } from './ProyectoForm';
+import { AsignacionesList } from '@/features/asignaciones';
+import { ProyectoPnlResumen } from '@/features/pnl';
 import type { UpdateProyectoDto } from '../types/proyecto.types';
 
 const tipoLabels: Record<string, string> = {
@@ -305,10 +307,8 @@ export function ProyectoDetail() {
                 Recursos asignados a este proyecto
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-0">
-              <p className="text-stone-500 text-center py-12">
-                Módulo de asignaciones disponible en próximas fases.
-              </p>
+            <CardContent>
+              <AsignacionesList proyectoId={id!} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -318,13 +318,11 @@ export function ProyectoDetail() {
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-stone-800">P&L</CardTitle>
               <CardDescription className="text-stone-500">
-                Líneas de P&L del proyecto
+                Costos directos calculados a partir de asignaciones
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-0">
-              <p className="text-stone-500 text-center py-12">
-                Módulo de P&L disponible en próximas fases.
-              </p>
+            <CardContent>
+              <ProyectoPnlResumen proyectoId={id!} />
             </CardContent>
           </Card>
         </TabsContent>
