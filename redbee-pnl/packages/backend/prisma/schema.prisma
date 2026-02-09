@@ -292,11 +292,28 @@ model AsignacionRecurso {
 
   recurso  Recurso  @relation(fields: [recursoId], references: [id])
   proyecto Proyecto @relation(fields: [proyectoId], references: [id])
+  meses    AsignacionRecursoMes[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("asignaciones_recursos")
+}
+
+model AsignacionRecursoMes {
+  id                   String  @id @default(uuid())
+  asignacionId         String
+  year                 Int
+  month                Int     // 1..12
+  porcentajeAsignacion Decimal @db.Decimal(5, 2)
+
+  asignacion AsignacionRecurso @relation(fields: [asignacionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([asignacionId, year, month])
+  @@map("asignaciones_recursos_mes")
 }
 
 model Objetivo {

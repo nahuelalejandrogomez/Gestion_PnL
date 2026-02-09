@@ -25,6 +25,7 @@ export class RecursosService {
         { nombre: { contains: search, mode: 'insensitive' } },
         { apellido: { contains: search, mode: 'insensitive' } },
         { email: { contains: search, mode: 'insensitive' } },
+        { perfil: { nombre: { contains: search, mode: 'insensitive' } } },
       ];
     }
 

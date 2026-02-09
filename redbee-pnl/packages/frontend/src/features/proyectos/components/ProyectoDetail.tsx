@@ -21,7 +21,7 @@ import { useProyecto } from '../hooks/useProyecto';
 import { useProyectoMutations } from '../hooks/useProyectoMutations';
 import { ProyectoBadge } from './ProyectoBadge';
 import { ProyectoForm } from './ProyectoForm';
-import { AsignacionesList } from '@/features/asignaciones';
+import { AsignacionesPlanner } from '@/features/asignaciones';
 import { ProyectoPnlResumen } from '@/features/pnl';
 import type { UpdateProyectoDto } from '../types/proyecto.types';
 
@@ -308,7 +308,7 @@ export function ProyectoDetail() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <AsignacionesList proyectoId={id!} />
+              <AsignacionesPlanner proyectoId={id!} />
             </CardContent>
           </Card>
         </TabsContent>

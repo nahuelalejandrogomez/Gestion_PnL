@@ -3,6 +3,7 @@ import { AsignacionesService } from './asignaciones.service';
 import { CreateAsignacionDto } from './dto/create-asignacion.dto';
 import { UpdateAsignacionDto } from './dto/update-asignacion.dto';
 import { QueryAsignacionDto } from './dto/query-asignacion.dto';
+import { UpsertMesBatchDto } from './dto/planner-mes.dto';
 
 @Controller('asignaciones')
 export class AsignacionesController {
@@ -11,6 +12,23 @@ export class AsignacionesController {
   @Get()
   findAll(@Query() query: QueryAsignacionDto) {
     return this.asignacionesService.findAll(query);
+  }
+
+  // Planner endpoints MUST be before :id to avoid route conflicts
+  @Get('proyecto/:proyectoId/planner')
+  findPlanner(
+    @Param('proyectoId') proyectoId: string,
+    @Query('year') year: string,
+  ) {
+    return this.asignacionesService.findPlannerByProyecto(
+      proyectoId,
+      year ? Number(year) : new Date().getFullYear(),
+    );
+  }
+
+  @Put('proyecto/:proyectoId/planner')
+  upsertPlanner(@Body() dto: UpsertMesBatchDto) {
+    return this.asignacionesService.upsertMesBatch(dto);
   }
 
   @Get(':id')

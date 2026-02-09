@@ -82,3 +82,27 @@ export interface Perfil {
   nivel: string | null;
   estado: string;
 }
+
+// Planner types
+
+export interface PlannerRow {
+  asignacionId: string;
+  recursoId: string;
+  recursoNombre: string;
+  recursoApellido: string;
+  perfilNombre: string;
+  tipoTiempo: TipoTiempo;
+  costoMensual: number;
+  monedaCosto: string;
+  meses: Record<number, number>; // month(1-12) → percentage
+}
+
+export interface PlannerData {
+  proyectoId: string;
+  year: number;
+  rows: PlannerRow[];
+}
+
+export interface UpsertMesBatchDto {
+  items: { asignacionId: string; year: number; month: number; porcentajeAsignacion: number }[];
+}

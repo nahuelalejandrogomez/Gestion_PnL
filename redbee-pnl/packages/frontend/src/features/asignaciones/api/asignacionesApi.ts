@@ -6,6 +6,8 @@ import type {
   UpdateAsignacionDto,
   RecursosResponse,
   Perfil,
+  PlannerData,
+  UpsertMesBatchDto,
 } from '../types/asignacion.types';
 
 export const asignacionesApi = {
@@ -41,6 +43,23 @@ export const asignacionesApi = {
 
   getPerfiles: async (): Promise<Perfil[]> => {
     const { data } = await api.get<Perfil[]>('/perfiles');
+    return data;
+  },
+
+  // Planner endpoints
+  getPlannerData: async (proyectoId: string, year: number): Promise<PlannerData> => {
+    const { data } = await api.get<PlannerData>(
+      `/asignaciones/proyecto/${proyectoId}/planner`,
+      { params: { year } },
+    );
+    return data;
+  },
+
+  savePlannerBatch: async (proyectoId: string, dto: UpsertMesBatchDto): Promise<{ updated: number }> => {
+    const { data } = await api.put<{ updated: number }>(
+      `/asignaciones/proyecto/${proyectoId}/planner`,
+      dto,
+    );
     return data;
   },
 };

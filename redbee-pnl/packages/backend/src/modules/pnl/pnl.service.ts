@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { Decimal } from '@prisma/client/runtime/library';
 
 const HORAS_BASE_MES = 176; // 22 días × 8 horas (SPECS)
 
@@ -75,6 +74,9 @@ export class PnlService {
             perfil: { select: { nombre: true } },
           },
         },
+        meses: {
+          where: { year: anio, month: mes },
+        },
       },
     });
 
@@ -83,7 +85,12 @@ export class PnlService {
     const detalle: AsignacionDetalle[] = [];
 
     for (const asig of asignaciones) {
-      const porcentaje = Number(asig.porcentajeAsignacion);
+      // Use monthly percentage if available, otherwise fallback to 0
+      const mesRecord = asig.meses?.[0];
+      const porcentaje = mesRecord ? Number(mesRecord.porcentajeAsignacion) : 0;
+
+      if (porcentaje === 0) continue; // Skip resources with 0% for this month
+
       const costoMensual = Number(asig.recurso.costoMensual);
       const ftes = porcentaje / 100;
       const horasMes = ftes * HORAS_BASE_MES;
