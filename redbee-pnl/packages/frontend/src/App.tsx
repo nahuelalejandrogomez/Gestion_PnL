@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { Layout } from './components/layout/Layout';
 import { ClientesList, ClienteDetail } from './features/clientes';
+import { ProyectosList, ProyectoDetail } from './features/proyectos';
 
 function DashboardPage() {
   return (
@@ -32,11 +33,10 @@ export function App() {
           {/* Clientes */}
           <Route path="/clientes" element={<ClientesList />} />
           <Route path="/clientes/:id" element={<ClienteDetail />} />
+          {/* Proyectos */}
+          <Route path="/proyectos" element={<ProyectosList />} />
+          <Route path="/proyectos/:id" element={<ProyectoDetail />} />
           {/* Otros módulos (próximamente) */}
-          <Route
-            path="/proyectos"
-            element={<PlaceholderPage title="Proyectos" />}
-          />
           <Route
             path="/contratos"
             element={<PlaceholderPage title="Contratos" />}

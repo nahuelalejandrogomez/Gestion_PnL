@@ -227,7 +227,8 @@ export function ClienteDetail() {
                   {cliente.proyectos.map((proyecto) => (
                     <div
                       key={proyecto.id}
-                      className="flex items-center justify-between p-4 hover:bg-stone-50 transition-colors"
+                      onClick={() => navigate(`/proyectos/${proyecto.id}`)}
+                      className="flex items-center justify-between p-4 hover:bg-stone-50 transition-colors cursor-pointer"
                     >
                       <div className="flex items-center gap-4">
                         <div className="h-10 w-10 rounded-lg bg-stone-100 flex items-center justify-center">

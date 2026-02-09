@@ -149,12 +149,12 @@ model Proyecto {
   fechaInicio        DateTime
   fechaFinEstimada   DateTime?
   fechaFinReal       DateTime?
-  tarifarioId        String
+  tarifarioId        String?                  // TODO: revertir a required cuando Tarifarios module exista
   contratoId         String?
   notas              String?        @db.Text
 
   cliente          Cliente                  @relation(fields: [clienteId], references: [id])
-  tarifario        Tarifario                @relation(fields: [tarifarioId], references: [id])
+  tarifario        Tarifario?               @relation(fields: [tarifarioId], references: [id])
   contrato         Contrato?                @relation(fields: [contratoId], references: [id])
   asignaciones     AsignacionRecurso[]
   lineasPnL        LineaPnL[]

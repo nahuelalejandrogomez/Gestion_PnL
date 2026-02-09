@@ -1,0 +1,176 @@
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+import { CreateProyectoDto } from './dto/create-proyecto.dto';
+import { UpdateProyectoDto } from './dto/update-proyecto.dto';
+import { QueryProyectoDto } from './dto/query-proyecto.dto';
+import { Prisma } from '@prisma/client';
+
+@Injectable()
+export class ProyectosService {
+  constructor(private prisma: PrismaService) {}
+
+  async findAll(query: QueryProyectoDto) {
+    const { clienteId, estado, tipo, search, page = 1, limit = 20 } = query;
+
+    const where: Prisma.ProyectoWhereInput = {
+      deletedAt: null,
+    };
+
+    if (clienteId) {
+      where.clienteId = clienteId;
+    }
+
+    if (estado) {
+      where.estado = estado;
+    }
+
+    if (tipo) {
+      where.tipo = tipo;
+    }
+
+    if (search) {
+      where.OR = [
+        { nombre: { contains: search, mode: 'insensitive' } },
+        { codigo: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [total, data] = await Promise.all([
+      this.prisma.proyecto.count({ where }),
+      this.prisma.proyecto.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { nombre: 'asc' },
+        include: {
+          cliente: {
+            select: { id: true, nombre: true },
+          },
+          _count: {
+            select: { asignaciones: true, lineasPnL: true },
+          },
+        },
+      }),
+    ]);
+
+    return {
+      data,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async findOne(id: string) {
+    const proyecto = await this.prisma.proyecto.findUnique({
+      where: { id },
+      include: {
+        cliente: {
+          select: { id: true, nombre: true, razonSocial: true },
+        },
+        tarifario: {
+          select: { id: true, nombre: true },
+        },
+        contrato: {
+          select: { id: true, nombre: true, tipo: true },
+        },
+        _count: {
+          select: { asignaciones: true, lineasPnL: true, skillsRequeridos: true },
+        },
+      },
+    });
+
+    if (!proyecto || proyecto.deletedAt) {
+      throw new NotFoundException(`Proyecto con ID ${id} no encontrado`);
+    }
+
+    return proyecto;
+  }
+
+  async create(dto: CreateProyectoDto) {
+    this.validateDates(dto);
+
+    try {
+      return await this.prisma.proyecto.create({
+        data: dto,
+        include: {
+          cliente: {
+            select: { id: true, nombre: true },
+          },
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          `Ya existe un proyecto con código "${dto.codigo}" para este cliente`,
+        );
+      }
+      throw error;
+    }
+  }
+
+  async update(id: string, dto: UpdateProyectoDto) {
+    await this.findOne(id);
+    this.validateDates(dto);
+
+    try {
+      return await this.prisma.proyecto.update({
+        where: { id },
+        data: dto,
+        include: {
+          cliente: {
+            select: { id: true, nombre: true },
+          },
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          `Ya existe un proyecto con ese código para este cliente`,
+        );
+      }
+      throw error;
+    }
+  }
+
+  async remove(id: string) {
+    await this.findOne(id);
+
+    return this.prisma.proyecto.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+  }
+
+  private validateDates(
+    dto: Partial<Pick<CreateProyectoDto, 'fechaInicio' | 'fechaFinEstimada' | 'fechaFinReal'>>,
+  ) {
+    const { fechaInicio, fechaFinEstimada, fechaFinReal } = dto;
+
+    if (fechaInicio && fechaFinEstimada && fechaFinEstimada < fechaInicio) {
+      throw new BadRequestException(
+        'La fecha fin estimada debe ser igual o posterior a la fecha de inicio',
+      );
+    }
+
+    if (fechaInicio && fechaFinReal && fechaFinReal < fechaInicio) {
+      throw new BadRequestException(
+        'La fecha fin real debe ser igual o posterior a la fecha de inicio',
+      );
+    }
+  }
+}
