@@ -29,8 +29,22 @@ export function usePlannerSave(proyectoId: string) {
       queryClient.invalidateQueries({ queryKey: [ASIGNACIONES_QUERY_KEY] });
       toast.success(`${result.updated} celdas guardadas`);
     },
-    onError: (error: Error & { response?: { data?: { message?: string } } }) => {
-      toast.error(error.response?.data?.message || 'Error al guardar planner');
+    onError: (error: Error & { response?: { data?: { message?: string | string[] } } }) => {
+      // Log full error details for debugging
+      console.error('[Planner Save Error]', error.response?.data || error.message);
+      
+      // Show user-friendly message
+      const rawMessage = error.response?.data?.message;
+      let userMessage = 'Error al guardar. Revisá la consola para más detalles.';
+      
+      if (Array.isArray(rawMessage)) {
+        // Validation errors come as array - show generic message
+        userMessage = 'No se pudo guardar: hay datos inválidos en la grilla. Revisá los valores ingresados.';
+      } else if (typeof rawMessage === 'string') {
+        userMessage = rawMessage;
+      }
+      
+      toast.error(userMessage);
     },
   });
 }

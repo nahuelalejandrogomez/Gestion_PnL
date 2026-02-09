@@ -6,7 +6,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { usePlannerData, usePlannerSave, usePlannerDeleteAsignacion } from '../hooks/usePlanner';
+import { useQueryClient } from '@tanstack/react-query';
+import { usePlannerData, usePlannerSave, usePlannerDeleteAsignacion, PLANNER_QUERY_KEY } from '../hooks/usePlanner';
 import { useAsignacionMutations } from '../hooks/useAsignacionMutations';
 import { PlannerCell } from './PlannerCell';
 import { ResourceCombobox } from './ResourceCombobox';
@@ -24,6 +25,7 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
   const [dirtyCells, setDirtyCells] = useState<Map<string, number>>(new Map());
   const paintRef = useRef<{ active: boolean; value: number }>({ active: false, value: 0 });
 
+  const queryClient = useQueryClient();
   const { data, isLoading } = usePlannerData(proyectoId, year);
   const saveMutation = usePlannerSave(proyectoId);
   const deleteAsignacion = usePlannerDeleteAsignacion();
@@ -78,10 +80,45 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
 
   const handleSave = () => {
     if (dirtyCells.size === 0) return;
-    const items = Array.from(dirtyCells.entries()).map(([key, porcentajeAsignacion]) => {
-      const [asignacionId, monthStr] = key.split('-');
-      return { asignacionId, year, month: Number(monthStr), porcentajeAsignacion };
-    });
+    
+    // Build items from dirty cells, using rows data to get the correct asignacionId
+    const items: { asignacionId: string; year: number; month: number; porcentajeAsignacion: number }[] = [];
+    
+    for (const [key, porcentajeAsignacion] of dirtyCells.entries()) {
+      // Key format: `${asignacionId}-${month}` where asignacionId is a UUID with dashes
+      // Use lastIndexOf to correctly split UUID from month
+      const lastDash = key.lastIndexOf('-');
+      if (lastDash === -1) {
+        console.warn('[Planner] Invalid cell key format:', key);
+        continue;
+      }
+      
+      const asignacionId = key.substring(0, lastDash);
+      const month = Number(key.substring(lastDash + 1));
+      
+      // Validate: asignacionId must exist in rows, month must be 1-12
+      const rowExists = rows.some((r) => r.asignacionId === asignacionId);
+      if (!rowExists) {
+        console.warn('[Planner] asignacionId not found in rows:', asignacionId);
+        continue;
+      }
+      if (month < 1 || month > 12 || isNaN(month)) {
+        console.warn('[Planner] Invalid month:', month, 'from key:', key);
+        continue;
+      }
+      if (isNaN(porcentajeAsignacion) || porcentajeAsignacion < 0) {
+        console.warn('[Planner] Invalid porcentaje:', porcentajeAsignacion);
+        continue;
+      }
+      
+      items.push({ asignacionId, year, month, porcentajeAsignacion });
+    }
+    
+    if (items.length === 0) {
+      console.warn('[Planner] No valid items to save after validation');
+      return;
+    }
+    
     saveMutation.mutate({ items }, {
       onSuccess: () => setDirtyCells(new Map()),
     });
@@ -93,6 +130,13 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
       proyectoId,
       porcentajeAsignacion: 0,
       fechaDesde: new Date(year, 0, 1).toISOString(),
+    }, {
+      onSuccess: () => {
+        // Invalidate planner queries to refresh the grid with the new resource
+        queryClient.invalidateQueries({ queryKey: [PLANNER_QUERY_KEY, proyectoId, year] });
+        // Also invalidate without year in case there are other planner queries
+        queryClient.invalidateQueries({ queryKey: [PLANNER_QUERY_KEY, proyectoId] });
+      },
     });
   };
 
