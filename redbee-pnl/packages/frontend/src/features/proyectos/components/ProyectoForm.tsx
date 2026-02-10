@@ -29,6 +29,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { useClientes } from '@/features/clientes/hooks/useClientes';
+import { useTarifarios } from '@/features/tarifarios';
 import type { Proyecto, CreateProyectoDto, UpdateProyectoDto, TipoProyecto, EstadoProyecto } from '../types/proyecto.types';
 
 const proyectoSchema = z.object({
@@ -37,6 +38,7 @@ const proyectoSchema = z.object({
   codigo: z.string().min(1, 'El código es requerido'),
   tipo: z.enum(['PROYECTO', 'POTENCIAL', 'SOPORTE', 'RETAINER']).optional(),
   estado: z.enum(['ACTIVO', 'PAUSADO', 'CERRADO', 'POTENCIAL', 'TENTATIVO']).optional(),
+  tarifarioId: z.string().optional(),
   probabilidadCierre: z.string().optional(),
   fechaInicio: z.string().min(1, 'La fecha de inicio es requerida'),
   fechaFinEstimada: z.string().optional(),
@@ -113,6 +115,7 @@ export function ProyectoForm({
       codigo: proyecto?.codigo || '',
       tipo: proyecto?.tipo || 'PROYECTO',
       estado: proyecto?.estado || 'ACTIVO',
+      tarifarioId: proyecto?.tarifarioId || '',
       probabilidadCierre: proyecto?.probabilidadCierre != null ? String(proyecto.probabilidadCierre) : '',
       fechaInicio: proyecto?.fechaInicio?.split('T')[0] || '',
       fechaFinEstimada: proyecto?.fechaFinEstimada?.split('T')[0] || '',
@@ -120,6 +123,9 @@ export function ProyectoForm({
       notas: proyecto?.notas || '',
     },
   });
+
+  const selectedClienteId = form.watch('clienteId');
+  const { data: tarifariosData } = useTarifarios(selectedClienteId ? { clienteId: selectedClienteId } : undefined);
 
   useEffect(() => {
     if (open) {
@@ -129,6 +135,7 @@ export function ProyectoForm({
         codigo: proyecto?.codigo || '',
         tipo: proyecto?.tipo || 'PROYECTO',
         estado: proyecto?.estado || 'ACTIVO',
+        tarifarioId: proyecto?.tarifarioId || '',
         probabilidadCierre: proyecto?.probabilidadCierre != null ? String(proyecto.probabilidadCierre) : '',
         fechaInicio: proyecto?.fechaInicio?.split('T')[0] || '',
         fechaFinEstimada: proyecto?.fechaFinEstimada?.split('T')[0] || '',
@@ -152,6 +159,7 @@ export function ProyectoForm({
       codigo: data.codigo,
       tipo: data.tipo as TipoProyecto,
       estado: data.estado as EstadoProyecto,
+      tarifarioId: data.tarifarioId || undefined,
       fechaInicio: data.fechaInicio,
       probabilidadCierre: data.probabilidadCierre ? Number(data.probabilidadCierre) : undefined,
       fechaFinEstimada: data.fechaFinEstimada || undefined,
@@ -195,6 +203,34 @@ export function ProyectoForm({
                           {cliente.nombre}
                         </SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="tarifarioId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-stone-700">Tarifario (Opcional)</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="h-10 bg-white border-stone-200 focus:ring-stone-300">
+                        <SelectValue placeholder="Sin tarifario" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="">Sin tarifario</SelectItem>
+                      {tarifariosData?.items
+                        ?.filter((t) => t.estado === 'ACTIVO')
+                        .map((tarifario) => (
+                          <SelectItem key={tarifario.id} value={tarifario.id}>
+                            {tarifario.nombre} ({tarifario.moneda})
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />

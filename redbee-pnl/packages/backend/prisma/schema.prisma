@@ -176,6 +176,7 @@ model Proyecto {
   tarifario        Tarifario?               @relation(fields: [tarifarioId], references: [id])
   contrato         Contrato?                @relation(fields: [contratoId], references: [id])
   asignaciones     AsignacionRecurso[]
+  planLineas       ProyectoPlanLinea[]
   lineasPnL        LineaPnL[]
   skillsRequeridos ProyectoSkillRequerido[]
 
@@ -265,6 +266,7 @@ model Perfil {
 
   lineasTarifario LineaTarifario[]
   recursos        Recurso[]
+  planLineas      ProyectoPlanLinea[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -288,8 +290,9 @@ model Recurso {
   bobId             String?
   notas             String?       @db.Text
 
-  perfil              Perfil               @relation(fields: [perfilId], references: [id])
+  perfil              Perfil                @relation(fields: [perfilId], references: [id])
   asignaciones        AsignacionRecurso[]
+  planLineas          ProyectoPlanLinea[]
   skills              RecursoSkill[]
   metricasUtilizacion MetricaUtilizacion[]
   costosMensuales     RecursoCostoMes[]
@@ -378,6 +381,42 @@ model AsignacionRecursoMes {
 
   @@unique([asignacionId, year, month])
   @@map("asignaciones_recursos_mes")
+}
+
+// Staffing Plan: líneas de plan (repetibles por perfil)
+model ProyectoPlanLinea {
+  id          String  @id @default(uuid())
+  proyectoId  String
+  perfilId    String
+  nombreLinea String? // ej: "Dev JR #1", "Dev JR #2"
+  recursoId   String? // futuro: link a persona real (allocation)
+
+  proyecto Proyecto  @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  perfil   Perfil    @relation(fields: [perfilId], references: [id])
+  recurso  Recurso?  @relation(fields: [recursoId], references: [id])
+  meses    ProyectoPlanLineaMes[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("proyectos_plan_lineas")
+}
+
+model ProyectoPlanLineaMes {
+  id          String  @id @default(uuid())
+  planLineaId String
+  year        Int
+  month       Int     // 1..12
+  ftes        Decimal @default(0) @db.Decimal(6, 2) // >= 0
+
+  planLinea ProyectoPlanLinea @relation(fields: [planLineaId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([planLineaId, year, month])
+  @@map("proyectos_plan_lineas_mes")
 }
 
 model Objetivo {

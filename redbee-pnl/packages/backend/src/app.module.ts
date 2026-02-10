@@ -12,6 +12,7 @@ import { FxModule } from './modules/fx/fx.module';
 import { TarifariosModule } from './modules/tarifarios/tarifarios.module';
 import { ContratosModule } from './modules/contratos/contratos.module';
 import { RevenueModule } from './modules/revenue/revenue.module';
+import { PlanLineasModule } from './modules/plan-lineas/plan-lineas.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { RevenueModule } from './modules/revenue/revenue.module';
     TarifariosModule,
     ContratosModule,
     RevenueModule,
+    PlanLineasModule,
   ],
   controllers: [AppController],
 })

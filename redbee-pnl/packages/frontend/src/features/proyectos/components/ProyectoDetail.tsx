@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, FolderKanban, Users, FileText, Pencil, Trash2, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Calendar, FolderKanban, Users, FileText, Pencil, Trash2, BarChart3, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -23,6 +23,7 @@ import { ProyectoBadge } from './ProyectoBadge';
 import { ProyectoForm } from './ProyectoForm';
 import { AsignacionesPlanner } from '@/features/asignaciones';
 import { ProyectoPnlResumen } from '@/features/pnl';
+import { ProyectoPlanLineasGrid } from '@/features/planLineas';
 import type { UpdateProyectoDto } from '../types/proyecto.types';
 
 const tipoLabels: Record<string, string> = {
@@ -255,6 +256,13 @@ export function ProyectoDetail() {
             Asignaciones ({proyecto._count?.asignaciones || 0})
           </TabsTrigger>
           <TabsTrigger
+            value="plan"
+            className="flex items-center gap-2 data-[state=active]:bg-stone-100 data-[state=active]:text-stone-800 rounded-md px-4"
+          >
+            <CalendarDays className="h-4 w-4" />
+            Plan (Staffing)
+          </TabsTrigger>
+          <TabsTrigger
             value="pnl"
             className="flex items-center gap-2 data-[state=active]:bg-stone-100 data-[state=active]:text-stone-800 rounded-md px-4"
           >
@@ -311,6 +319,10 @@ export function ProyectoDetail() {
               <AsignacionesPlanner proyectoId={id!} />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="plan" className="mt-6">
+          <ProyectoPlanLineasGrid proyectoId={proyecto.id} />
         </TabsContent>
 
         <TabsContent value="pnl" className="mt-6">
