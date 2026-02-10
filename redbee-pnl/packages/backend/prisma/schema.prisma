@@ -258,7 +258,7 @@ model LineaTarifario {
 
 model Perfil {
   id          String       @id @default(uuid())
-  nombre      String       @unique
+  nombre      String
   categoria   String
   nivel       NivelPerfil?
   estado      EstadoPerfil @default(ACTIVO)
@@ -272,6 +272,7 @@ model Perfil {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
+  @@unique([nombre, nivel])
   @@map("perfiles")
 }
 
