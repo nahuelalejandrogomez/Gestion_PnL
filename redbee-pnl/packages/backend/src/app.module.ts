@@ -13,6 +13,7 @@ import { TarifariosModule } from './modules/tarifarios/tarifarios.module';
 import { ContratosModule } from './modules/contratos/contratos.module';
 import { RevenueModule } from './modules/revenue/revenue.module';
 import { PlanLineasModule } from './modules/plan-lineas/plan-lineas.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { PlanLineasModule } from './modules/plan-lineas/plan-lineas.module';
     ContratosModule,
     RevenueModule,
     PlanLineasModule,
+    AdminModule,
   ],
   controllers: [AppController],
 })
