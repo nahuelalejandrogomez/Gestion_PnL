@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreatePerfilDto } from './dto/create-perfil.dto';
+import { UpdatePerfilDto } from './dto/update-perfil.dto';
 import { QueryPerfilDto } from './dto/query-perfil.dto';
 import { Prisma } from '@prisma/client';
 
@@ -58,6 +59,28 @@ export class PerfilesService {
   async create(dto: CreatePerfilDto) {
     try {
       return await this.prisma.perfil.create({ data: dto });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException(`Ya existe un perfil con nombre "${dto.nombre}"`);
+      }
+      throw error;
+    }
+  }
+
+  async update(id: string, dto: UpdatePerfilDto) {
+    const perfil = await this.prisma.perfil.findUnique({ where: { id } });
+    if (!perfil || perfil.deletedAt) {
+      throw new NotFoundException(`Perfil con ID ${id} no encontrado`);
+    }
+
+    try {
+      return await this.prisma.perfil.update({
+        where: { id },
+        data: dto,
+      });
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&

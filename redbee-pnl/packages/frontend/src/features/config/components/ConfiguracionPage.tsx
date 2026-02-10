@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useConfig, useUpdateConfig, DEFAULT_CONFIG } from '../hooks/useConfig';
 import { useFxRates, useUpsertFxRates } from '../hooks/useFx';
 import type { FxRateItemInput } from '../api/fxApi';
+import { PerfilesSection } from '@/features/perfiles';
 
 const MONTH_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
@@ -134,6 +135,9 @@ export function ConfiguracionPage() {
 
       {/* FX Rates Configuration */}
       <FxRatesConfig />
+
+      {/* Perfiles Configuration */}
+      <PerfilesSection />
     </div>
   );
 }

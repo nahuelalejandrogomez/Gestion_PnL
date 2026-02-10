@@ -1,8 +1,10 @@
+export type NivelPerfil = 'JR' | 'SSR' | 'SR' | 'LEAD' | 'MANAGER';
+
 export interface Perfil {
   id: string;
   nombre: string;
   categoria: string;
-  nivel: string | null;
+  nivel: NivelPerfil | null;
   estado: 'ACTIVO' | 'INACTIVO';
   descripcion: string | null;
   createdAt: string;
@@ -17,4 +19,20 @@ export interface PerfilesResponse {
     limit: number;
     totalPages: number;
   };
+}
+
+export interface CreatePerfilDto {
+  nombre: string;
+  categoria: string;
+  nivel?: NivelPerfil;
+  estado?: 'ACTIVO' | 'INACTIVO';
+  descripcion?: string;
+}
+
+export interface UpdatePerfilDto {
+  nombre?: string;
+  categoria?: string;
+  nivel?: NivelPerfil;
+  estado?: 'ACTIVO' | 'INACTIVO';
+  descripcion?: string;
 }
