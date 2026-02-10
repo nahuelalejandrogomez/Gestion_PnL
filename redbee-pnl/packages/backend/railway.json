@@ -5,7 +5,7 @@
     "buildCommand": "pnpm install && pnpm prisma generate && pnpm prisma migrate deploy && pnpm build"
   },
   "deploy": {
-    "startCommand": "node dist/main",
+    "startCommand": "node dist/src/main",
     "healthcheckPath": "/api/health",
     "restartPolicyType": "ON_FAILURE"
   }
