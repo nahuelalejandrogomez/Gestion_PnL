@@ -1,7 +1,7 @@
 # Project State - Redbee P&L
 
 **Última actualización:** 10 de febrero de 2026
-**Versión:** 0.7.0 (Tarifarios + Conversión ARS/USD)
+**Versión:** 0.8.0 (Contratos con acceso a Drive)
 
 ---
 
@@ -131,6 +131,45 @@
 - Si tarifa está en USD y se ve en ARS: multiplica por TC
 - Si tarifa está en ARS y se ve en USD: divide por TC
 - Si cambias el TC en configuración, la conversión se recalcula automáticamente (no se persiste USD)
+
+### ✅ Fase 6.5 – Contratos con acceso a Drive
+**Backend Contratos:**
+- Módulo `ContratosModule` con CRUD completo
+- Endpoints:
+  - `GET /api/clientes/:clienteId/contratos` - lista contratos del cliente (ordenados: vigente primero, luego por fecha desc)
+  - `POST /api/clientes/:clienteId/contratos` - crear contrato
+  - `GET /api/contratos/:id` - obtener contrato
+  - `PUT /api/contratos/:id` - actualizar contrato
+  - `DELETE /api/contratos/:id` - soft delete
+- Modelo `Contrato` existente ampliado con:
+  - `documentoDriveUrl` (String?) - URL a archivo o carpeta de Google Drive
+  - `documentoDriveTipo` (DriveTipo? - FILE/FOLDER) - opcional, inferido desde URL
+- Lógica de "vigente único": cuando se marca un contrato como VIGENTE, los demás del cliente pasan a VENCIDO (transacción)
+
+**Frontend Contratos:**
+- Feature `features/contratos/` con:
+  - `types/contrato.types.ts` - tipos TypeScript
+  - `api/contratosApi.ts` - funciones API
+  - `hooks/useClienteContratos.ts` - hook React Query
+  - `hooks/useContratoMutations.ts` - mutations con toast
+  - `components/ContratosSection.tsx` - UI completa
+- Integrado en tab "Contratos" de `ClienteDetail`
+
+**UI ContratosSection:**
+- Card con título "Contratos" y botón "Agregar"
+- Listado de contratos con:
+  - Icono (archivo/carpeta) inferido de URL
+  - Badge "Vigente" destacado en verde
+  - Badges de estado (Vigente/Vencido/Terminado) y tipo (Marco/SOW/Adenda/MSA)
+  - Fecha de vigencia
+  - Botón "Abrir" (abre Drive en nueva pestaña)
+  - Botón "Editar" (icono lápiz)
+- Dialog para crear/editar con:
+  - Nombre, Tipo de contrato, Fechas (firma, inicio vigencia)
+  - URL de Drive (opcional)
+  - Checkbox "Marcar como vigente"
+- Empty state con CTA "Agregar el primer contrato"
+- Orden: contratos vigentes primero, luego por fecha desc
 
 ---
 
