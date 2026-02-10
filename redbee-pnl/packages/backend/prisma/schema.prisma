@@ -134,14 +134,16 @@ enum NivelSkill {
 // ============================================
 
 model Cliente {
-  id          String        @id @default(uuid())
-  nombre      String
-  razonSocial String
-  cuilCuit    String        @unique
-  estado      EstadoCliente @default(ACTIVO)
-  fechaInicio DateTime      @default(now())
-  fechaFin    DateTime?
-  notas       String?       @db.Text
+  id                String        @id @default(uuid())
+  nombre            String
+  razonSocial       String
+  cuilCuit          String        @unique
+  estado            EstadoCliente @default(ACTIVO)
+  fechaInicio       DateTime      @default(now())
+  fechaFin          DateTime?
+  monedaFacturacion Moneda        @default(USD)
+  horasBaseMes      Int           @default(160)
+  notas             String?       @db.Text
 
   proyectos  Proyecto[]
   contratos  Contrato[]

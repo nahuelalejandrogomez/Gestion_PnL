@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, FileText, FolderKanban, Pencil, Trash2, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Calendar, FileText, FolderKanban, Pencil, Trash2, CheckCircle, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -22,6 +22,7 @@ import { ClienteBadge } from './ClienteBadge';
 import { ClienteForm } from './ClienteForm';
 import { ContratosSection } from '@/features/contratos/components/ContratosSection';
 import { ProyectosTable } from '@/features/proyectos';
+import { ClienteRevenueTab } from '@/features/revenue';
 import { useState } from 'react';
 import type { UpdateClienteDto } from '../types/cliente.types';
 
@@ -202,8 +203,8 @@ export function ClienteDetail() {
       {/* Tabs for related data */}
       <Tabs defaultValue="proyectos" className="space-y-4">
         <TabsList className="bg-white border border-stone-200 p-1 rounded-lg">
-          <TabsTrigger 
-            value="proyectos" 
+          <TabsTrigger
+            value="proyectos"
             className="flex items-center gap-2 data-[state=active]:bg-stone-100 data-[state=active]:text-stone-800 rounded-md px-4"
           >
             <FolderKanban className="h-4 w-4" />
@@ -216,6 +217,13 @@ export function ClienteDetail() {
             <FileText className="h-4 w-4" />
             Contratos ({cliente.contratosVigentes || 0})
           </TabsTrigger>
+          <TabsTrigger
+            value="revenue"
+            className="flex items-center gap-2 data-[state=active]:bg-stone-100 data-[state=active]:text-stone-800 rounded-md px-4"
+          >
+            <DollarSign className="h-4 w-4" />
+            Revenue
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="proyectos" className="mt-6">
@@ -224,6 +232,10 @@ export function ClienteDetail() {
 
         <TabsContent value="contratos" className="mt-6">
           <ContratosSection clienteId={cliente.id} />
+        </TabsContent>
+
+        <TabsContent value="revenue" className="mt-6">
+          <ClienteRevenueTab clienteId={cliente.id} />
         </TabsContent>
       </Tabs>
 
