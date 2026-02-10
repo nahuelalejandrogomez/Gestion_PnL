@@ -7,6 +7,7 @@ import {
   DollarSign,
   BarChart3,
   Settings,
+  Receipt,
   X,
 } from 'lucide-react';
 
@@ -15,6 +16,7 @@ const navigation = [
   { name: 'Clientes', href: '/clientes', icon: Users },
   { name: 'Proyectos', href: '/proyectos', icon: FolderKanban },
   { name: 'Contratos', href: '/contratos', icon: FileText },
+  { name: 'Tarifarios', href: '/tarifarios', icon: Receipt },
   { name: 'P&L', href: '/pnl', icon: DollarSign },
   { name: 'Rolling', href: '/rolling', icon: BarChart3 },
   { name: 'Configuración', href: '/configuracion', icon: Settings },

@@ -4,6 +4,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { Layout } from './components/layout/Layout';
 import { ClientesList, ClienteDetail } from './features/clientes';
 import { ProyectosList, ProyectoDetail } from './features/proyectos';
+import { TarifariosPage, TarifarioDetail } from './features/tarifarios';
 import { ConfiguracionPage } from './features/config';
 
 function DashboardPage() {
@@ -39,6 +40,9 @@ export function App() {
             {/* Proyectos */}
             <Route path="/proyectos" element={<ProyectosList />} />
             <Route path="/proyectos/:id" element={<ProyectoDetail />} />
+            {/* Tarifarios */}
+            <Route path="/tarifarios" element={<TarifariosPage />} />
+            <Route path="/tarifarios/:id" element={<TarifarioDetail />} />
             {/* Otros módulos (próximamente) */}
             <Route
               path="/contratos"

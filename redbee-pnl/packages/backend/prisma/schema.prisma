@@ -51,6 +51,11 @@ enum TipoContrato {
   MSA
 }
 
+enum DriveTipo {
+  FILE
+  FOLDER
+}
+
 enum EstadoContrato {
   VIGENTE
   VENCIDO
@@ -189,6 +194,7 @@ model Contrato {
   fechaInicioVigencia DateTime
   fechaFinVigencia    DateTime?
   documentoDriveUrl   String?
+  documentoDriveTipo  DriveTipo?
   estado              EstadoContrato @default(VIGENTE)
   montoTotal          Decimal?       @db.Decimal(15, 2)
   moneda              Moneda?
@@ -202,6 +208,7 @@ model Contrato {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
+  @@index([clienteId])
   @@map("contratos")
 }
 

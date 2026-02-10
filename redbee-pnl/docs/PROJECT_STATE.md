@@ -1,7 +1,7 @@
 # Project State - Redbee P&L
 
 **Última actualización:** 10 de febrero de 2026
-**Versión:** 0.6.0 (Planner de Asignaciones mejorado + Costos)
+**Versión:** 0.7.0 (Tarifarios + Conversión ARS/USD)
 
 ---
 
@@ -98,11 +98,45 @@
 - Columna final en fila de FTEs muestra promedio anual
 - Tooltip explicativo: "Promedio de FTEs del año"
 
+### ✅ Fase 6 – Módulo Tarifarios + Conversión FX
+**Backend Tarifarios:**
+- CRUD completo: `GET`, `POST`, `PUT`, `DELETE /api/tarifarios`
+- DTOs con validación (CreateTarifarioDto, UpdateTarifarioDto, TarifarioDto)
+- Soporte para creación de tarifario con líneas en una sola operación
+- Relaciones: Cliente, Contrato (opcional), Lineas de Tarifario
+- Cada LineaTarifario tiene: perfilId, rate, unidad (MES/HORA/DIA), moneda (ARS/USD nullable)
+- Si LineaTarifario.moneda es null, hereda la moneda del Tarifario
+
+**Frontend Tarifarios:**
+- Página de listado (`/tarifarios`) con tabla y navegación en sidebar
+- Vista de detalle (`/tarifarios/:id`) con información general y tabla de líneas
+- Selector de Mes/Año + Moneda (ARS/USD) para visualizar tarifas convertidas
+- Conversión en tiempo real usando FX mensual (REAL > PLAN > fallback)
+- Helper reutilizable: `src/lib/fx.ts` con funciones `convertCurrency()` y `formatCurrency()`
+- Warning visual cuando no hay tipo de cambio configurado para el mes seleccionado
+
+**Tipo de Cambio Mensual (FX):**
+- Sistema FX ya existía para costos; ahora se reutiliza para tarifas
+- Modelo `FxRateMensual`: year, month, usdArs (ARS por 1 USD), tipo (REAL/PLAN)
+- Convención: TC = ARS por 1 USD (ej: 1000 = 1 USD vale 1000 ARS)
+- Conversión: USD = ARS / TC, ARS = USD × TC
+- Lógica de fallback: usa REAL si existe, sino PLAN, sino último valor conocido (incluyendo año anterior)
+- Backend: `GET /api/fx?year=YYYY`, `PUT /api/fx?year=YYYY`
+- Frontend: hook `useFxRates(year)` con cache de 5 minutos
+
+**Display de Tarifas con Conversión:**
+- TarifariosPage: muestra rate promedio por tarifario convertido a moneda seleccionada
+- TarifarioDetail: tabla de líneas con rate original y rate convertido
+- Columnas: Perfil, Categoría, Moneda Original, Unidad, Rate Original, Rate (moneda seleccionada)
+- Si tarifa está en USD y se ve en ARS: multiplica por TC
+- Si tarifa está en ARS y se ve en USD: divide por TC
+- Si cambias el TC en configuración, la conversión se recalcula automáticamente (no se persiste USD)
+
 ---
 
-## Assumptions / TODOs (Fases 3-5)
+## Assumptions / TODOs (Fases 3-6)
 
-- **tarifarioId**: Se hizo opcional en el schema Prisma (`String?`) para permitir crear proyectos sin tarifario. Revertir a `String` (required) cuando el módulo Tarifarios esté implementado.
+- **tarifarioId**: Sigue siendo opcional (`String?`) en Proyecto. Los proyectos pueden existir sin tarifario asignado.
 - **Endpoint `GET /api/clientes/:id/proyectos`**: No implementado como nested. Se usa `GET /api/proyectos?clienteId=xxx` en su lugar.
 - **probabilidadCierre**: Permitido como nullable, validado 0-100 cuando se envía. No se fuerza relación con estado TENTATIVO (SPECS no lo exige).
 - **Revenue P&L = 0**: El cálculo de ingresos requiere el módulo Tarifarios (tarifas por perfil/cliente). Hasta que se implemente, `revenue: 0`, `margen: null`, `requiresTarifarios: true`.
@@ -125,13 +159,13 @@
 
 ---
 
-## Módulos Pendientes (Fases 6+)
+## Módulos Pendientes (Fases 7+)
 
 | Módulo | Descripción |
 |--------|-------------|
 | Contratos | SOW, amendments, fechas, montos |
-| Tarifarios | Perfiles, tarifas USD/ARS por cliente. Necesario para calcular revenue en P&L |
-| P&L Revenue | Completar cálculo de ingresos cuando Tarifarios esté listo |
+| Formularios Tarifarios | UI para crear/editar tarifarios y líneas (actualmente solo vista de listado/detalle) |
+| P&L Revenue | Completar cálculo de ingresos usando tarifas del tarifario asignado al proyecto |
 | Rolling | Forecast mensual por proyecto |
 | Dashboard | Métricas, charts, resumen ejecutivo |
 
@@ -149,4 +183,4 @@
 
 ## Próximo Paso
 
-Continuar con **Fase 6: Módulo Contratos** o **Tarifarios** según `AnalisisInicial/SPECS.md`. Tarifarios desbloquea el cálculo de revenue en P&L.
+Continuar con **Fase 7: Formularios de Tarifarios** (CRUD completo en UI) o **P&L Revenue** (cálculo de ingresos usando tarifas) según `AnalisisInicial/SPECS.md`.

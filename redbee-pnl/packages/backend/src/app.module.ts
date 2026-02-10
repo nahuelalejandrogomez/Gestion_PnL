@@ -9,6 +9,7 @@ import { AsignacionesModule } from './modules/asignaciones/asignaciones.module';
 import { PnlModule } from './modules/pnl/pnl.module';
 import { ConfigModule } from './modules/config/config.module';
 import { FxModule } from './modules/fx/fx.module';
+import { TarifariosModule } from './modules/tarifarios/tarifarios.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { FxModule } from './modules/fx/fx.module';
     PnlModule,
     ConfigModule,
     FxModule,
+    TarifariosModule,
   ],
   controllers: [AppController],
 })
