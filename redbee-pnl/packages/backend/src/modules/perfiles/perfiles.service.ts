@@ -9,7 +9,7 @@ export class PerfilesService {
   constructor(private prisma: PrismaService) {}
 
   async findAll(query: QueryPerfilDto) {
-    const { search } = query;
+    const { search, page = 1, limit = 50, estado } = query;
 
     const where: Prisma.PerfilWhereInput = {
       deletedAt: null,
@@ -22,10 +22,29 @@ export class PerfilesService {
       ];
     }
 
-    return this.prisma.perfil.findMany({
-      where,
-      orderBy: { nombre: 'asc' },
-    });
+    if (estado) {
+      where.estado = estado as 'ACTIVO' | 'INACTIVO';
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.perfil.findMany({
+        where,
+        orderBy: { nombre: 'asc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.perfil.count({ where }),
+    ]);
+
+    return {
+      data,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   async findOne(id: string) {
