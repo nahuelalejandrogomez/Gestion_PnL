@@ -51,13 +51,29 @@ export class ClientesService {
   async findOne(id: string) {
     const cliente = await this.prisma.cliente.findUnique({
       where: { id },
+      include: {
+        proyectos: true,
+        contratos: true,
+      },
     });
 
     if (!cliente || cliente.deletedAt) {
       throw new NotFoundException(`Cliente con ID ${id} no encontrado`);
     }
 
-    return cliente;
+    // Count contratos vigentes (estado === VIGENTE)
+    const contratosVigentes = await this.prisma.contrato.count({
+      where: {
+        clienteId: id,
+        estado: 'VIGENTE',
+        deletedAt: null,
+      },
+    });
+
+    return {
+      ...cliente,
+      contratosVigentes,
+    };
   }
 
   async create(createClienteDto: CreateClienteDto) {

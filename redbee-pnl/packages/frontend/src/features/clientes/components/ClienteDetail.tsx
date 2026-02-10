@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, FileText, FolderKanban, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, Calendar, FileText, FolderKanban, Pencil, Trash2, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -177,10 +177,13 @@ export function ClienteDetail() {
               </div>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-stone-500">Contratos</p>
+              <p className="text-sm text-stone-500">Contratos vigentes</p>
               <div className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-stone-400" />
-                <p className="font-medium text-stone-800">{cliente.contratos?.length || 0}</p>
+                <p className="font-medium text-stone-800">{cliente.contratosVigentes || 0}</p>
+                {cliente.contratosVigentes && cliente.contratosVigentes > 0 && (
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                )}
               </div>
             </div>
           </div>
@@ -206,12 +209,12 @@ export function ClienteDetail() {
             <FolderKanban className="h-4 w-4" />
             Proyectos ({cliente.proyectos?.length || 0})
           </TabsTrigger>
-          <TabsTrigger 
-            value="contratos" 
+          <TabsTrigger
+            value="contratos"
             className="flex items-center gap-2 data-[state=active]:bg-stone-100 data-[state=active]:text-stone-800 rounded-md px-4"
           >
             <FileText className="h-4 w-4" />
-            Contratos ({cliente.contratos?.length || 0})
+            Contratos ({cliente.contratosVigentes || 0})
           </TabsTrigger>
         </TabsList>
 

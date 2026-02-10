@@ -41,6 +41,7 @@ export interface ClienteWithRelations extends Cliente {
     mes: number | null;
     periodoTipo: string;
   }>;
+  contratosVigentes?: number;
 }
 
 export interface CreateClienteDto {
