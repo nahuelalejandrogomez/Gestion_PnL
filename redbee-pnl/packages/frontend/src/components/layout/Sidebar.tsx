@@ -9,6 +9,7 @@ import {
   Settings,
   Receipt,
   X,
+  Shield,
 } from 'lucide-react';
 
 const navigation = [
@@ -20,6 +21,7 @@ const navigation = [
   { name: 'P&L', href: '/pnl', icon: DollarSign },
   { name: 'Rolling', href: '/rolling', icon: BarChart3 },
   { name: 'Configuración', href: '/configuracion', icon: Settings },
+  { name: 'Admin', href: '/admin', icon: Shield },
 ];
 
 interface SidebarProps {
