@@ -319,7 +319,7 @@ export function TarifarioFormDialog({
                             <SelectContent>
                               {perfiles.map((perfil) => (
                                 <SelectItem key={perfil.id} value={perfil.id}>
-                                  {perfil.nombre}
+                                  {perfil.nivel ? `${perfil.nombre} - ${perfil.nivel}` : perfil.nombre}
                                 </SelectItem>
                               ))}
                             </SelectContent>

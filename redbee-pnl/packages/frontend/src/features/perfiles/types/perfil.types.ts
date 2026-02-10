@@ -1,4 +1,4 @@
-export type NivelPerfil = 'JR' | 'SSR' | 'SR' | 'LEAD' | 'MANAGER';
+export type NivelPerfil = 'JR' | 'SSR' | 'SR' | 'LEAD' | 'MANAGER' | 'STAFF';
 
 export interface Perfil {
   id: string;
