@@ -217,16 +217,18 @@ model Contrato {
 
 model Tarifario {
   id                 String          @id @default(uuid())
-  clienteId          String
+  clienteId          String?
   contratoId         String?
   nombre             String
+  esTemplate         Boolean         @default(false)
+  templateBaseId     String?
   fechaVigenciaDesde DateTime
   fechaVigenciaHasta DateTime?
   moneda             Moneda          @default(USD)
   estado             EstadoTarifario @default(ACTIVO)
   notas              String?         @db.Text
 
-  cliente   Cliente          @relation(fields: [clienteId], references: [id])
+  cliente   Cliente?         @relation(fields: [clienteId], references: [id])
   contrato  Contrato?        @relation(fields: [contratoId], references: [id])
   lineas    LineaTarifario[]
   proyectos Proyecto[]

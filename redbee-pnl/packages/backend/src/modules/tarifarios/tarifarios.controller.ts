@@ -2,6 +2,7 @@ import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/
 import { TarifariosService } from './tarifarios.service';
 import { CreateTarifarioDto } from './dto/create-tarifario.dto';
 import { UpdateTarifarioDto } from './dto/update-tarifario.dto';
+import { CreateFromTemplateDto } from './dto/create-from-template.dto';
 
 @Controller('tarifarios')
 export class TarifariosController {
@@ -13,12 +14,14 @@ export class TarifariosController {
     @Query('take') take?: string,
     @Query('clienteId') clienteId?: string,
     @Query('estado') estado?: string,
+    @Query('esTemplate') esTemplate?: string,
   ) {
     return this.tarifariosService.findAll({
       skip: skip ? Number(skip) : undefined,
       take: take ? Number(take) : undefined,
       clienteId,
       estado,
+      esTemplate: esTemplate === 'true' ? true : esTemplate === 'false' ? false : undefined,
     });
   }
 
@@ -30,6 +33,11 @@ export class TarifariosController {
   @Post()
   create(@Body() dto: CreateTarifarioDto) {
     return this.tarifariosService.create(dto);
+  }
+
+  @Post('from-template')
+  createFromTemplate(@Body() dto: CreateFromTemplateDto) {
+    return this.tarifariosService.createFromTemplate(dto);
   }
 
   @Put(':id')

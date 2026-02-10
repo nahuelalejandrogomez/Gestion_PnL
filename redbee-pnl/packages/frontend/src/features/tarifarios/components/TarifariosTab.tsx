@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, Receipt } from 'lucide-react';
+import { Plus, Pencil, Trash2, Receipt, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,21 +15,25 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useTarifarios } from '../hooks/useTarifarios';
+import { useTarifarios, useCreateFromTemplate } from '../hooks/useTarifarios';
 import { useTarifarioMutations } from '../hooks/useTarifarioMutations';
 import { TarifarioFormDialog } from './TarifarioFormDialog';
+import { CreateFromTemplateDialog } from './CreateFromTemplateDialog';
 import type { Tarifario, CreateTarifarioDto, UpdateTarifarioDto } from '../types/tarifario.types';
 
 interface TarifariosTabProps {
   clienteId: string;
+  clienteNombre?: string;
 }
 
-export function TarifariosTab({ clienteId }: TarifariosTabProps) {
+export function TarifariosTab({ clienteId, clienteNombre = 'este cliente' }: TarifariosTabProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [selectedTarifario, setSelectedTarifario] = useState<Tarifario | null>(null);
 
   const { data, isLoading } = useTarifarios({ clienteId });
   const { createTarifario, updateTarifario, deleteTarifario } = useTarifarioMutations();
+  const createFromTemplate = useCreateFromTemplate();
 
   const handleCreate = (dto: CreateTarifarioDto) => {
     createTarifario.mutate(dto, {
@@ -65,6 +69,17 @@ export function TarifariosTab({ clienteId }: TarifariosTabProps) {
   const handleOpenEdit = (tarifario: Tarifario) => {
     setSelectedTarifario(tarifario);
     setIsFormOpen(true);
+  };
+
+  const handleCreateFromTemplate = (templateId: string) => {
+    createFromTemplate.mutate(
+      { clienteId, templateId },
+      {
+        onSuccess: () => {
+          setIsTemplateDialogOpen(false);
+        },
+      }
+    );
   };
 
   const formatDate = (dateString: string) => {
@@ -118,13 +133,23 @@ export function TarifariosTab({ clienteId }: TarifariosTabProps) {
                 Gestiona los tarifarios y precios por perfil del cliente
               </CardDescription>
             </div>
-            <Button
-              onClick={handleOpenCreate}
-              className="bg-stone-800 hover:bg-stone-700 text-white"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo Tarifario
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setIsTemplateDialogOpen(true)}
+                variant="outline"
+                className="border-stone-200"
+              >
+                <Copy className="mr-2 h-4 w-4" />
+                Desde Template
+              </Button>
+              <Button
+                onClick={handleOpenCreate}
+                className="bg-stone-800 hover:bg-stone-700 text-white"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo Tarifario
+              </Button>
+            </div>
           </div>
         </CardHeader>
 
@@ -234,6 +259,15 @@ export function TarifariosTab({ clienteId }: TarifariosTabProps) {
           }
         }}
         isLoading={createTarifario.isPending || updateTarifario.isPending}
+      />
+
+      <CreateFromTemplateDialog
+        open={isTemplateDialogOpen}
+        onOpenChange={setIsTemplateDialogOpen}
+        clienteId={clienteId}
+        clienteNombre={clienteNombre}
+        onConfirm={handleCreateFromTemplate}
+        isLoading={createFromTemplate.isPending}
       />
     </>
   );

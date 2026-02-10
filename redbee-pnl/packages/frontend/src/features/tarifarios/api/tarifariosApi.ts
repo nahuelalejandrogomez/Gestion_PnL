@@ -15,6 +15,7 @@ export const tarifariosApi = {
     take?: number;
     clienteId?: string;
     estado?: string;
+    esTemplate?: boolean;
   }): Promise<TarifariosListResponse> => {
     const { data } = await api.get<TarifariosListResponse>('/tarifarios', { params });
     return data;
@@ -33,6 +34,18 @@ export const tarifariosApi = {
    */
   create: async (dto: CreateTarifarioDto): Promise<Tarifario> => {
     const { data } = await api.post<Tarifario>('/tarifarios', dto);
+    return data;
+  },
+
+  /**
+   * Create a tarifario from a template
+   */
+  createFromTemplate: async (params: {
+    clienteId: string;
+    templateId: string;
+    nombre?: string;
+  }): Promise<Tarifario> => {
+    const { data } = await api.post<Tarifario>('/tarifarios/from-template', params);
     return data;
   },
 

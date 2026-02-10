@@ -13,6 +13,7 @@ export function useTarifarios(params?: {
   take?: number;
   clienteId?: string;
   estado?: string;
+  esTemplate?: boolean;
 }) {
   return useQuery({
     queryKey: [TARIFARIOS_QUERY_KEY, params],
@@ -46,6 +47,26 @@ export function useCreateTarifario() {
     onError: (error: Error & { response?: { data?: { message?: string } } }) => {
       console.error('[Create Tarifario Error]', error);
       toast.error(error.response?.data?.message || 'Error al crear tarifario');
+    },
+  });
+}
+
+/**
+ * Hook to create a tarifario from a template
+ */
+export function useCreateFromTemplate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: { clienteId: string; templateId: string; nombre?: string }) =>
+      tarifariosApi.createFromTemplate(params),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [TARIFARIOS_QUERY_KEY] });
+      toast.success('Tarifario creado desde template');
+    },
+    onError: (error: Error & { response?: { data?: { message?: string } } }) => {
+      console.error('[Create From Template Error]', error);
+      toast.error(error.response?.data?.message || 'Error al crear desde template');
     },
   });
 }

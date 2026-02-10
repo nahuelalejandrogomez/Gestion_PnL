@@ -243,7 +243,7 @@ export function ClienteDetail() {
         </TabsContent>
 
         <TabsContent value="tarifarios" className="mt-6">
-          <TarifariosTab clienteId={cliente.id} />
+          <TarifariosTab clienteId={cliente.id} clienteNombre={cliente.nombre} />
         </TabsContent>
 
         <TabsContent value="revenue" className="mt-6">
