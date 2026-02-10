@@ -4,6 +4,7 @@ export { ProyectoDetail } from './components/ProyectoDetail';
 export { ProyectoForm } from './components/ProyectoForm';
 export { ProyectoCard } from './components/ProyectoCard';
 export { ProyectoBadge } from './components/ProyectoBadge';
+export { ProyectosTable } from './components/ProyectosTable';
 
 // Hooks
 export { useProyectos, PROYECTOS_QUERY_KEY } from './hooks/useProyectos';

@@ -46,7 +46,10 @@ export class ProyectosService {
         where,
         skip: (page - 1) * limit,
         take: limit,
-        orderBy: { nombre: 'asc' },
+        orderBy: [
+          { estado: 'asc' }, // ACTIVO first (alphabetically)
+          { nombre: 'asc' },
+        ],
         include: {
           cliente: {
             select: { id: true, nombre: true },

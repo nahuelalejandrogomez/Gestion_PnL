@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Calendar, FileText, FolderKanban, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
@@ -21,6 +21,7 @@ import { useClienteMutations } from '../hooks/useClienteMutations';
 import { ClienteBadge } from './ClienteBadge';
 import { ClienteForm } from './ClienteForm';
 import { ContratosSection } from '@/features/contratos/components/ContratosSection';
+import { ProyectosTable } from '@/features/proyectos';
 import { useState } from 'react';
 import type { UpdateClienteDto } from '../types/cliente.types';
 
@@ -215,46 +216,7 @@ export function ClienteDetail() {
         </TabsList>
 
         <TabsContent value="proyectos" className="mt-6">
-          <Card className="border-stone-200 bg-white">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold text-stone-800">Proyectos</CardTitle>
-              <CardDescription className="text-stone-500">
-                Proyectos asociados a este cliente
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              {cliente.proyectos && cliente.proyectos.length > 0 ? (
-                <div className="divide-y divide-stone-100">
-                  {cliente.proyectos.map((proyecto) => (
-                    <div
-                      key={proyecto.id}
-                      onClick={() => navigate(`/proyectos/${proyecto.id}`)}
-                      className="flex items-center justify-between p-4 hover:bg-stone-50 transition-colors cursor-pointer"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-lg bg-stone-100 flex items-center justify-center">
-                          <FolderKanban className="h-5 w-5 text-stone-600" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-stone-800">{proyecto.nombre}</p>
-                          <p className="text-sm text-stone-500">
-                            {proyecto.codigo} • {formatDate(proyecto.fechaInicio)}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-sm font-medium text-stone-600 bg-stone-100 px-2.5 py-1 rounded-full">
-                        {proyecto.estado}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-stone-500 text-center py-12">
-                  No hay proyectos asociados a este cliente.
-                </p>
-              )}
-            </CardContent>
-          </Card>
+          <ProyectosTable clienteId={cliente.id} hideClienteColumn={true} />
         </TabsContent>
 
         <TabsContent value="contratos" className="mt-6">
