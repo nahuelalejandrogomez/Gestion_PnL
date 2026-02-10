@@ -20,6 +20,7 @@ import { useCliente } from '../hooks/useCliente';
 import { useClienteMutations } from '../hooks/useClienteMutations';
 import { ClienteBadge } from './ClienteBadge';
 import { ClienteForm } from './ClienteForm';
+import { ContratosSection } from '@/features/contratos/components/ContratosSection';
 import { useState } from 'react';
 import type { UpdateClienteDto } from '../types/cliente.types';
 
@@ -257,45 +258,7 @@ export function ClienteDetail() {
         </TabsContent>
 
         <TabsContent value="contratos" className="mt-6">
-          <Card className="border-stone-200 bg-white">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold text-stone-800">Contratos</CardTitle>
-              <CardDescription className="text-stone-500">
-                Contratos firmados con este cliente
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              {cliente.contratos && cliente.contratos.length > 0 ? (
-                <div className="divide-y divide-stone-100">
-                  {cliente.contratos.map((contrato) => (
-                    <div
-                      key={contrato.id}
-                      className="flex items-center justify-between p-4 hover:bg-stone-50 transition-colors"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-lg bg-stone-100 flex items-center justify-center">
-                          <FileText className="h-5 w-5 text-stone-600" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-stone-800">{contrato.nombre}</p>
-                          <p className="text-sm text-stone-500">
-                            {contrato.tipo} • {formatDate(contrato.fechaFirma)}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-sm font-medium text-stone-600 bg-stone-100 px-2.5 py-1 rounded-full">
-                        {contrato.estado}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-stone-500 text-center py-12">
-                  No hay contratos asociados a este cliente.
-                </p>
-              )}
-            </CardContent>
-          </Card>
+          <ContratosSection clienteId={cliente.id} />
         </TabsContent>
       </Tabs>
 

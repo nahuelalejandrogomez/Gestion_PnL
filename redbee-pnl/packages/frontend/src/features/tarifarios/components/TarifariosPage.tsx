@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { FileText } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -111,16 +110,9 @@ export function TarifariosPage() {
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-stone-800">Tarifarios</h1>
-            <p className="text-stone-500">Gestión de tarifas por perfil</p>
+            <p className="text-stone-500">Vista de tarifas con conversión ARS/USD</p>
           </div>
         </div>
-        <Button
-          onClick={() => navigate('/tarifarios/new')}
-          className="bg-blue-600 text-white hover:bg-blue-700"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo Tarifario
-        </Button>
       </div>
 
       {/* Filters */}

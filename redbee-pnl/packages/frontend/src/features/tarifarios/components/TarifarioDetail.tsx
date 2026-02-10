@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -19,20 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import { useTarifario, useDeleteTarifario } from '../hooks/useTarifarios';
+import { useTarifario } from '../hooks/useTarifarios';
 import { useFxRates } from '@/features/config/hooks/useFx';
 import { buildFxMap, convertCurrency, formatCurrency, type Currency } from '@/lib/fx';
 import type { LineaTarifario } from '../types/tarifario.types';
@@ -64,18 +53,10 @@ export function TarifarioDetail() {
   const [selectedCurrency, setSelectedCurrency] = useState<Currency>('USD');
 
   const { data: tarifario, isLoading, error } = useTarifario(id);
-  const deleteTarifario = useDeleteTarifario();
   const { data: fxData } = useFxRates(selectedYear);
 
   const fxMap = fxData ? buildFxMap(fxData.rates) : {};
   const fxRate = fxMap[selectedMonth] ?? null;
-
-  const handleDelete = () => {
-    if (!id) return;
-    deleteTarifario.mutate(id, {
-      onSuccess: () => navigate('/tarifarios'),
-    });
-  };
 
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return '-';
@@ -175,46 +156,6 @@ export function TarifarioDetail() {
               )}
             </p>
           </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            onClick={() => navigate(`/tarifarios/${id}/edit`)}
-            className="border-stone-200 text-stone-700 hover:bg-stone-100"
-          >
-            <Pencil className="mr-2 h-4 w-4" />
-            Editar
-          </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="outline"
-                className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Eliminar
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent className="border-stone-200">
-              <AlertDialogHeader>
-                <AlertDialogTitle className="text-stone-800">¿Estás seguro?</AlertDialogTitle>
-                <AlertDialogDescription className="text-stone-500">
-                  Esta acción eliminará el tarifario "{tarifario.nombre}" y no se puede deshacer.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="border-stone-200 text-stone-600">
-                  Cancelar
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDelete}
-                  className="bg-red-600 text-white hover:bg-red-700"
-                >
-                  Eliminar
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </div>
       </div>
 

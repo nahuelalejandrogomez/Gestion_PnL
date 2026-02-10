@@ -10,6 +10,7 @@ import { PnlModule } from './modules/pnl/pnl.module';
 import { ConfigModule } from './modules/config/config.module';
 import { FxModule } from './modules/fx/fx.module';
 import { TarifariosModule } from './modules/tarifarios/tarifarios.module';
+import { ContratosModule } from './modules/contratos/contratos.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { TarifariosModule } from './modules/tarifarios/tarifarios.module';
     ConfigModule,
     FxModule,
     TarifariosModule,
+    ContratosModule,
   ],
   controllers: [AppController],
 })
