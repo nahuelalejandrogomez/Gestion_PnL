@@ -72,20 +72,31 @@ export class AdminService {
 
     // Step 1: Check dependencies
     this.logger.log('Step 1: Checking dependencies...');
-    const [lineasCount, recursosCount, planLineasCount] = await Promise.all([
+    const [asignacionesMesCount, asignacionesCount, lineasCount, recursosCount, planLineasCount] = await Promise.all([
+      this.prisma.asignacionRecursoMes.count(),
+      this.prisma.asignacionRecurso.count(),
       this.prisma.lineaTarifario.count(),
       this.prisma.recurso.count(),
       this.prisma.proyectoPlanLinea.count(),
     ]);
 
+    this.logger.log(`  - AsignacionRecursoMes: ${asignacionesMesCount}`);
+    this.logger.log(`  - AsignacionRecurso: ${asignacionesCount}`);
     this.logger.log(`  - LineaTarifario: ${lineasCount}`);
     this.logger.log(`  - Recurso: ${recursosCount}`);
     this.logger.log(`  - ProyectoPlanLinea: ${planLineasCount}`);
 
-    const totalDeps = lineasCount + recursosCount + planLineasCount;
+    const totalDeps = asignacionesMesCount + asignacionesCount + lineasCount + recursosCount + planLineasCount;
 
     if (totalDeps > 0) {
       this.logger.log(`Found ${totalDeps} dependent records. Deleting in safe order...`);
+
+      // Delete in cascade order: AsignacionRecursoMes → AsignacionRecurso → others
+      await this.prisma.asignacionRecursoMes.deleteMany({});
+      this.logger.log('  ✓ Deleted AsignacionRecursoMes');
+
+      await this.prisma.asignacionRecurso.deleteMany({});
+      this.logger.log('  ✓ Deleted AsignacionRecurso');
 
       await this.prisma.proyectoPlanLinea.deleteMany({});
       this.logger.log('  ✓ Deleted ProyectoPlanLinea');
