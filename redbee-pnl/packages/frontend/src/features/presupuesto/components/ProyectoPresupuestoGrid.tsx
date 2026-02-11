@@ -124,12 +124,21 @@ export function ProyectoPresupuestoGrid({ proyectoId, clienteId }: Props) {
 
   // Debug: log presupuestos data
   console.log('[ProyectoPresupuestoGrid] Debug info:', {
+    proyectoId,
     clienteId,
-    clientePresupuestos,
+    year,
+    selectedPresupuestoId,
     isLoadingPresupuestos,
-    presupuestosError,
+    presupuestosError: presupuestosError ? String(presupuestosError) : null,
+    clientePresupuestos,
     presupuestosCount: clientePresupuestos?.length || 0,
+    presupuestosActivos: clientePresupuestos?.filter((p) => p.estado?.toUpperCase() === 'ACTIVO').length || 0,
   });
+
+  // Debug: log when Select opens/closes
+  const handleSelectOpenChange = (open: boolean) => {
+    console.log('[ProyectoPresupuestoGrid] Select open state changed:', open);
+  };
 
   // Show error toast if presupuestos query fails
   useEffect(() => {
@@ -211,9 +220,9 @@ export function ProyectoPresupuestoGrid({ proyectoId, clienteId }: Props) {
               <Select
                 value={selectedPresupuestoId}
                 onValueChange={setSelectedPresupuestoId}
-                disabled={isLoadingPresupuestos}
+                onOpenChange={handleSelectOpenChange}
               >
-                <SelectTrigger id="cliente-presupuesto" className="w-full">
+                <SelectTrigger id="cliente-presupuesto" className="w-full" disabled={isLoadingPresupuestos}>
                   <SelectValue placeholder={
                     isLoadingPresupuestos
                       ? "Cargando..."
@@ -222,11 +231,13 @@ export function ProyectoPresupuestoGrid({ proyectoId, clienteId }: Props) {
                         : "Seleccionar presupuesto"
                   } />
                 </SelectTrigger>
-                <SelectContent>
-                  {presupuestosError ? (
-                    <SelectItem value="error" disabled>
+                <SelectContent position="popper" className="z-[200] max-h-[300px] overflow-y-auto">
+                  {isLoadingPresupuestos ? (
+                    <div className="p-2 text-sm text-stone-500">Cargando presupuestos...</div>
+                  ) : presupuestosError ? (
+                    <div className="p-2 text-sm text-red-600">
                       Error: {presupuestosError instanceof Error ? presupuestosError.message : 'Error desconocido'}
-                    </SelectItem>
+                    </div>
                   ) : clientePresupuestos && clientePresupuestos.length > 0 ? (
                     <>
                       {clientePresupuestos
@@ -237,15 +248,15 @@ export function ProyectoPresupuestoGrid({ proyectoId, clienteId }: Props) {
                           </SelectItem>
                         ))}
                       {clientePresupuestos.filter((p) => p.estado?.toUpperCase() === 'ACTIVO').length === 0 && (
-                        <SelectItem value="none" disabled>
+                        <div className="p-2 text-sm text-stone-500">
                           El cliente no tiene presupuestos activos
-                        </SelectItem>
+                        </div>
                       )}
                     </>
                   ) : (
-                    <SelectItem value="none" disabled>
+                    <div className="p-2 text-sm text-stone-500">
                       El cliente no tiene presupuestos
-                    </SelectItem>
+                    </div>
                   )}
                 </SelectContent>
               </Select>
