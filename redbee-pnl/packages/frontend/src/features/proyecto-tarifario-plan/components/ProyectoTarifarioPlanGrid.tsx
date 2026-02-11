@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,6 +38,13 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
   const { data: tarifariosData } = useTarifarios({ clienteId, estado: 'ACTIVO' });
   const updateMutation = useUpdatePlan();
   const aplicarMutation = useAplicarTarifario();
+
+  // Sync selectedTarifarioId with plan data
+  useEffect(() => {
+    if (plan?.tarifarioId) {
+      setSelectedTarifarioId(plan.tarifarioId);
+    }
+  }, [plan?.tarifarioId]);
 
   const handleYearChange = (delta: number) => {
     setYear((prev) => prev + delta);
