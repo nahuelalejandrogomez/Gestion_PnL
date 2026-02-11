@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -45,7 +46,7 @@ export function ProyectoPresupuestoGrid({ proyectoId, clienteId }: Props) {
 
   const { data, isLoading } = useProyectoPresupuesto(proyectoId, year);
   const updateMutation = useUpdatePresupuesto();
-  const { data: clientePresupuestos, isLoading: isLoadingPresupuestos } = useClientePresupuestos(clienteId, year);
+  const { data: clientePresupuestos, isLoading: isLoadingPresupuestos, error: presupuestosError } = useClientePresupuestos(clienteId);
   const aplicarMutation = useAplicarClientePresupuesto();
 
   const handleYearChange = (delta: number) => {
@@ -121,6 +122,23 @@ export function ProyectoPresupuestoGrid({ proyectoId, clienteId }: Props) {
   const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
   const currentMonthName = monthNames[currentMonth];
 
+  // Debug: log presupuestos data
+  console.log('[ProyectoPresupuestoGrid] Debug info:', {
+    clienteId,
+    clientePresupuestos,
+    isLoadingPresupuestos,
+    presupuestosError,
+    presupuestosCount: clientePresupuestos?.length || 0,
+  });
+
+  // Show error toast if presupuestos query fails
+  useEffect(() => {
+    if (presupuestosError) {
+      console.error('[ProyectoPresupuestoGrid] Error loading cliente presupuestos:', presupuestosError);
+      toast.error('No se pudieron cargar los presupuestos del cliente');
+    }
+  }, [presupuestosError]);
+
   if (isLoading) {
     return (
       <Card className="border-stone-200 bg-white">
@@ -190,22 +208,43 @@ export function ProyectoPresupuestoGrid({ proyectoId, clienteId }: Props) {
               <Label htmlFor="cliente-presupuesto" className="text-sm font-medium text-stone-700 mb-2 block">
                 Presupuesto del cliente
               </Label>
-              <Select value={selectedPresupuestoId} onValueChange={setSelectedPresupuestoId}>
+              <Select
+                value={selectedPresupuestoId}
+                onValueChange={setSelectedPresupuestoId}
+                disabled={isLoadingPresupuestos}
+              >
                 <SelectTrigger id="cliente-presupuesto" className="w-full">
-                  <SelectValue placeholder={isLoadingPresupuestos ? "Cargando..." : "Seleccionar presupuesto"} />
+                  <SelectValue placeholder={
+                    isLoadingPresupuestos
+                      ? "Cargando..."
+                      : presupuestosError
+                        ? "Error al cargar presupuestos"
+                        : "Seleccionar presupuesto"
+                  } />
                 </SelectTrigger>
                 <SelectContent>
-                  {clientePresupuestos && clientePresupuestos.length > 0 ? (
-                    clientePresupuestos
-                      .filter((p) => p.estado === 'ACTIVO')
-                      .map((presupuesto) => (
-                        <SelectItem key={presupuesto.id} value={presupuesto.id}>
-                          {presupuesto.nombre} • {presupuesto.moneda}
+                  {presupuestosError ? (
+                    <SelectItem value="error" disabled>
+                      Error: {presupuestosError instanceof Error ? presupuestosError.message : 'Error desconocido'}
+                    </SelectItem>
+                  ) : clientePresupuestos && clientePresupuestos.length > 0 ? (
+                    <>
+                      {clientePresupuestos
+                        .filter((p) => p.estado?.toUpperCase() === 'ACTIVO')
+                        .map((presupuesto) => (
+                          <SelectItem key={presupuesto.id} value={presupuesto.id}>
+                            {presupuesto.nombre} • {presupuesto.moneda}
+                          </SelectItem>
+                        ))}
+                      {clientePresupuestos.filter((p) => p.estado?.toUpperCase() === 'ACTIVO').length === 0 && (
+                        <SelectItem value="none" disabled>
+                          El cliente no tiene presupuestos activos
                         </SelectItem>
-                      ))
+                      )}
+                    </>
                   ) : (
                     <SelectItem value="none" disabled>
-                      No hay presupuestos disponibles
+                      El cliente no tiene presupuestos
                     </SelectItem>
                   )}
                 </SelectContent>

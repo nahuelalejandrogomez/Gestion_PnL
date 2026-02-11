@@ -220,6 +220,16 @@
 
 ---
 
+## Bug Fixes
+
+### 2026-02-11: Selector de Presupuesto Cliente no mostraba opciones
+
+**Causa raíz:** El hook `useClientePresupuestos()` requería `year` como parámetro obligatorio, pero el backend lo acepta como opcional. Cuando no había meses con datos para el año actual, el selector quedaba vacío.
+
+**Fix aplicado:** Cambié el hook para que `year` sea opcional y solo requiera `clienteId`. Mejoré el filtro de estado para ser case-insensitive y agregué mejor manejo de errores con toast y logs.
+
+---
+
 ## Próximo Paso
 
 Continuar con **Fase 7: Formularios de Tarifarios** (CRUD completo en UI) o **P&L Revenue** (cálculo de ingresos usando tarifas) según `AnalisisInicial/SPECS.md`.

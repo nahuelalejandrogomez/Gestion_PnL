@@ -39,11 +39,13 @@ export function useUpdatePresupuesto() {
   });
 }
 
-export function useClientePresupuestos(clienteId: string | undefined, year: number) {
+export function useClientePresupuestos(clienteId: string | undefined, year?: number) {
   return useQuery({
     queryKey: [PRESUPUESTO_QUERY_KEY, 'cliente', clienteId, year],
     queryFn: () => presupuestoApi.getClientePresupuestos(clienteId!, year),
-    enabled: !!clienteId && !!year,
+    enabled: !!clienteId,
+    retry: 1,
+    staleTime: 1000 * 60 * 5, // 5 min
   });
 }
 
