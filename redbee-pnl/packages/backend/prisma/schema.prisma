@@ -179,6 +179,7 @@ model Proyecto {
   planLineas       ProyectoPlanLinea[]
   lineasPnL        LineaPnL[]
   skillsRequeridos ProyectoSkillRequerido[]
+  presupuestos     ProyectoPresupuesto[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -633,6 +634,44 @@ model ForecastScenario {
   updatedAt DateTime @updatedAt
 
   @@map("forecast_scenarios")
+}
+
+// ============================================
+// PRESUPUESTO (BUDGET/REVENUE PLANIFICADO)
+// ============================================
+
+model ProyectoPresupuesto {
+  id         String   @id @default(uuid())
+  proyectoId String
+  year       Int
+  moneda     Moneda   @default(USD)
+
+  proyecto Proyecto                @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  meses    ProyectoPresupuestoMes[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([proyectoId, year])
+  @@index([proyectoId, year])
+  @@map("proyecto_presupuestos")
+}
+
+model ProyectoPresupuestoMes {
+  id             String   @id @default(uuid())
+  presupuestoId  String
+  month          Int
+  amount         Decimal  @default(0) @db.Decimal(12, 2)
+  isOverride     Boolean  @default(false)
+
+  presupuesto ProyectoPresupuesto @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([presupuestoId, month])
+  @@index([presupuestoId])
+  @@map("proyecto_presupuesto_meses")
 }
 
 // ============================================
