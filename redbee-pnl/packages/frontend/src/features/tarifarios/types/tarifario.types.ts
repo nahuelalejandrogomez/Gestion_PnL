@@ -13,6 +13,7 @@ export interface LineaTarifario {
     id: string;
     nombre: string;
     categoria: string;
+    nivel: 'JR' | 'SSR' | 'SR' | 'LEAD' | 'MANAGER' | 'STAFF' | null;
   };
   createdAt: string;
   updatedAt: string;

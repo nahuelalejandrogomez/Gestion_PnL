@@ -1,24 +1,13 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, Receipt, Copy } from 'lucide-react';
+import { Plus, Receipt, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTarifarios, useCreateFromTemplate } from '../hooks/useTarifarios';
 import { useTarifarioMutations } from '../hooks/useTarifarioMutations';
 import { TarifarioFormDialog } from './TarifarioFormDialog';
 import { CreateFromTemplateDialog } from './CreateFromTemplateDialog';
+import { TarifarioCard } from './TarifarioCard';
 import type { Tarifario, CreateTarifarioDto, UpdateTarifarioDto } from '../types/tarifario.types';
 
 interface TarifariosTabProps {
@@ -170,76 +159,14 @@ export function TarifariosTab({ clienteId, clienteNombre = 'este cliente' }: Tar
           ) : (
             <div className="space-y-4">
               {tarifarios.map((tarifario) => (
-                <Card key={tarifario.id} className="border-stone-200 hover:bg-stone-50">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-semibold text-stone-800">{tarifario.nombre}</h3>
-                          <Badge variant={getEstadoBadgeVariant(tarifario.estado)}>
-                            {tarifario.estado}
-                          </Badge>
-                          <Badge variant="outline" className="border-stone-300">
-                            {tarifario.moneda}
-                          </Badge>
-                        </div>
-                        <div className="text-sm text-stone-600 space-y-1">
-                          <p>
-                            Vigencia: {formatDate(tarifario.fechaVigenciaDesde)}
-                            {tarifario.fechaVigenciaHasta
-                              ? ` - ${formatDate(tarifario.fechaVigenciaHasta)}`
-                              : ' - Sin fecha fin'}
-                          </p>
-                          <p>
-                            {tarifario._count?.lineas || 0} línea(s) • {tarifario._count?.proyectos || 0} proyecto(s)
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => handleOpenEdit(tarifario)}
-                          className="border-stone-200"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="border-red-200 text-red-600 hover:bg-red-50"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent className="border-stone-200">
-                            <AlertDialogHeader>
-                              <AlertDialogTitle className="text-stone-800">
-                                ¿Estás seguro?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription className="text-stone-500">
-                                Esta acción eliminará el tarifario "{tarifario.nombre}" y no se puede deshacer.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel className="border-stone-200 text-stone-600">
-                                Cancelar
-                              </AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDelete(tarifario.id)}
-                                className="bg-red-600 text-white hover:bg-red-700"
-                              >
-                                Eliminar
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <TarifarioCard
+                  key={tarifario.id}
+                  tarifario={tarifario}
+                  onEdit={handleOpenEdit}
+                  onDelete={handleDelete}
+                  formatDate={formatDate}
+                  getEstadoBadgeVariant={getEstadoBadgeVariant}
+                />
               ))}
             </div>
           )}
