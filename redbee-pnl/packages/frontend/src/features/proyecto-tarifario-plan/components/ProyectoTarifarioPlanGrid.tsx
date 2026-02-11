@@ -233,7 +233,7 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
             </Button>
           </div>
           <p className="text-xs text-stone-500 mt-2">
-            Se creará la estructura desde {currentMonthName} hasta Dic con cantidad = 0
+            Se creará la estructura desde {currentMonthName} hasta Dic con el rate del tarifario
           </p>
         </div>
 
@@ -276,7 +276,7 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
                         {linea.rateSnapshot.toLocaleString()} {linea.monedaSnapshot}
                       </td>
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((month) => {
-                        const key = `${linea.lineaTarifarioId}-${month}`;
+                        const key = `${linea.lineaTarifarioId}|${month}`;
                         const isEditing = editingCell === key;
                         const value = getCellValue(linea.lineaTarifarioId, month);
                         const hasOverride = isOverride(linea.lineaTarifarioId, month);

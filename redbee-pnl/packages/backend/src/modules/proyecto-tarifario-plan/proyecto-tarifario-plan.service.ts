@@ -313,13 +313,13 @@ export class ProyectoTarifarioPlanService {
         });
       }
 
-      // Create meses from current month to December with cantidad = 0
+      // Create meses from current month to December with rate from tarifario
       const mesesToCreate = [];
       for (let month = currentMonth; month <= 12; month++) {
         mesesToCreate.push({
           lineaId: planLinea.id,
           month,
-          cantidad: 0,
+          cantidad: tarifarioLinea.rate, // Set initial rate from tarifario
           isOverride: false,
         });
       }
