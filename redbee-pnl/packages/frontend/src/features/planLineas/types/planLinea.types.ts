@@ -3,6 +3,7 @@ export interface PlanLinea {
   perfilId: string;
   perfilNombre: string;
   perfilCategoria: string;
+  perfilNivel: string | null;
   nombreLinea: string | null;
   meses: Record<number, number>; // month -> ftes
   total: number;

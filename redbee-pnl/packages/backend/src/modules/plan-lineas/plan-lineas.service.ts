@@ -7,6 +7,7 @@ interface PlanLineaResponse {
   perfilId: string;
   perfilNombre: string;
   perfilCategoria: string;
+  perfilNivel: string | null;
   nombreLinea: string | null;
   meses: Record<number, number>; // month -> ftes
   total: number; // sum of all months
@@ -45,6 +46,7 @@ export class PlanLineasService {
             id: true,
             nombre: true,
             categoria: true,
+            nivel: true,
           },
         },
         meses: {
@@ -76,6 +78,7 @@ export class PlanLineasService {
         perfilId: linea.perfilId,
         perfilNombre: linea.perfil.nombre,
         perfilCategoria: linea.perfil.categoria,
+        perfilNivel: linea.perfil.nivel,
         nombreLinea: linea.nombreLinea,
         meses,
         total: Math.round(total * 100) / 100,

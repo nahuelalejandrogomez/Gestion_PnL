@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, FolderKanban, Users, FileText, Pencil, Trash2, BarChart3, CalendarDays, Receipt } from 'lucide-react';
+import { ArrowLeft, Calendar, FolderKanban, Users, FileText, Pencil, Trash2, BarChart3, Receipt, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -260,8 +260,8 @@ export function ProyectoDetail() {
             value="plan"
             className="flex items-center gap-2 data-[state=active]:bg-stone-100 data-[state=active]:text-stone-800 rounded-md px-4"
           >
-            <CalendarDays className="h-4 w-4" />
-            Plan (Staffing)
+            <DollarSign className="h-4 w-4" />
+            Revenue
           </TabsTrigger>
           <TabsTrigger
             value="presupuesto"

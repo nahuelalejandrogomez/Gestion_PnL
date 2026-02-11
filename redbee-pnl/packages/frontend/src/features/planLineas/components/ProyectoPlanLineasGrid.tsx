@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, DollarSign, AlertCircle, Save } from 'lucide-react';
+import { Plus, Trash2, DollarSign, AlertCircle, Save, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from 'sonner';
 import {
   Select,
   SelectContent,
@@ -69,22 +70,100 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
     }
   }
 
+  // Filter perfiles to only those in the assigned tarifario
+  const availablePerfiles = tarifario?.lineas
+    ?.map((linea) => linea.perfil)
+    .filter((perfil): perfil is NonNullable<typeof perfil> => perfil != null) || [];
+  const availablePerfilIds = new Set(availablePerfiles.map((p) => p.id));
+  const perfilesForSelector = perfiles.filter((p) => availablePerfilIds.has(p.id));
+
   const yearOptions = Array.from({ length: 6 }, (_, i) => currentYear - 2 + i);
 
   const handleAddLinea = () => {
+    if (!proyecto?.tarifarioId) {
+      toast.error('Proyecto sin tarifario asignado. Asigna un tarifario para agregar líneas.');
+      return;
+    }
+
+    // Auto-fill months from current month to Dec with 0
+    const currentMonth = new Date().getMonth() + 1; // 1-12
+    const meses: Record<number, number> = {};
+    if (selectedYear === currentYear) {
+      for (let month = currentMonth; month <= 12; month++) {
+        meses[month] = 0;
+      }
+    }
+
     const newLinea: PlanLinea = {
       id: `temp-${Date.now()}`,
       perfilId: '',
       perfilNombre: '',
       perfilCategoria: '',
+      perfilNivel: null,
       nombreLinea: null,
-      meses: {},
+      meses,
       total: 0,
     };
     setLocalLineas([...localLineas, newLinea]);
     const updated = new Map(dirtyLineas);
     updated.set(newLinea.id, newLinea);
     setDirtyLineas(updated);
+  };
+
+  const handleImportFromTarifario = () => {
+    if (!proyecto?.tarifarioId) {
+      toast.error('Proyecto sin tarifario asignado. Asigna un tarifario para importar líneas.');
+      return;
+    }
+
+    if (!tarifario?.lineas || tarifario.lineas.length === 0) {
+      toast.error('El tarifario no tiene líneas definidas.');
+      return;
+    }
+
+    // Auto-fill months from current month to Dec with 0
+    const currentMonth = new Date().getMonth() + 1; // 1-12
+    const meses: Record<number, number> = {};
+    if (selectedYear === currentYear) {
+      for (let month = currentMonth; month <= 12; month++) {
+        meses[month] = 0;
+      }
+    }
+
+    // Create new lineas for all tarifario lineas (avoiding duplicates)
+    const existingPerfilIds = new Set(localLineas.map((l) => l.perfilId));
+    const newLineas: PlanLinea[] = [];
+    let addedCount = 0;
+
+    for (const lineaTarifario of tarifario.lineas) {
+      if (!lineaTarifario.perfil) continue;
+      if (existingPerfilIds.has(lineaTarifario.perfil.id)) continue; // Skip duplicates
+
+      const newLinea: PlanLinea = {
+        id: `temp-${Date.now()}-${addedCount}`,
+        perfilId: lineaTarifario.perfil.id,
+        perfilNombre: lineaTarifario.perfil.nombre,
+        perfilCategoria: lineaTarifario.perfil.categoria,
+        perfilNivel: lineaTarifario.perfil.nivel,
+        nombreLinea: null,
+        meses: { ...meses },
+        total: 0,
+      };
+      newLineas.push(newLinea);
+      addedCount++;
+    }
+
+    if (newLineas.length === 0) {
+      toast.info('Todas las líneas del tarifario ya están agregadas.');
+      return;
+    }
+
+    setLocalLineas([...localLineas, ...newLineas]);
+    const updated = new Map(dirtyLineas);
+    newLineas.forEach((linea) => updated.set(linea.id, linea));
+    setDirtyLineas(updated);
+
+    toast.success(`${newLineas.length} línea(s) importada(s) desde tarifario.`);
   };
 
   const handleRemoveLinea = (id: string) => {
@@ -105,7 +184,7 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
 
     const updated = localLineas.map((l) =>
       l.id === lineaId
-        ? { ...l, perfilId, perfilNombre: perfil.nombre, perfilCategoria: perfil.categoria }
+        ? { ...l, perfilId, perfilNombre: perfil.nombre, perfilCategoria: perfil.categoria, perfilNivel: perfil.nivel }
         : l,
     );
     setLocalLineas(updated);
@@ -238,10 +317,10 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
           <div>
             <CardTitle className="text-lg font-semibold text-stone-800 flex items-center gap-2">
               <DollarSign className="h-5 w-5 text-stone-600" />
-              Plan de Staffing
+              Revenue Plan
             </CardTitle>
             <CardDescription className="text-stone-500">
-              Proyección de revenue planificado basado en FTEs por perfil
+              Proyección de revenue mensual usando tarifario asignado
             </CardDescription>
           </div>
           <div className="flex items-center gap-3">
@@ -313,10 +392,16 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
       <CardContent>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <Button onClick={handleAddLinea} variant="outline" size="sm" className="border-stone-200">
-              <Plus className="h-4 w-4 mr-2" />
-              Agregar Línea
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button onClick={handleImportFromTarifario} variant="outline" size="sm" className="border-stone-200">
+                <Download className="h-4 w-4 mr-2" />
+                Importar desde tarifario
+              </Button>
+              <Button onClick={handleAddLinea} variant="outline" size="sm" className="border-stone-200">
+                <Plus className="h-4 w-4 mr-2" />
+                Agregar Línea
+              </Button>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -324,6 +409,7 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
               <thead>
                 <tr className="border-b-2 border-stone-200">
                   <th className="text-left py-3 px-2 font-semibold text-stone-700 min-w-[180px]">Perfil</th>
+                  <th className="text-left py-3 px-2 font-semibold text-stone-700 min-w-[80px]">Seniority</th>
                   <th className="text-left py-3 px-2 font-semibold text-stone-700 min-w-[120px]">Nombre</th>
                   {MONTH_NAMES.map((month, idx) => (
                     <th key={idx} className="text-right py-3 px-2 font-semibold text-stone-700 min-w-[70px]">
@@ -337,7 +423,7 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
               <tbody>
                 {localLineas.length === 0 ? (
                   <tr>
-                    <td colSpan={16} className="text-center py-8 text-stone-500">
+                    <td colSpan={17} className="text-center py-8 text-stone-500">
                       No hay líneas en el plan. Agrega líneas para comenzar.
                     </td>
                   </tr>
@@ -353,13 +439,18 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
                             <SelectValue placeholder="Seleccionar" />
                           </SelectTrigger>
                           <SelectContent>
-                            {perfiles.map((perfil) => (
+                            {perfilesForSelector.map((perfil) => (
                               <SelectItem key={perfil.id} value={perfil.id}>
                                 {perfil.nombre}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
+                      </td>
+                      <td className="py-2 px-2">
+                        <span className="text-xs text-stone-600">
+                          {linea.perfilNivel || '-'}
+                        </span>
                       </td>
                       <td className="py-2 px-2">
                         <Input
