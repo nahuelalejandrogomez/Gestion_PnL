@@ -64,4 +64,23 @@ export const tarifariosApi = {
     const { data } = await api.delete<{ success: boolean }>(`/tarifarios/${id}`);
     return data;
   },
+
+  /**
+   * Update a linea tarifario
+   */
+  updateLinea: async (
+    lineaId: string,
+    dto: { rate?: number; moneda?: string | null },
+  ): Promise<any> => {
+    const { data } = await api.put(`/tarifarios/lineas/${lineaId}`, dto);
+    return data;
+  },
+
+  /**
+   * Delete a linea tarifario
+   */
+  deleteLinea: async (lineaId: string): Promise<{ success: boolean }> => {
+    const { data } = await api.delete<{ success: boolean }>(`/tarifarios/lineas/${lineaId}`);
+    return data;
+  },
 };

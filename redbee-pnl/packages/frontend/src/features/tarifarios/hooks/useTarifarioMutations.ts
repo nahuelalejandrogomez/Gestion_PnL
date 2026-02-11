@@ -41,9 +41,34 @@ export function useTarifarioMutations() {
     },
   });
 
+  const updateLinea = useMutation({
+    mutationFn: ({ lineaId, dto }: { lineaId: string; dto: { rate?: number; moneda?: string | null } }) =>
+      tarifariosApi.updateLinea(lineaId, dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [TARIFARIOS_QUERY_KEY] });
+      toast.success('Línea actualizada exitosamente');
+    },
+    onError: (error: Error) => {
+      toast.error(`Error al actualizar línea: ${error.message}`);
+    },
+  });
+
+  const deleteLinea = useMutation({
+    mutationFn: (lineaId: string) => tarifariosApi.deleteLinea(lineaId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [TARIFARIOS_QUERY_KEY] });
+      toast.success('Línea eliminada exitosamente');
+    },
+    onError: (error: Error) => {
+      toast.error(`Error al eliminar línea: ${error.message}`);
+    },
+  });
+
   return {
     createTarifario,
     updateTarifario,
     deleteTarifario,
+    updateLinea,
+    deleteLinea,
   };
 }

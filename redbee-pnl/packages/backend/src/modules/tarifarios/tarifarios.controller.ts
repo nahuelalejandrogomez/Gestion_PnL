@@ -3,6 +3,7 @@ import { TarifariosService } from './tarifarios.service';
 import { CreateTarifarioDto } from './dto/create-tarifario.dto';
 import { UpdateTarifarioDto } from './dto/update-tarifario.dto';
 import { CreateFromTemplateDto } from './dto/create-from-template.dto';
+import { UpdateLineaTarifarioDto } from './dto/update-linea-tarifario.dto';
 
 @Controller('tarifarios')
 export class TarifariosController {
@@ -48,5 +49,15 @@ export class TarifariosController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.tarifariosService.remove(id);
+  }
+
+  @Put('lineas/:lineaId')
+  updateLinea(@Param('lineaId') lineaId: string, @Body() dto: UpdateLineaTarifarioDto) {
+    return this.tarifariosService.updateLinea(lineaId, dto);
+  }
+
+  @Delete('lineas/:lineaId')
+  deleteLinea(@Param('lineaId') lineaId: string) {
+    return this.tarifariosService.deleteLinea(lineaId);
   }
 }

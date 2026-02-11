@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Pencil, Trash2, ChevronDown } from 'lucide-react';
+import { Pencil, Trash2, ChevronDown, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,7 +26,8 @@ import {
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTarifario } from '../hooks/useTarifarios';
-import type { Tarifario } from '../types/tarifario.types';
+import { useTarifarioMutations } from '../hooks/useTarifarioMutations';
+import type { Tarifario, LineaTarifario } from '../types/tarifario.types';
 
 interface TarifarioCardProps {
   tarifario: Tarifario;
@@ -42,9 +45,14 @@ export function TarifarioCard({
   getEstadoBadgeVariant,
 }: TarifarioCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [editingLineaId, setEditingLineaId] = useState<string | null>(null);
+  const [editedRate, setEditedRate] = useState<number>(0);
+  const [editedMoneda, setEditedMoneda] = useState<string | null>(null);
+
   const { data: tarifarioDetalle, isLoading: isLoadingDetalle } = useTarifario(
     isExpanded ? tarifario.id : undefined
   );
+  const { updateLinea, deleteLinea } = useTarifarioMutations();
 
   const formatAmount = (amount: number, moneda: string) => {
     return new Intl.NumberFormat('es-AR', {
@@ -57,6 +65,36 @@ export function TarifarioCard({
 
   const handleToggle = () => {
     setIsExpanded(!isExpanded);
+  };
+
+  const handleStartEdit = (linea: LineaTarifario) => {
+    setEditingLineaId(linea.id);
+    setEditedRate(Number(linea.rate));
+    setEditedMoneda(linea.moneda || null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingLineaId(null);
+    setEditedRate(0);
+    setEditedMoneda(null);
+  };
+
+  const handleSaveEdit = (lineaId: string) => {
+    if (editedRate <= 0) {
+      return;
+    }
+    updateLinea.mutate(
+      { lineaId, dto: { rate: editedRate, moneda: editedMoneda } },
+      {
+        onSuccess: () => {
+          handleCancelEdit();
+        },
+      }
+    );
+  };
+
+  const handleDeleteLinea = (lineaId: string) => {
+    deleteLinea.mutate(lineaId);
   };
 
   const lineas = tarifarioDetalle?.lineas || tarifario.lineas || [];
@@ -176,27 +214,129 @@ export function TarifarioCard({
                       <TableHead className="text-stone-700 font-semibold">Seniority</TableHead>
                       <TableHead className="text-stone-700 font-semibold text-right">Importe</TableHead>
                       <TableHead className="text-stone-700 font-semibold text-center">Moneda</TableHead>
+                      <TableHead className="text-stone-700 font-semibold text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {lineasSorted.map((linea) => (
-                      <TableRow key={linea.id} className="hover:bg-stone-50">
-                        <TableCell className="font-medium text-stone-800">
-                          {linea.perfil?.nombre || '-'}
-                        </TableCell>
-                        <TableCell className="text-stone-600">
-                          {linea.perfil?.nivel || '-'}
-                        </TableCell>
-                        <TableCell className="text-right text-stone-800 font-mono">
-                          {formatAmount(linea.rate, linea.moneda || tarifario.moneda)}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="outline" className="border-stone-300">
-                            {linea.moneda || tarifario.moneda}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {lineasSorted.map((linea) => {
+                      const isEditing = editingLineaId === linea.id;
+                      const lineaMoneda = linea.moneda || tarifario.moneda;
+
+                      return (
+                        <TableRow key={linea.id} className="hover:bg-stone-50">
+                          <TableCell className="font-medium text-stone-800">
+                            {linea.perfil?.nombre || '-'}
+                          </TableCell>
+                          <TableCell className="text-stone-600">
+                            {linea.perfil?.nivel || '—'}
+                          </TableCell>
+                          <TableCell className="text-right text-stone-800">
+                            {isEditing ? (
+                              <Input
+                                type="number"
+                                value={editedRate}
+                                onChange={(e) => setEditedRate(Number(e.target.value))}
+                                className="w-32 text-right ml-auto"
+                                min={0}
+                                step={0.01}
+                              />
+                            ) : (
+                              <span className="font-mono">
+                                {formatAmount(linea.rate, lineaMoneda)}
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {isEditing ? (
+                              <Select
+                                value={editedMoneda || lineaMoneda}
+                                onValueChange={(value) => setEditedMoneda(value)}
+                              >
+                                <SelectTrigger className="w-24 mx-auto">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="USD">USD</SelectItem>
+                                  <SelectItem value="ARS">ARS</SelectItem>
+                                  <SelectItem value="EUR">EUR</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <Badge variant="outline" className="border-stone-300">
+                                {lineaMoneda}
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {isEditing ? (
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                  onClick={() => handleSaveEdit(linea.id)}
+                                  disabled={updateLinea.isPending}
+                                >
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-stone-600 hover:bg-stone-100"
+                                  onClick={handleCancelEdit}
+                                  disabled={updateLinea.isPending}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-stone-600 hover:bg-stone-100"
+                                  onClick={() => handleStartEdit(linea)}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent className="border-stone-200">
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle className="text-stone-800">
+                                        ¿Eliminar línea?
+                                      </AlertDialogTitle>
+                                      <AlertDialogDescription className="text-stone-500">
+                                        Esta acción eliminará la línea de "{linea.perfil?.nombre || 'este perfil'}" y no se puede deshacer.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel className="border-stone-200 text-stone-600">
+                                        Cancelar
+                                      </AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => handleDeleteLinea(linea.id)}
+                                        className="bg-red-600 text-white hover:bg-red-700"
+                                      >
+                                        Eliminar
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>

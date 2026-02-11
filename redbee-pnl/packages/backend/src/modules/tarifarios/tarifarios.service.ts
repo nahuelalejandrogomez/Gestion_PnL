@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateTarifarioDto } from './dto/create-tarifario.dto';
 import { UpdateTarifarioDto } from './dto/update-tarifario.dto';
 import { CreateFromTemplateDto } from './dto/create-from-template.dto';
+import { UpdateLineaTarifarioDto } from './dto/update-linea-tarifario.dto';
 
 @Injectable()
 export class TarifariosService {
@@ -57,7 +58,7 @@ export class TarifariosService {
         contrato: { select: { id: true, nombre: true } },
         lineas: {
           include: {
-            perfil: { select: { id: true, nombre: true, categoria: true } },
+            perfil: { select: { id: true, nombre: true, categoria: true, nivel: true } },
           },
           orderBy: { perfil: { nombre: 'asc' } },
         },
@@ -92,7 +93,7 @@ export class TarifariosService {
         contrato: { select: { id: true, nombre: true } },
         lineas: {
           include: {
-            perfil: { select: { id: true, nombre: true, categoria: true } },
+            perfil: { select: { id: true, nombre: true, categoria: true, nivel: true } },
           },
         },
         _count: { select: { lineas: true, proyectos: true } },
@@ -121,7 +122,7 @@ export class TarifariosService {
         contrato: { select: { id: true, nombre: true } },
         lineas: {
           include: {
-            perfil: { select: { id: true, nombre: true, categoria: true } },
+            perfil: { select: { id: true, nombre: true, categoria: true, nivel: true } },
           },
         },
         _count: { select: { lineas: true, proyectos: true } },
@@ -199,7 +200,7 @@ export class TarifariosService {
         cliente: { select: { id: true, nombre: true } },
         lineas: {
           include: {
-            perfil: { select: { id: true, nombre: true, categoria: true } },
+            perfil: { select: { id: true, nombre: true, categoria: true, nivel: true } },
           },
         },
         _count: { select: { lineas: true, proyectos: true } },
@@ -207,5 +208,47 @@ export class TarifariosService {
     });
 
     return newTarifario;
+  }
+
+  /**
+   * Update a single linea tarifario
+   */
+  async updateLinea(lineaId: string, dto: UpdateLineaTarifarioDto) {
+    const linea = await this.prisma.lineaTarifario.findUnique({
+      where: { id: lineaId },
+    });
+
+    if (!linea) {
+      throw new NotFoundException(`Linea tarifario with ID ${lineaId} not found`);
+    }
+
+    const updated = await this.prisma.lineaTarifario.update({
+      where: { id: lineaId },
+      data: dto,
+      include: {
+        perfil: { select: { id: true, nombre: true, categoria: true, nivel: true } },
+      },
+    });
+
+    return updated;
+  }
+
+  /**
+   * Delete a single linea tarifario
+   */
+  async deleteLinea(lineaId: string) {
+    const linea = await this.prisma.lineaTarifario.findUnique({
+      where: { id: lineaId },
+    });
+
+    if (!linea) {
+      throw new NotFoundException(`Linea tarifario with ID ${lineaId} not found`);
+    }
+
+    await this.prisma.lineaTarifario.delete({
+      where: { id: lineaId },
+    });
+
+    return { success: true };
   }
 }
