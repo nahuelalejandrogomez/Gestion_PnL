@@ -1,4 +1,4 @@
-import { Moneda, EstadoTarifario, UnidadTarifaria } from '@prisma/client';
+import { Moneda, EstadoTarifario, UnidadTarifaria, NivelPerfil } from '@prisma/client';
 
 export class LineaTarifarioDto {
   id: string;
@@ -11,6 +11,7 @@ export class LineaTarifarioDto {
     id: string;
     nombre: string;
     categoria: string;
+    nivel: NivelPerfil | null;
   };
   createdAt: Date;
   updatedAt: Date;

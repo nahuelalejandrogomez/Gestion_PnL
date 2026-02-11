@@ -23,7 +23,7 @@ import { ClienteForm } from './ClienteForm';
 import { ContratosSection } from '@/features/contratos/components/ContratosSection';
 import { ProyectosTable } from '@/features/proyectos';
 import { ClienteRevenueTab } from '@/features/revenue';
-import { TarifariosTab } from '@/features/tarifarios';
+import { TarifariosTab, useTarifarios } from '@/features/tarifarios';
 import { useState } from 'react';
 import type { UpdateClienteDto } from '../types/cliente.types';
 
@@ -32,6 +32,7 @@ export function ClienteDetail() {
   const navigate = useNavigate();
   const { data: cliente, isLoading, error } = useCliente(id);
   const { updateCliente, deleteCliente } = useClienteMutations();
+  const { data: tarifariosData } = useTarifarios({ clienteId: id, estado: 'ACTIVO' });
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const handleUpdate = (data: UpdateClienteDto) => {
@@ -223,7 +224,7 @@ export function ClienteDetail() {
             className="flex items-center gap-2 data-[state=active]:bg-stone-100 data-[state=active]:text-stone-800 rounded-md px-4"
           >
             <Receipt className="h-4 w-4" />
-            Tarifarios
+            Tarifarios ({tarifariosData?.total || 0})
           </TabsTrigger>
           <TabsTrigger
             value="revenue"

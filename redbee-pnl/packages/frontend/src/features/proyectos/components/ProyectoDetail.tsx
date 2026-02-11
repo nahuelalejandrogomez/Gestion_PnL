@@ -24,7 +24,7 @@ import { ProyectoForm } from './ProyectoForm';
 import { AsignacionesPlanner } from '@/features/asignaciones';
 import { ProyectoPnlResumen } from '@/features/pnl';
 import { ProyectoPlanLineasGrid } from '@/features/planLineas';
-import { ProyectoPresupuestoGrid } from '@/features/presupuesto';
+import { ProyectoTarifarioPlanGrid } from '@/features/proyecto-tarifario-plan';
 import type { UpdateProyectoDto } from '../types/proyecto.types';
 
 const tipoLabels: Record<string, string> = {
@@ -268,7 +268,7 @@ export function ProyectoDetail() {
             className="flex items-center gap-2 data-[state=active]:bg-stone-100 data-[state=active]:text-stone-800 rounded-md px-4"
           >
             <Receipt className="h-4 w-4" />
-            Presupuesto
+            Tarifario
           </TabsTrigger>
           <TabsTrigger
             value="pnl"
@@ -334,7 +334,7 @@ export function ProyectoDetail() {
         </TabsContent>
 
         <TabsContent value="presupuesto" className="mt-6">
-          <ProyectoPresupuestoGrid proyectoId={proyecto.id} clienteId={proyecto.clienteId} />
+          <ProyectoTarifarioPlanGrid proyectoId={proyecto.id} clienteId={proyecto.clienteId} />
         </TabsContent>
 
         <TabsContent value="pnl" className="mt-6">

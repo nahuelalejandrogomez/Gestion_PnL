@@ -181,6 +181,7 @@ model Proyecto {
   lineasPnL        LineaPnL[]
   skillsRequeridos ProyectoSkillRequerido[]
   presupuestos     ProyectoPresupuesto[]
+  tarifarioPlans   ProyectoTarifarioPlan[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -230,10 +231,11 @@ model Tarifario {
   estado             EstadoTarifario @default(ACTIVO)
   notas              String?         @db.Text
 
-  cliente   Cliente?         @relation(fields: [clienteId], references: [id])
-  contrato  Contrato?        @relation(fields: [contratoId], references: [id])
-  lineas    LineaTarifario[]
-  proyectos Proyecto[]
+  cliente        Cliente?                   @relation(fields: [clienteId], references: [id])
+  contrato       Contrato?                  @relation(fields: [contratoId], references: [id])
+  lineas         LineaTarifario[]
+  proyectos      Proyecto[]
+  proyectoPlans  ProyectoTarifarioPlan[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -250,8 +252,9 @@ model LineaTarifario {
   unidad      UnidadTarifaria @default(MES)
   moneda      Moneda?
 
-  tarifario Tarifario @relation(fields: [tarifarioId], references: [id], onDelete: Cascade)
-  perfil    Perfil    @relation(fields: [perfilId], references: [id])
+  tarifario  Tarifario                     @relation(fields: [tarifarioId], references: [id], onDelete: Cascade)
+  perfil     Perfil                        @relation(fields: [perfilId], references: [id])
+  planLineas ProyectoTarifarioPlanLinea[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -707,6 +710,64 @@ model ProyectoPresupuestoMes {
   @@unique([presupuestoId, month])
   @@index([presupuestoId])
   @@map("proyecto_presupuesto_meses")
+}
+
+// ============================================
+// PROYECTO TARIFARIO PLAN (Monthly Planning by Perfil+Seniority)
+// ============================================
+
+model ProyectoTarifarioPlan {
+  id          String   @id @default(uuid())
+  proyectoId  String
+  tarifarioId String
+  year        Int
+
+  proyecto  Proyecto  @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  tarifario Tarifario @relation(fields: [tarifarioId], references: [id])
+  lineas    ProyectoTarifarioPlanLinea[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([proyectoId, tarifarioId, year])
+  @@index([proyectoId, year])
+  @@map("proyecto_tarifario_plans")
+}
+
+model ProyectoTarifarioPlanLinea {
+  id               String  @id @default(uuid())
+  planId           String
+  lineaTarifarioId String
+  rateSnapshot     Decimal @db.Decimal(15, 2)
+  monedaSnapshot   Moneda
+
+  plan           ProyectoTarifarioPlan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  lineaTarifario LineaTarifario            @relation(fields: [lineaTarifarioId], references: [id])
+  meses          ProyectoTarifarioPlanMes[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([planId, lineaTarifarioId])
+  @@index([planId])
+  @@map("proyecto_tarifario_plan_lineas")
+}
+
+model ProyectoTarifarioPlanMes {
+  id         String  @id @default(uuid())
+  lineaId    String
+  month      Int
+  cantidad   Decimal @default(0) @db.Decimal(10, 2)
+  isOverride Boolean @default(false)
+
+  linea ProyectoTarifarioPlanLinea @relation(fields: [lineaId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([lineaId, month])
+  @@index([lineaId])
+  @@map("proyecto_tarifario_plan_meses")
 }
 
 // ============================================
