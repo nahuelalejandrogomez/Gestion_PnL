@@ -58,7 +58,7 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
   };
 
   const handleCellClick = (lineaTarifarioId: string, month: number, currentValue: number) => {
-    const key = `${lineaTarifarioId}-${month}`;
+    const key = `${lineaTarifarioId}|${month}`;
     setEditingCell(key);
     setEditValue(currentValue.toString());
   };
@@ -71,7 +71,7 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
         return;
       }
 
-      const key = `${lineaTarifarioId}-${month}`;
+      const key = `${lineaTarifarioId}|${month}`;
       const newDirty = new Map(dirtyCells);
       newDirty.set(key, newValue);
       setDirtyCells(newDirty);
@@ -92,7 +92,7 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
     if (!plan || dirtyCells.size === 0) return;
 
     const meses = Array.from(dirtyCells.entries()).map(([key, cantidad]) => {
-      const [lineaTarifarioId, monthStr] = key.split('-');
+      const [lineaTarifarioId, monthStr] = key.split('|');
       return {
         lineaTarifarioId,
         month: parseInt(monthStr),
@@ -117,7 +117,7 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
   };
 
   const getCellValue = (lineaTarifarioId: string, month: number): number => {
-    const key = `${lineaTarifarioId}-${month}`;
+    const key = `${lineaTarifarioId}|${month}`;
     if (dirtyCells.has(key)) {
       return dirtyCells.get(key)!;
     }
