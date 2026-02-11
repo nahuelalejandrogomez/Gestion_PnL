@@ -1,6 +1,7 @@
-import { Controller, Get, Put, Param, Query, Body } from '@nestjs/common';
+import { Controller, Get, Put, Post, Param, Query, Body } from '@nestjs/common';
 import { PresupuestoService } from './presupuesto.service';
 import { UpdatePresupuestoDto } from './dto/update-presupuesto.dto';
+import { AplicarClientePresupuestoDto } from './dto/aplicar-cliente-presupuesto.dto';
 
 @Controller('proyectos/:proyectoId/presupuesto')
 export class PresupuestoController {
@@ -23,5 +24,15 @@ export class PresupuestoController {
   ) {
     const yearNum = year ? Number(year) : new Date().getFullYear();
     return this.presupuestoService.updatePresupuesto(proyectoId, yearNum, dto || {});
+  }
+
+  @Post('aplicar')
+  aplicarClientePresupuesto(
+    @Param('proyectoId') proyectoId: string,
+    @Body() dto: AplicarClientePresupuestoDto,
+    @Query('year') year?: string,
+  ) {
+    const yearNum = year ? Number(year) : new Date().getFullYear();
+    return this.presupuestoService.aplicarClientePresupuesto(proyectoId, yearNum, dto);
   }
 }

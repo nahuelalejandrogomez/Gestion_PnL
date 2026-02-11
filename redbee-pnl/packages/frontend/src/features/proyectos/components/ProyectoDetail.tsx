@@ -334,7 +334,7 @@ export function ProyectoDetail() {
         </TabsContent>
 
         <TabsContent value="presupuesto" className="mt-6">
-          <ProyectoPresupuestoGrid proyectoId={proyecto.id} />
+          <ProyectoPresupuestoGrid proyectoId={proyecto.id} clienteId={proyecto.clienteId} />
         </TabsContent>
 
         <TabsContent value="pnl" className="mt-6">

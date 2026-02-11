@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UpdatePresupuestoDto } from './dto/update-presupuesto.dto';
+import { AplicarClientePresupuestoDto } from './dto/aplicar-cliente-presupuesto.dto';
 import { Moneda } from '@prisma/client';
 
 @Injectable()
@@ -212,6 +213,110 @@ export class PresupuestoService {
         isOverride: true,
       },
     });
+
+    // Return updated presupuesto
+    return this.getPresupuesto(proyectoId, year);
+  }
+
+  /**
+   * Apply cliente presupuesto to proyecto (from current month to Dec)
+   */
+  async aplicarClientePresupuesto(
+    proyectoId: string,
+    year: number,
+    dto: AplicarClientePresupuestoDto,
+  ) {
+    // Validations
+    if (year < 2020 || year > 2050) {
+      throw new BadRequestException('Year must be between 2020 and 2050');
+    }
+
+    // Get proyecto with cliente
+    const proyecto = await this.prisma.proyecto.findUnique({
+      where: { id: proyectoId },
+      include: { cliente: true },
+    });
+
+    if (!proyecto) {
+      throw new NotFoundException(`Proyecto with ID ${proyectoId} not found`);
+    }
+
+    // Get cliente presupuesto
+    const clientePresupuesto = await this.prisma.clientePresupuesto.findUnique({
+      where: { id: dto.clientePresupuestoId },
+      include: {
+        meses: {
+          where: { year },
+          orderBy: { month: 'asc' },
+        },
+        cliente: true,
+      },
+    });
+
+    if (!clientePresupuesto) {
+      throw new NotFoundException(
+        `Cliente presupuesto with ID ${dto.clientePresupuestoId} not found`,
+      );
+    }
+
+    // Validate that proyecto belongs to the same cliente as the presupuesto
+    if (proyecto.clienteId !== clientePresupuesto.clienteId) {
+      throw new BadRequestException(
+        'The proyecto does not belong to the cliente of the selected presupuesto',
+      );
+    }
+
+    // Determine starting month (default to current month)
+    const currentMonth = new Date().getMonth() + 1; // 1-12
+    const fromMonth = dto.fromMonth || currentMonth;
+
+    // Get or create proyecto presupuesto
+    let proyectoPresupuesto = await this.prisma.proyectoPresupuesto.findUnique({
+      where: {
+        proyectoId_year: { proyectoId, year },
+      },
+    });
+
+    if (!proyectoPresupuesto) {
+      proyectoPresupuesto = await this.createPresupuesto(proyectoId, year);
+    }
+
+    // Build a map of cliente presupuesto months
+    const clienteMesesMap = new Map<number, number>();
+    for (const mes of clientePresupuesto.meses) {
+      clienteMesesMap.set(mes.month, Number(mes.amount));
+    }
+
+    // Update proyecto presupuesto months from fromMonth to 12
+    const monthsToUpdate: Array<{ month: number; amount: number }> = [];
+    for (let month = fromMonth; month <= 12; month++) {
+      const amount = clienteMesesMap.get(month) || 0;
+      monthsToUpdate.push({ month, amount });
+    }
+
+    // Apply updates in transaction
+    await this.prisma.$transaction(
+      monthsToUpdate.map((mesUpdate) =>
+        this.prisma.proyectoPresupuestoMes.upsert({
+          where: {
+            presupuestoId_month: {
+              presupuestoId: proyectoPresupuesto.id,
+              month: mesUpdate.month,
+            },
+          },
+          update: {
+            amount: mesUpdate.amount,
+            isOverride: true,
+          },
+          create: {
+            presupuestoId: proyectoPresupuesto.id,
+            month: mesUpdate.month,
+            amount: mesUpdate.amount,
+            isOverride: true,
+          },
+        }),
+      ),
+    );
 
     // Return updated presupuesto
     return this.getPresupuesto(proyectoId, year);

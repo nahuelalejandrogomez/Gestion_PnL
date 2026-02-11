@@ -14,6 +14,7 @@ import { ContratosModule } from './modules/contratos/contratos.module';
 import { RevenueModule } from './modules/revenue/revenue.module';
 import { PlanLineasModule } from './modules/plan-lineas/plan-lineas.module';
 import { PresupuestoModule } from './modules/presupuesto/presupuesto.module';
+import { ClientePresupuestosModule } from './modules/cliente-presupuestos/cliente-presupuestos.module';
 import { AdminModule } from './admin/admin.module';
 
 @Module({
@@ -32,6 +33,7 @@ import { AdminModule } from './admin/admin.module';
     RevenueModule,
     PlanLineasModule,
     PresupuestoModule,
+    ClientePresupuestosModule,
     AdminModule,
   ],
   controllers: [AppController],

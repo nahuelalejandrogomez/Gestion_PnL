@@ -4,7 +4,19 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { useProyectoPresupuesto, useUpdatePresupuesto } from '../hooks/useProyectoPresupuesto';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useProyectoPresupuesto, useUpdatePresupuesto, useClientePresupuestos, useAplicarClientePresupuesto } from '../hooks/useProyectoPresupuesto';
 
 const MONTH_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
@@ -21,15 +33,20 @@ function formatCurrency(value: number, currency: string): string {
 
 interface Props {
   proyectoId: string;
+  clienteId: string;
 }
 
-export function ProyectoPresupuestoGrid({ proyectoId }: Props) {
+export function ProyectoPresupuestoGrid({ proyectoId, clienteId }: Props) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [editingMonth, setEditingMonth] = useState<number | null>(null);
   const [editValue, setEditValue] = useState<string>('');
+  const [selectedPresupuestoId, setSelectedPresupuestoId] = useState<string>('');
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   const { data, isLoading } = useProyectoPresupuesto(proyectoId, year);
   const updateMutation = useUpdatePresupuesto();
+  const { data: clientePresupuestos, isLoading: isLoadingPresupuestos } = useClientePresupuestos(clienteId, year);
+  const aplicarMutation = useAplicarClientePresupuesto();
 
   const handleYearChange = (delta: number) => {
     setYear((prev) => prev + delta);
@@ -74,6 +91,35 @@ export function ProyectoPresupuestoGrid({ proyectoId }: Props) {
   const handleBlur = (month: number) => {
     handleSave(month);
   };
+
+  const handleAplicarClick = () => {
+    if (!selectedPresupuestoId) return;
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmAplicar = () => {
+    if (!selectedPresupuestoId) return;
+
+    aplicarMutation.mutate(
+      {
+        proyectoId,
+        year,
+        dto: {
+          clientePresupuestoId: selectedPresupuestoId,
+        },
+      },
+      {
+        onSuccess: () => {
+          setShowConfirmDialog(false);
+        },
+      }
+    );
+  };
+
+  // Get current month name for confirmation dialog
+  const currentMonth = new Date().getMonth();
+  const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  const currentMonthName = monthNames[currentMonth];
 
   if (isLoading) {
     return (
@@ -137,6 +183,47 @@ export function ProyectoPresupuestoGrid({ proyectoId }: Props) {
       </CardHeader>
 
       <CardContent>
+        {/* Selector de presupuesto del cliente */}
+        <div className="mb-6 p-4 bg-stone-50 rounded-lg border border-stone-200">
+          <div className="flex items-end gap-3">
+            <div className="flex-1">
+              <Label htmlFor="cliente-presupuesto" className="text-sm font-medium text-stone-700 mb-2 block">
+                Presupuesto del cliente
+              </Label>
+              <Select value={selectedPresupuestoId} onValueChange={setSelectedPresupuestoId}>
+                <SelectTrigger id="cliente-presupuesto" className="w-full">
+                  <SelectValue placeholder={isLoadingPresupuestos ? "Cargando..." : "Seleccionar presupuesto"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {clientePresupuestos && clientePresupuestos.length > 0 ? (
+                    clientePresupuestos
+                      .filter((p) => p.estado === 'ACTIVO')
+                      .map((presupuesto) => (
+                        <SelectItem key={presupuesto.id} value={presupuesto.id}>
+                          {presupuesto.nombre} • {presupuesto.moneda}
+                        </SelectItem>
+                      ))
+                  ) : (
+                    <SelectItem value="none" disabled>
+                      No hay presupuestos disponibles
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              onClick={handleAplicarClick}
+              disabled={!selectedPresupuestoId || aplicarMutation.isPending}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {aplicarMutation.isPending ? 'Aplicando...' : 'Aplicar'}
+            </Button>
+          </div>
+          <p className="text-xs text-stone-500 mt-2">
+            Se aplicarán los montos desde {currentMonthName} hasta Dic. Los meses previos no se modificarán.
+          </p>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
@@ -211,6 +298,35 @@ export function ProyectoPresupuestoGrid({ proyectoId }: Props) {
           </div>
         </div>
       </CardContent>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent className="border-stone-200">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-stone-800">
+              ¿Aplicar presupuesto del cliente?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-stone-500">
+              Esto completará los meses desde <strong>{currentMonthName}</strong> hasta <strong>Dic</strong> con los valores del presupuesto seleccionado.
+              <br />
+              <br />
+              Los meses previos no se modificarán. Los valores aplicados se marcarán como editados manualmente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-stone-200 text-stone-600">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmAplicar}
+              className="bg-blue-600 text-white hover:bg-blue-700"
+              disabled={aplicarMutation.isPending}
+            >
+              {aplicarMutation.isPending ? 'Aplicando...' : 'Aplicar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

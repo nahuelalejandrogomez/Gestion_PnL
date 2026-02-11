@@ -145,10 +145,11 @@ model Cliente {
   horasBaseMes      Int           @default(160)
   notas             String?       @db.Text
 
-  proyectos  Proyecto[]
-  contratos  Contrato[]
-  objetivos  Objetivo[]
-  tarifarios Tarifario[]
+  proyectos    Proyecto[]
+  contratos    Contrato[]
+  objetivos    Objetivo[]
+  tarifarios   Tarifario[]
+  presupuestos ClientePresupuesto[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -639,6 +640,40 @@ model ForecastScenario {
 // ============================================
 // PRESUPUESTO (BUDGET/REVENUE PLANIFICADO)
 // ============================================
+
+model ClientePresupuesto {
+  id        String  @id @default(uuid())
+  clienteId String
+  nombre    String
+  moneda    Moneda  @default(USD)
+  estado    String  @default("ACTIVO") // ACTIVO, INACTIVO
+
+  cliente Cliente                  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  meses   ClientePresupuestoMes[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clienteId])
+  @@map("cliente_presupuestos")
+}
+
+model ClientePresupuestoMes {
+  id             String  @id @default(uuid())
+  presupuestoId  String
+  year           Int
+  month          Int
+  amount         Decimal @default(0) @db.Decimal(12, 2)
+
+  presupuesto ClientePresupuesto @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([presupuestoId, year, month])
+  @@index([presupuestoId])
+  @@map("cliente_presupuesto_meses")
+}
 
 model ProyectoPresupuesto {
   id         String   @id @default(uuid())
