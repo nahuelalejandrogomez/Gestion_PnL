@@ -29,6 +29,7 @@ export interface PlanLineaInput {
 
 export interface UpsertPlanLineasDto {
   year: number;
+  tarifarioId?: string; // Tarifario del cliente usado para Revenue Plan
   lineas: PlanLineaInput[];
   deletedLineaIds?: string[];
 }

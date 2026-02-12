@@ -107,6 +107,14 @@ export class PlanLineasService {
     }
 
     await this.prisma.$transaction(async (tx) => {
+      // 0. Update proyecto.tarifarioRevenuePlanId if tarifarioId provided
+      if (dto.tarifarioId) {
+        await tx.proyecto.update({
+          where: { id: proyectoId },
+          data: { tarifarioRevenuePlanId: dto.tarifarioId },
+        });
+      }
+
       // 1. Delete marked lineas (soft delete)
       if (dto.deletedLineaIds && dto.deletedLineaIds.length > 0) {
         await tx.proyectoPlanLinea.updateMany({

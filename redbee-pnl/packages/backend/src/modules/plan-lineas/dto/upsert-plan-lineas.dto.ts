@@ -46,6 +46,10 @@ export class UpsertPlanLineasDto {
   @Max(2050)
   year: number;
 
+  @IsUUID()
+  @IsOptional()
+  tarifarioId?: string; // Tarifario del cliente usado para Revenue Plan
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => PlanLineaDto)

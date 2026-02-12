@@ -31,17 +31,30 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedCurrency, setSelectedCurrency] = useState<'USD' | 'ARS'>('USD');
+  const [selectedTarifarioId, setSelectedTarifarioId] = useState<string>('');
   const [dirtyLineas, setDirtyLineas] = useState<Map<string, PlanLinea>>(new Map());
   const [deletedLineaIds, setDeletedLineaIds] = useState<string[]>([]);
 
   const { data: proyecto } = useProyecto(proyectoId);
   const { data: planData, isLoading: isLoadingPlan } = usePlanLineas(proyectoId, selectedYear);
   const { data: perfilesData } = usePerfiles({ page: 1, limit: 100 });
-  const { data: tarifariosData } = useTarifarios(proyecto?.clienteId ? { clienteId: proyecto.clienteId } : undefined);
+  const { data: tarifariosData } = useTarifarios(proyecto?.clienteId ? { clienteId: proyecto.clienteId, estado: 'ACTIVO' } : undefined);
   const { data: fxData } = useFxRates(selectedYear);
   const { upsertPlanLineas } = usePlanLineasMutations(proyectoId);
 
   const [localLineas, setLocalLineas] = useState<PlanLinea[]>([]);
+
+  // Initialize selectedTarifarioId: proyecto.tarifarioRevenuePlanId || proyecto.tarifarioId || first ACTIVO tarifario
+  useEffect(() => {
+    if (proyecto && tarifariosData?.items) {
+      // Priority: tarifarioRevenuePlanId > tarifarioId > first ACTIVO
+      const tarifs = tarifariosData.items.filter((t) => t.estado === 'ACTIVO');
+      const defaultId = (proyecto as any).tarifarioRevenuePlanId || proyecto.tarifarioId || tarifs[0]?.id || '';
+      if (defaultId && !selectedTarifarioId) {
+        setSelectedTarifarioId(defaultId);
+      }
+    }
+  }, [proyecto, tarifariosData, selectedTarifarioId]);
 
   // Initialize local lineas when plan data loads
   useEffect(() => {
@@ -56,40 +69,88 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
   const tarifarios = tarifariosData?.items || [];
   const fxMap = fxData ? buildFxMap(fxData.rates) : {};
 
-  // Get tarifario lineas for rate lookup
-  const tarifario = tarifarios.find((t) => t.id === proyecto?.tarifarioId);
-  const rateMap = new Map<string, { rate: number; moneda: 'USD' | 'ARS' }>();
+  // Get selected tarifario lineas for rate lookup
+  const tarifario = tarifarios.find((t) => t.id === selectedTarifarioId);
+  const rateMap = new Map<string, { rate: number; moneda: 'USD' | 'ARS'; perfilNivel: string | null }>();
   if (tarifario?.lineas) {
     for (const linea of tarifario.lineas) {
       if (linea.perfil?.id) {
         rateMap.set(linea.perfil.id, {
           rate: Number(linea.rate),
           moneda: linea.moneda || tarifario.moneda,
+          perfilNivel: linea.perfil.nivel,
         });
       }
     }
   }
 
-  // Filter perfiles to only those in the assigned tarifario
+  // Filter perfiles to only those in the selected tarifario
   const availablePerfiles = tarifario?.lineas
     ?.map((linea) => linea.perfil)
     .filter((perfil): perfil is NonNullable<typeof perfil> => perfil != null) || [];
   const availablePerfilIds = new Set(availablePerfiles.map((p) => p.id));
   const perfilesForSelector = perfiles.filter((p) => availablePerfilIds.has(p.id));
 
+  // Get vigencia range for selected tarifario
+  const getVigenciaRange = () => {
+    if (!tarifario) return null;
+
+    const vigenciaDesde = new Date(tarifario.fechaVigenciaDesde);
+    const vigenciaHasta = tarifario.fechaVigenciaHasta
+      ? new Date(tarifario.fechaVigenciaHasta)
+      : new Date(vigenciaDesde.getFullYear(), 11, 31);
+
+    const yearDesde = vigenciaDesde.getFullYear();
+    const yearHasta = vigenciaHasta.getFullYear();
+
+    if (selectedYear < yearDesde || selectedYear > yearHasta) {
+      return null;
+    }
+
+    let mesInicio: number;
+    let mesFin: number;
+
+    if (selectedYear === yearDesde && selectedYear === yearHasta) {
+      mesInicio = vigenciaDesde.getMonth() + 1;
+      mesFin = vigenciaHasta.getMonth() + 1;
+    } else if (selectedYear === yearDesde) {
+      mesInicio = vigenciaDesde.getMonth() + 1;
+      mesFin = 12;
+    } else if (selectedYear === yearHasta) {
+      mesInicio = 1;
+      mesFin = vigenciaHasta.getMonth() + 1;
+    } else {
+      mesInicio = 1;
+      mesFin = 12;
+    }
+
+    return { mesInicio, mesFin };
+  };
+
+  const vigenciaRange = getVigenciaRange();
+
   const yearOptions = Array.from({ length: 6 }, (_, i) => currentYear - 2 + i);
 
+  // Check for duplicates: Perfil + Seniority
+  const isDuplicatePerfilSeniority = (perfilId: string, excludeLineaId?: string): boolean => {
+    const rateInfo = rateMap.get(perfilId);
+    const seniority = rateInfo?.perfilNivel || null;
+    return localLineas.some((l) => {
+      if (excludeLineaId && l.id === excludeLineaId) return false;
+      return l.perfilId === perfilId && l.perfilNivel === seniority;
+    });
+  };
+
   const handleAddLinea = () => {
-    if (!proyecto?.tarifarioId) {
-      toast.error('Proyecto sin tarifario asignado. Asigna un tarifario para agregar líneas.');
+    if (!selectedTarifarioId) {
+      toast.error('Seleccioná un tarifario del cliente para agregar líneas.');
       return;
     }
 
-    // Auto-fill months from current month to Dec with 0
-    const currentMonth = new Date().getMonth() + 1; // 1-12
+    // Auto-fill months within vigencia with 0
     const meses: Record<number, number> = {};
-    if (selectedYear === currentYear) {
-      for (let month = currentMonth; month <= 12; month++) {
+    if (vigenciaRange) {
+      for (let month = vigenciaRange.mesInicio; month <= vigenciaRange.mesFin; month++) {
         meses[month] = 0;
       }
     }
@@ -111,8 +172,8 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
   };
 
   const handleImportFromTarifario = () => {
-    if (!proyecto?.tarifarioId) {
-      toast.error('Proyecto sin tarifario asignado. Asigna un tarifario para importar líneas.');
+    if (!selectedTarifarioId) {
+      toast.error('Seleccioná un tarifario del cliente para importar líneas.');
       return;
     }
 
@@ -121,23 +182,27 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
       return;
     }
 
-    // Auto-fill months from current month to Dec with 0
-    const currentMonth = new Date().getMonth() + 1; // 1-12
+    // Auto-fill months within vigencia with 0
     const meses: Record<number, number> = {};
-    if (selectedYear === currentYear) {
-      for (let month = currentMonth; month <= 12; month++) {
+    if (vigenciaRange) {
+      for (let month = vigenciaRange.mesInicio; month <= vigenciaRange.mesFin; month++) {
         meses[month] = 0;
       }
     }
 
-    // Create new lineas for all tarifario lineas (avoiding duplicates)
-    const existingPerfilIds = new Set(localLineas.map((l) => l.perfilId));
+    // Create new lineas for all tarifario lineas (avoiding duplicates by Perfil+Seniority)
     const newLineas: PlanLinea[] = [];
     let addedCount = 0;
+    let skippedCount = 0;
 
     for (const lineaTarifario of tarifario.lineas) {
       if (!lineaTarifario.perfil) continue;
-      if (existingPerfilIds.has(lineaTarifario.perfil.id)) continue; // Skip duplicates
+
+      // Check duplicate by Perfil + Seniority
+      if (isDuplicatePerfilSeniority(lineaTarifario.perfil.id)) {
+        skippedCount++;
+        continue;
+      }
 
       const newLinea: PlanLinea = {
         id: `temp-${Date.now()}-${addedCount}`,
@@ -154,7 +219,11 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
     }
 
     if (newLineas.length === 0) {
-      toast.info('Todas las líneas del tarifario ya están agregadas.');
+      if (skippedCount > 0) {
+        toast.info('Todas las líneas del tarifario ya están agregadas (Perfil+Seniority duplicados).');
+      } else {
+        toast.info('No hay líneas nuevas para importar.');
+      }
       return;
     }
 
@@ -163,7 +232,7 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
     newLineas.forEach((linea) => updated.set(linea.id, linea));
     setDirtyLineas(updated);
 
-    toast.success(`${newLineas.length} línea(s) importada(s) desde tarifario.`);
+    toast.success(`${newLineas.length} línea(s) importada(s) desde tarifario${skippedCount > 0 ? ` (${skippedCount} duplicada(s) omitida(s))` : ''}.`);
   };
 
   const handleRemoveLinea = (id: string) => {
@@ -181,6 +250,12 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
   const handlePerfilChange = (lineaId: string, perfilId: string) => {
     const perfil = perfiles.find((p) => p.id === perfilId);
     if (!perfil) return;
+
+    // Check duplicate before allowing change
+    if (isDuplicatePerfilSeniority(perfilId, lineaId)) {
+      toast.error('Ya existe una línea con este Perfil y Seniority.');
+      return;
+    }
 
     const updated = localLineas.map((l) =>
       l.id === lineaId
@@ -223,6 +298,11 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
   };
 
   const handleSave = () => {
+    if (!selectedTarifarioId) {
+      toast.error('Seleccioná un tarifario antes de guardar.');
+      return;
+    }
+
     const lineasToSave = Array.from(dirtyLineas.values()).map((linea) => ({
       id: linea.id.startsWith('temp-') ? undefined : linea.id,
       perfilId: linea.perfilId,
@@ -235,6 +315,7 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
 
     upsertPlanLineas.mutate({
       year: selectedYear,
+      tarifarioId: selectedTarifarioId, // Send selected tarifario
       lineas: lineasToSave,
       deletedLineaIds: deletedLineaIds.length > 0 ? deletedLineaIds : undefined,
     });
@@ -248,7 +329,7 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
     const rateInfo = rateMap.get(linea.perfilId);
     if (!rateInfo) return 0;
 
-    // revenue = ftes * rate (FTE_MES rate)
+    // revenue = ftes * rate (MONTHLY rate, not hourly)
     return ftes * rateInfo.rate;
   };
 
@@ -280,8 +361,14 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
 
   // Check warnings
   const warnings: string[] = [];
-  if (!proyecto?.tarifarioId) {
-    warnings.push('Proyecto sin tarifario asignado');
+  if (!selectedTarifarioId) {
+    if (!proyecto?.clienteId) {
+      warnings.push('Proyecto sin cliente asignado');
+    } else if (tarifarios.length === 0) {
+      warnings.push('El cliente no tiene tarifarios activos');
+    } else {
+      warnings.push('Seleccioná un tarifario del cliente para cargar FTEs');
+    }
   } else {
     const perfilesSinRate = new Set<string>();
     for (const linea of localLineas) {
@@ -295,6 +382,12 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
   }
 
   const hasDirtyChanges = dirtyLineas.size > 0 || deletedLineaIds.length > 0;
+
+  // Check if month is enabled (within vigencia)
+  const isMonthEnabled = (month: number): boolean => {
+    if (!vigenciaRange) return false;
+    return month >= vigenciaRange.mesInicio && month <= vigenciaRange.mesFin;
+  };
 
   if (isLoadingPlan) {
     return (
@@ -320,7 +413,7 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
               Revenue Plan
             </CardTitle>
             <CardDescription className="text-stone-500">
-              Proyección de revenue mensual usando tarifario asignado
+              Proyección de revenue mensual por perfil + seniority
             </CardDescription>
           </div>
           <div className="flex items-center gap-3">
@@ -352,7 +445,7 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
             {/* Save Button */}
             <Button
               onClick={handleSave}
-              disabled={!hasDirtyChanges || upsertPlanLineas.isPending}
+              disabled={!hasDirtyChanges || upsertPlanLineas.isPending || !selectedTarifarioId}
               className="bg-stone-800 hover:bg-stone-700"
             >
               <Save className="mr-2 h-4 w-4" />
@@ -361,15 +454,43 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
           </div>
         </div>
 
-        {/* Tarifario Info */}
-        {tarifario && (
-          <div className="mt-4">
-            <p className="text-sm text-stone-600">
-              Tarifario: <span className="font-medium">{tarifario.nombre}</span>{' '}
-              <Badge variant="outline" className="ml-2">{tarifario.moneda}</Badge>
+        {/* Tarifario Selector */}
+        <div className="mt-4">
+          <label className="text-sm font-medium text-stone-700 mb-1.5 block">
+            Tarifario del Cliente
+          </label>
+          <Select value={selectedTarifarioId} onValueChange={setSelectedTarifarioId}>
+            <SelectTrigger className="w-full max-w-md border-stone-200">
+              <SelectValue placeholder="Seleccionar tarifario..." />
+            </SelectTrigger>
+            <SelectContent>
+              {tarifarios.length === 0 ? (
+                <div className="px-2 py-1.5 text-sm text-stone-500">
+                  No hay tarifarios activos
+                </div>
+              ) : (
+                tarifarios.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    <div className="flex items-center gap-2">
+                      <span>{t.nombre}</span>
+                      <Badge variant="outline" className="text-xs">{t.moneda}</Badge>
+                      <span className="text-xs text-stone-500">
+                        ({new Date(t.fechaVigenciaDesde).toLocaleDateString('es-AR')} -{' '}
+                        {t.fechaVigenciaHasta ? new Date(t.fechaVigenciaHasta).toLocaleDateString('es-AR') : 'indefinido'})
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+          {vigenciaRange && (
+            <p className="text-xs text-stone-500 mt-2">
+              Meses activos: <strong>{MONTH_NAMES[vigenciaRange.mesInicio - 1]}</strong> a{' '}
+              <strong>{MONTH_NAMES[vigenciaRange.mesFin - 1]}</strong> {selectedYear}
             </p>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Warnings */}
         {warnings.length > 0 && (
@@ -393,11 +514,23 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Button onClick={handleImportFromTarifario} variant="outline" size="sm" className="border-stone-200">
+              <Button
+                onClick={handleImportFromTarifario}
+                variant="outline"
+                size="sm"
+                className="border-stone-200"
+                disabled={!selectedTarifarioId}
+              >
                 <Download className="h-4 w-4 mr-2" />
                 Importar desde tarifario
               </Button>
-              <Button onClick={handleAddLinea} variant="outline" size="sm" className="border-stone-200">
+              <Button
+                onClick={handleAddLinea}
+                variant="outline"
+                size="sm"
+                className="border-stone-200"
+                disabled={!selectedTarifarioId}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Agregar Línea
               </Button>
@@ -410,9 +543,14 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
                 <tr className="border-b-2 border-stone-200">
                   <th className="text-left py-3 px-2 font-semibold text-stone-700 min-w-[180px]">Perfil</th>
                   <th className="text-left py-3 px-2 font-semibold text-stone-700 min-w-[80px]">Seniority</th>
+                  <th className="text-right py-3 px-2 font-semibold text-stone-700 min-w-[100px]">Rate</th>
+                  <th className="text-center py-3 px-2 font-semibold text-stone-700 min-w-[60px]">Moneda</th>
                   <th className="text-left py-3 px-2 font-semibold text-stone-700 min-w-[120px]">Nombre</th>
                   {MONTH_NAMES.map((month, idx) => (
-                    <th key={idx} className="text-right py-3 px-2 font-semibold text-stone-700 min-w-[70px]">
+                    <th
+                      key={idx}
+                      className={`text-right py-3 px-2 font-semibold text-stone-700 min-w-[70px] ${!isMonthEnabled(idx + 1) ? 'bg-stone-100 text-stone-400' : ''}`}
+                    >
                       {month}
                     </th>
                   ))}
@@ -423,90 +561,118 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
               <tbody>
                 {localLineas.length === 0 ? (
                   <tr>
-                    <td colSpan={17} className="text-center py-8 text-stone-500">
-                      No hay líneas en el plan. Agrega líneas para comenzar.
+                    <td colSpan={19} className="text-center py-8 text-stone-500">
+                      {selectedTarifarioId
+                        ? 'No hay líneas en el plan. Agrega líneas para comenzar.'
+                        : 'Seleccioná un tarifario del cliente para comenzar.'}
                     </td>
                   </tr>
                 ) : (
-                  localLineas.map((linea) => (
-                    <tr key={linea.id} className="border-b border-stone-100 hover:bg-stone-50">
-                      <td className="py-2 px-2">
-                        <Select
-                          value={linea.perfilId}
-                          onValueChange={(val) => handlePerfilChange(linea.id, val)}
-                        >
-                          <SelectTrigger className="w-full h-8 text-xs">
-                            <SelectValue placeholder="Seleccionar" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {perfilesForSelector.map((perfil) => (
-                              <SelectItem key={perfil.id} value={perfil.id}>
-                                {perfil.nombre}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </td>
-                      <td className="py-2 px-2">
-                        <span className="text-xs text-stone-600">
-                          {linea.perfilNivel || '-'}
-                        </span>
-                      </td>
-                      <td className="py-2 px-2">
-                        <Input
-                          value={linea.nombreLinea || ''}
-                          onChange={(e) => handleNombreLineaChange(linea.id, e.target.value)}
-                          placeholder="Opcional"
-                          className="h-8 text-xs"
-                        />
-                      </td>
-                      {[...Array(12)].map((_, idx) => {
-                        const month = idx + 1;
-                        return (
-                          <td key={month} className="py-2 px-2">
-                            <Input
-                              type="number"
-                              step="0.1"
-                              min="0"
-                              value={linea.meses[month] || ''}
-                              onChange={(e) => handleFtesChange(linea.id, month, parseFloat(e.target.value) || 0)}
-                              className="h-8 text-xs text-right tabular-nums"
-                            />
-                          </td>
-                        );
-                      })}
-                      <td className="py-2 px-2 text-right font-semibold tabular-nums bg-stone-50">
-                        {linea.total.toFixed(2)}
-                      </td>
-                      <td className="py-2 px-2 text-center">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => handleRemoveLinea(linea.id)}
-                          className="h-8 w-8 border-red-200 text-red-600 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))
+                  localLineas.map((linea) => {
+                    const rateInfo = rateMap.get(linea.perfilId);
+                    return (
+                      <tr key={linea.id} className="border-b border-stone-100 hover:bg-stone-50">
+                        <td className="py-2 px-2">
+                          <Select
+                            value={linea.perfilId}
+                            onValueChange={(val) => handlePerfilChange(linea.id, val)}
+                          >
+                            <SelectTrigger className="w-full h-8 text-xs">
+                              <SelectValue placeholder="Seleccionar" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {perfilesForSelector.map((perfil) => {
+                                const isDupe = isDuplicatePerfilSeniority(perfil.id, linea.id);
+                                return (
+                                  <SelectItem
+                                    key={perfil.id}
+                                    value={perfil.id}
+                                    disabled={isDupe}
+                                  >
+                                    {perfil.nombre} {perfil.nivel ? `(${perfil.nivel})` : ''} {isDupe ? '(ya existe)' : ''}
+                                  </SelectItem>
+                                );
+                              })}
+                            </SelectContent>
+                          </Select>
+                        </td>
+                        <td className="py-2 px-2">
+                          <span className="text-xs text-stone-600">
+                            {linea.perfilNivel || '-'}
+                          </span>
+                        </td>
+                        <td className="py-2 px-2 text-right">
+                          <span className="text-xs text-stone-600 tabular-nums">
+                            {rateInfo ? rateInfo.rate.toLocaleString() : '-'}
+                          </span>
+                        </td>
+                        <td className="py-2 px-2 text-center">
+                          <span className="text-xs text-stone-600">
+                            {rateInfo?.moneda || '-'}
+                          </span>
+                        </td>
+                        <td className="py-2 px-2">
+                          <Input
+                            value={linea.nombreLinea || ''}
+                            onChange={(e) => handleNombreLineaChange(linea.id, e.target.value)}
+                            placeholder="Opcional"
+                            className="h-8 text-xs"
+                          />
+                        </td>
+                        {[...Array(12)].map((_, idx) => {
+                          const month = idx + 1;
+                          const enabled = isMonthEnabled(month);
+                          return (
+                            <td key={month} className={`py-2 px-2 ${!enabled ? 'bg-stone-50' : ''}`}>
+                              {enabled ? (
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  min="0"
+                                  value={linea.meses[month] || ''}
+                                  onChange={(e) => handleFtesChange(linea.id, month, parseFloat(e.target.value) || 0)}
+                                  className="h-8 text-xs text-right tabular-nums"
+                                />
+                              ) : (
+                                <span className="text-xs text-stone-400 flex justify-center">-</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td className="py-2 px-2 text-right font-semibold tabular-nums bg-stone-50">
+                          {linea.total.toFixed(2)}
+                        </td>
+                        <td className="py-2 px-2 text-center">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => handleRemoveLinea(linea.id)}
+                            className="h-8 w-8 border-red-200 text-red-600 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
 
           {/* Revenue Summary */}
-          {localLineas.length > 0 && (
+          {localLineas.length > 0 && selectedTarifarioId && (
             <div className="mt-6 p-4 bg-stone-50 rounded-md">
               <h3 className="text-sm font-semibold text-stone-800 mb-3">Revenue Planificado ({selectedCurrency})</h3>
               <div className="grid grid-cols-12 gap-2">
                 {MONTH_NAMES.map((month, idx) => {
                   const revenue = calculateMonthRevenue(idx + 1);
+                  const enabled = isMonthEnabled(idx + 1);
                   return (
-                    <div key={idx} className="text-center">
+                    <div key={idx} className={`text-center ${!enabled ? 'opacity-40' : ''}`}>
                       <p className="text-xs text-stone-500">{month}</p>
                       <p className="text-sm font-semibold text-stone-800 tabular-nums">
-                        {formatCurrency(revenue, selectedCurrency, { decimals: 0 })}
+                        {enabled ? formatCurrency(revenue, selectedCurrency, { decimals: 0 }) : '-'}
                       </p>
                     </div>
                   );
@@ -520,6 +686,15 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
                   </span>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Legend */}
+          {selectedTarifarioId && (
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-xs text-blue-800">
+                💡 <strong>Tip:</strong> Los meses fuera de la vigencia del tarifario están deshabilitados. Revenue = FTE × Rate mensual.
+              </p>
             </div>
           )}
         </div>
