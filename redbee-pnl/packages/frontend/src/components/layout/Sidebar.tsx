@@ -2,26 +2,22 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
-  FolderKanban,
   FileText,
   DollarSign,
   BarChart3,
   Settings,
   Receipt,
   X,
-  Shield,
 } from 'lucide-react';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Clientes', href: '/clientes', icon: Users },
-  { name: 'Proyectos', href: '/proyectos', icon: FolderKanban },
   { name: 'Contratos', href: '/contratos', icon: FileText },
   { name: 'Tarifarios', href: '/tarifarios', icon: Receipt },
   { name: 'P&L', href: '/pnl', icon: DollarSign },
   { name: 'Rolling', href: '/rolling', icon: BarChart3 },
   { name: 'Configuración', href: '/configuracion', icon: Settings },
-  { name: 'Admin', href: '/admin', icon: Shield },
 ];
 
 interface SidebarProps {
