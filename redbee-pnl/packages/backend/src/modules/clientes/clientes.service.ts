@@ -52,7 +52,20 @@ export class ClientesService {
     const cliente = await this.prisma.cliente.findUnique({
       where: { id },
       include: {
-        proyectos: true,
+        proyectos: {
+          select: {
+            id: true,
+            nombre: true,
+            codigo: true,
+            tipo: true,
+            estado: true,
+            fechaInicio: true,
+            fechaFinEstimada: true,
+            fechaFinReal: true,
+            // Omitimos tarifarioRevenuePlanId temporalmente
+            // para evitar conflicto con Prisma client desactualizado
+          },
+        },
         contratos: true,
       },
     });
