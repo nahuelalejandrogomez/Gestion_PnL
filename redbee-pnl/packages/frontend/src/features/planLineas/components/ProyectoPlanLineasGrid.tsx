@@ -15,7 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { usePlanLineas, usePlanLineasMutations } from '../hooks/usePlanLineas';
 import { usePerfiles } from '@/features/perfiles';
-import { useTarifarios } from '@/features/tarifarios';
+import { useTarifarios, useTarifario } from '@/features/tarifarios';
 import { useFxRates } from '@/features/revenue/hooks/useClienteRevenue';
 import { useProyecto } from '@/features/proyectos/hooks/useProyecto';
 import { convertCurrency, formatCurrency, buildFxMap } from '@/lib/fx';
@@ -50,6 +50,8 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
   const { data: tarifariosData } = useTarifarios(proyecto?.clienteId ? { clienteId: proyecto.clienteId, estado: 'ACTIVO' } : undefined);
   const { data: fxData } = useFxRates(selectedYear);
   const { upsertPlanLineas } = usePlanLineasMutations(proyectoId);
+  // Fetch selected tarifario with lineas (getById includes lineas, getAll does not)
+  const { data: tarifarioWithLineas } = useTarifario(selectedTarifarioId);
 
   const [localLineas, setLocalLineas] = useState<PlanLinea[]>([]);
 
@@ -78,8 +80,8 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
   const tarifarios = tarifariosData?.items || [];
   const fxMap = fxData ? buildFxMap(fxData.rates) : {};
 
-  // Get selected tarifario lineas for rate lookup
-  const tarifario = tarifarios.find((t) => t.id === selectedTarifarioId);
+  // Use the fetched tarifario (which includes lineas) for rate lookup
+  const tarifario = tarifarioWithLineas;
   const rateMap = new Map<string, { rate: number; moneda: 'USD' | 'ARS'; perfilNivel: string | null }>();
   if (tarifario?.lineas) {
     for (const linea of tarifario.lineas) {
