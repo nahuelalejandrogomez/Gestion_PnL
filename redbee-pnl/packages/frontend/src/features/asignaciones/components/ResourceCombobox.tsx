@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Search } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -38,14 +38,9 @@ export function ResourceCombobox({ assignedRecursoIds, onSelect, isLoading }: Re
             onValueChange={setSearch}
           />
           <CommandList>
-            {search.length < 2 ? (
+            {isFetching ? (
               <div className="py-6 text-center text-sm text-stone-500">
-                <Search className="mx-auto h-5 w-5 mb-2 text-stone-400" />
-                Escribí al menos 2 caracteres
-              </div>
-            ) : isFetching ? (
-              <div className="py-6 text-center text-sm text-stone-500">
-                Buscando...
+                Cargando recursos...
               </div>
             ) : recursos.length === 0 ? (
               <CommandEmpty>No se encontraron recursos</CommandEmpty>

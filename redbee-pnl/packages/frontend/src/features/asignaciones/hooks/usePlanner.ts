@@ -60,8 +60,9 @@ export function useRecursoSearch(search: string) {
   return useQuery({
     queryKey: ['recursos-search', debouncedSearch],
     queryFn: () =>
-      asignacionesApi.getRecursos({ search: debouncedSearch, estado: 'ACTIVO', limit: 20 }),
-    enabled: debouncedSearch.length >= 2,
+      asignacionesApi.getRecursos({ search: debouncedSearch || undefined, estado: 'ACTIVO', limit: 50 }),
+    // Always enabled - show all recursos by default, filter when searching
+    enabled: true,
   });
 }
 
