@@ -207,42 +207,6 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
     return 0;
   };
 
-  // Calculate active month range based on tarifario vigencia
-  const getActiveMonthRange = () => {
-    if (!plan?.tarifario) return null;
-
-    const vigenciaDesde = new Date(plan.tarifario.fechaVigenciaDesde);
-    const vigenciaHasta = plan.tarifario.fechaVigenciaHasta
-      ? new Date(plan.tarifario.fechaVigenciaHasta)
-      : new Date(vigenciaDesde.getFullYear(), 11, 31);
-
-    const yearDesde = vigenciaDesde.getFullYear();
-    const yearHasta = vigenciaHasta.getFullYear();
-
-    if (year < yearDesde || year > yearHasta) {
-      return null;
-    }
-
-    let mesInicio: number;
-    let mesFin: number;
-
-    if (year === yearDesde && year === yearHasta) {
-      mesInicio = vigenciaDesde.getMonth() + 1;
-      mesFin = vigenciaHasta.getMonth() + 1;
-    } else if (year === yearDesde) {
-      mesInicio = vigenciaDesde.getMonth() + 1;
-      mesFin = 12;
-    } else if (year === yearHasta) {
-      mesInicio = 1;
-      mesFin = vigenciaHasta.getMonth() + 1;
-    } else {
-      mesInicio = 1;
-      mesFin = 12;
-    }
-
-    return { mesInicio, mesFin };
-  };
-
   const isOverride = (lineaTarifarioId: string, month: number): boolean => {
     if (plan) {
       const linea = plan.lineas.find((l) => l.lineaTarifarioId === lineaTarifarioId);
