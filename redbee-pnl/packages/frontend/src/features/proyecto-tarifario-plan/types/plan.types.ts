@@ -31,6 +31,8 @@ export interface ProyectoTarifarioPlan {
     id: string;
     nombre: string;
     moneda: Moneda;
+    fechaVigenciaDesde: string;
+    fechaVigenciaHasta: string | null;
   };
   lineas: PlanLinea[];
   createdAt: Date;

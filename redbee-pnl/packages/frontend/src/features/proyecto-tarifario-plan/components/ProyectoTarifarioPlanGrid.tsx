@@ -207,6 +207,44 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
     return 0;
   };
 
+  // Calculate active month range based on tarifario vigencia
+  const getActiveMonthRange = () => {
+    if (!plan?.tarifario) return null;
+
+    const vigenciaDesde = new Date(plan.tarifario.fechaVigenciaDesde);
+    const vigenciaHasta = plan.tarifario.fechaVigenciaHasta
+      ? new Date(plan.tarifario.fechaVigenciaHasta)
+      : new Date(vigenciaDesde.getFullYear(), 11, 31);
+
+    const yearDesde = vigenciaDesde.getFullYear();
+    const yearHasta = vigenciaHasta.getFullYear();
+
+    if (year < yearDesde || year > yearHasta) {
+      return null;
+    }
+
+    let mesInicio: number;
+    let mesFin: number;
+
+    if (year === yearDesde && year === yearHasta) {
+      mesInicio = vigenciaDesde.getMonth() + 1;
+      mesFin = vigenciaHasta.getMonth() + 1;
+    } else if (year === yearDesde) {
+      mesInicio = vigenciaDesde.getMonth() + 1;
+      mesFin = 12;
+    } else if (year === yearHasta) {
+      mesInicio = 1;
+      mesFin = vigenciaHasta.getMonth() + 1;
+    } else {
+      mesInicio = 1;
+      mesFin = 12;
+    }
+
+    return { mesInicio, mesFin };
+  };
+
+  const activeRange = getActiveMonthRange();
+
   const isOverride = (lineaTarifarioId: string, month: number): boolean => {
     if (plan) {
       const linea = plan.lineas.find((l) => l.lineaTarifarioId === lineaTarifarioId);
@@ -229,8 +267,46 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
     );
   }
 
-  const currentMonth = new Date().getMonth();
-  const currentMonthName = MONTH_LABELS[currentMonth];
+  // Get selected tarifario info for vigencia display
+  const selectedTarifario = tarifariosData?.items?.find((t) => t.id === selectedTarifarioId);
+
+  // Calculate vigencia range for selected tarifario
+  const getVigenciaRange = () => {
+    if (!selectedTarifario) return null;
+
+    const vigenciaDesde = new Date(selectedTarifario.fechaVigenciaDesde);
+    const vigenciaHasta = selectedTarifario.fechaVigenciaHasta
+      ? new Date(selectedTarifario.fechaVigenciaHasta)
+      : new Date(vigenciaDesde.getFullYear(), 11, 31);
+
+    const yearDesde = vigenciaDesde.getFullYear();
+    const yearHasta = vigenciaHasta.getFullYear();
+
+    if (year < yearDesde || year > yearHasta) {
+      return null;
+    }
+
+    let mesInicio: number;
+    let mesFin: number;
+
+    if (year === yearDesde && year === yearHasta) {
+      mesInicio = vigenciaDesde.getMonth() + 1;
+      mesFin = vigenciaHasta.getMonth() + 1;
+    } else if (year === yearDesde) {
+      mesInicio = vigenciaDesde.getMonth() + 1;
+      mesFin = 12;
+    } else if (year === yearHasta) {
+      mesInicio = 1;
+      mesFin = vigenciaHasta.getMonth() + 1;
+    } else {
+      mesInicio = 1;
+      mesFin = 12;
+    }
+
+    return { mesInicio, mesFin };
+  };
+
+  const vigenciaRange = getVigenciaRange();
 
   return (
     <Card className="border-stone-200 bg-white">
@@ -297,15 +373,26 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
             </div>
             <Button
               onClick={handleAplicarClick}
-              disabled={!selectedTarifarioId || aplicarMutation.isPending}
+              disabled={!selectedTarifarioId || !vigenciaRange || aplicarMutation.isPending}
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
               {aplicarMutation.isPending ? 'Aplicando...' : 'Aplicar'}
             </Button>
           </div>
-          <p className="text-xs text-stone-500 mt-2">
-            Se creará la estructura desde {currentMonthName} hasta Dic con el rate del tarifario
-          </p>
+          {vigenciaRange ? (
+            <p className="text-xs text-stone-500 mt-2">
+              Meses activos según vigencia del tarifario: <strong>{MONTH_LABELS[vigenciaRange.mesInicio - 1]}</strong> a{' '}
+              <strong>{MONTH_LABELS[vigenciaRange.mesFin - 1]}</strong> {year}
+            </p>
+          ) : selectedTarifario ? (
+            <p className="text-xs text-amber-600 mt-2">
+              ⚠️ El tarifario seleccionado no tiene vigencia para el año {year}
+            </p>
+          ) : (
+            <p className="text-xs text-stone-500 mt-2">
+              Seleccioná un tarifario para ver el rango de meses activos
+            </p>
+          )}
         </div>
 
         {/* Grid */}
@@ -484,11 +571,22 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
               ¿Aplicar tarifario?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-stone-500">
-              Esto creará la estructura de planificación desde <strong>{currentMonthName}</strong> hasta{' '}
-              <strong>Dic</strong> con los perfiles del tarifario seleccionado.
-              <br />
-              <br />
-              Las cantidades iniciales serán 0 (podés editarlas después).
+              {vigenciaRange ? (
+                <>
+                  Esto creará la estructura de planificación desde{' '}
+                  <strong>{MONTH_LABELS[vigenciaRange.mesInicio - 1]}</strong> hasta{' '}
+                  <strong>{MONTH_LABELS[vigenciaRange.mesFin - 1]}</strong> {year} con los perfiles del tarifario seleccionado.
+                  <br />
+                  <br />
+                  Las cantidades iniciales serán el <strong>rate</strong> del tarifario (podés editarlas después).
+                </>
+              ) : (
+                <>
+                  El tarifario seleccionado no tiene vigencia para el año {year}.
+                  <br />
+                  Seleccioná otro tarifario o cambiá el año.
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -36,6 +36,8 @@ export class ProyectoTarifarioPlanService {
             id: true,
             nombre: true,
             moneda: true,
+            fechaVigenciaDesde: true,
+            fechaVigenciaHasta: true,
           },
         },
         lineas: {
@@ -281,8 +283,46 @@ export class ProyectoTarifarioPlanService {
       throw new NotFoundException(`Tarifario with ID ${dto.tarifarioId} not found`);
     }
 
-    // Get current month
-    const currentMonth = new Date().getMonth() + 1; // 1-12
+    // Calculate month range based on tarifario vigencia
+    const vigenciaDesde = new Date(tarifario.fechaVigenciaDesde);
+    const vigenciaHasta = tarifario.fechaVigenciaHasta
+      ? new Date(tarifario.fechaVigenciaHasta)
+      : new Date(vigenciaDesde.getFullYear(), 11, 31); // Default to Dec 31 of same year
+
+    // Get year of vigencia dates
+    const yearDesde = vigenciaDesde.getFullYear();
+    const yearHasta = vigenciaHasta.getFullYear();
+
+    // Calculate month range for selected year
+    let mesInicio: number;
+    let mesFin: number;
+
+    if (year < yearDesde || year > yearHasta) {
+      // No intersection with selected year
+      throw new BadRequestException(
+        `El tarifario tiene vigencia desde ${vigenciaDesde.toLocaleDateString('es-AR')} hasta ${vigenciaHasta.toLocaleDateString('es-AR')}, ` +
+        `no aplica para el año ${year}.`
+      );
+    }
+
+    // Calculate intersection with selected year
+    if (year === yearDesde && year === yearHasta) {
+      // All within same year
+      mesInicio = vigenciaDesde.getMonth() + 1; // 1-12
+      mesFin = vigenciaHasta.getMonth() + 1;
+    } else if (year === yearDesde) {
+      // Start year
+      mesInicio = vigenciaDesde.getMonth() + 1;
+      mesFin = 12;
+    } else if (year === yearHasta) {
+      // End year
+      mesInicio = 1;
+      mesFin = vigenciaHasta.getMonth() + 1;
+    } else {
+      // Middle year (full year)
+      mesInicio = 1;
+      mesFin = 12;
+    }
 
     // Create or update plan
     let plan = await this.prisma.proyectoTarifarioPlan.findFirst({
@@ -333,10 +373,10 @@ export class ProyectoTarifarioPlanService {
         });
       }
 
-      // Create meses from current month to December with rate from tarifario
+      // Create meses within vigencia range with rate from tarifario
       const rate = tarifarioLinea.rate || 0;
       const mesesToCreate = [];
-      for (let month = currentMonth; month <= 12; month++) {
+      for (let month = mesInicio; month <= mesFin; month++) {
         mesesToCreate.push({
           lineaId: planLinea.id,
           month,
