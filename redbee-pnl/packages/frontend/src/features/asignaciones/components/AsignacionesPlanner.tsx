@@ -14,6 +14,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { usePlannerData, usePlannerSave, usePlannerDeleteAsignacion, PLANNER_QUERY_KEY, useRecursosCostos, useUpsertRecursoCosto, useDeleteRecursoCosto } from '../hooks/usePlanner';
 import { useAsignacionMutations } from '../hooks/useAsignacionMutations';
 import { useConfig, DEFAULT_CONFIG, useFxRates, buildFxMap } from '@/features/config';
+import { usePlanLineas } from '@/features/planLineas';
 import { PlannerCell } from './PlannerCell';
 import { ResourceCombobox } from './ResourceCombobox';
 import type { PlannerRow } from '../types/asignacion.types';
@@ -375,6 +376,49 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
     return rows.filter((r) => !r.costoMensual || r.costoMensual <= 0);
   }, [rows]);
 
+  // Revenue plan data for vacancy computation
+  const { data: planData } = usePlanLineas(proyectoId, year);
+
+  // Compute vacancies from revenue plan
+  const vacancies = useMemo(() => {
+    if (!planData?.lineas || planData.lineas.length === 0) return [];
+
+    const result: { perfilNombre: string; perfilNivel: string | null; needed: number; filled: number }[] = [];
+
+    for (const linea of planData.lineas) {
+      const maxFte = Math.max(...Object.values(linea.meses), 0);
+      const neededSlots = Math.ceil(maxFte);
+      if (neededSlots <= 0) continue;
+
+      // Count existing assignments matching this perfil by name
+      const filledSlots = rows.filter((r) => r.perfilNombre === linea.perfilNombre).length;
+
+      if (neededSlots > filledSlots) {
+        result.push({
+          perfilNombre: linea.perfilNombre,
+          perfilNivel: linea.perfilNivel,
+          needed: neededSlots,
+          filled: filledSlots,
+        });
+      }
+    }
+
+    return result;
+  }, [planData, rows]);
+
+  // Flatten vacancies into individual slots
+  const vacancySlots = useMemo(() => {
+    return vacancies.flatMap((v) => {
+      const remaining = v.needed - v.filled;
+      return Array.from({ length: remaining }, (_, i) => ({
+        perfilNombre: v.perfilNombre,
+        perfilNivel: v.perfilNivel,
+        index: v.filled + i + 1,
+        total: v.needed,
+      }));
+    });
+  }, [vacancies]);
+
   const assignedRecursoIds = new Set(rows.map((r) => r.recursoId));
 
   if (isLoading) {
@@ -515,10 +559,34 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
         </div>
       )}
 
+      {/* Revenue Vacancies */}
+      {vacancySlots.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
+          <p className="text-sm font-medium text-blue-800">
+            Vacantes desde Revenue ({vacancySlots.length})
+          </p>
+          {vacancySlots.map((v, idx) => (
+            <div key={idx} className="flex items-center gap-3 bg-white rounded-md px-3 py-2 border border-blue-100">
+              <Badge variant="outline" className="text-blue-600 border-blue-300">
+                {v.perfilNombre} {v.perfilNivel ? `(${v.perfilNivel})` : ''}
+              </Badge>
+              <span className="text-xs text-stone-500">Vacante {v.index}/{v.total}</span>
+              <div className="ml-auto">
+                <ResourceCombobox
+                  assignedRecursoIds={assignedRecursoIds}
+                  onSelect={handleAddResource}
+                  isLoading={createAsignacion.isPending}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Grid */}
-      {rows.length === 0 ? (
+      {rows.length === 0 && vacancySlots.length === 0 ? (
         <p className="text-stone-500 text-center py-12">
-          No hay recursos asignados. Usá "Agregar recurso" para empezar.
+          No hay recursos asignados. Cargá el Revenue del proyecto o usá "Agregar recurso" para empezar.
         </p>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-stone-200 bg-white">
