@@ -3,7 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { AlertCircle, TrendingUp, TrendingDown } from 'lucide-react';
 import { useProyectoPnlYear } from '../hooks/useProyectoPnl';
+import type { EstadoProyecto } from '../types/pnl.types';
 
 const MONTH_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
@@ -42,6 +44,24 @@ function colorForDiff(diff: number): string {
   if (diff > 0) return 'text-emerald-600';
   if (diff < 0) return 'text-red-600';
   return 'text-stone-500';
+}
+
+// Helper para badge de estado del proyecto
+function getEstadoBadge(estado: EstadoProyecto): { label: string; variant: string; icon?: React.ReactNode } {
+  switch (estado) {
+    case 'CUBIERTO':
+      return { label: 'Cubierto', variant: 'bg-emerald-100 text-emerald-800 border-emerald-200' };
+    case 'SIN_CUBRIR':
+      return { label: 'Sin cubrir', variant: 'bg-amber-100 text-amber-800 border-amber-200' };
+    case 'EN_PERDIDA':
+      return { label: 'En pérdida', variant: 'bg-orange-100 text-orange-800 border-orange-200' };
+    case 'INVIABLE':
+      return { label: 'Inviable', variant: 'bg-red-100 text-red-800 border-red-200' };
+    case 'SOBRE_ASIGNADO':
+      return { label: 'Sobre-asignado', variant: 'bg-blue-100 text-blue-800 border-blue-200' };
+    default:
+      return { label: 'Desconocido', variant: 'bg-stone-100 text-stone-600 border-stone-200' };
+  }
 }
 
 export function ProyectoPnlGrid({ proyectoId }: Props) {
@@ -100,13 +120,20 @@ export function ProyectoPnlGrid({ proyectoId }: Props) {
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
   const t = data.totalesAnuales;
 
+  const estadoBadge = getEstadoBadge(data.estadoProyecto);
+
   return (
     <Card className="border-stone-200 bg-white">
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-stone-800">
-            P&L Mensual
-          </CardTitle>
+          <div className="flex items-center gap-3">
+            <CardTitle className="text-lg font-semibold text-stone-800">
+              P&L Mensual
+            </CardTitle>
+            <Badge className={`${estadoBadge.variant} border font-medium`}>
+              {estadoBadge.label}
+            </Badge>
+          </div>
           <div className="flex items-center gap-3">
             {/* Currency toggle */}
             <div className="flex items-center rounded-md border border-stone-200 overflow-hidden">
@@ -145,16 +172,73 @@ export function ProyectoPnlGrid({ proyectoId }: Props) {
         </div>
       </CardHeader>
       <CardContent className="overflow-x-auto">
-        {/* KPI Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
-          <KpiCard label="GM%" value={fmtPct(t.indicadores.gmPct)} colorClass={colorForGm(t.indicadores.gmPct)} />
-          <KpiCard label="Revenue" value={fmt(t.revenue.asignado)} />
-          <KpiCard label="Costos" value={fmt(t.costos.total)} />
-          <KpiCard label="Margen" value={fmt(t.indicadores.diffAmount)} colorClass={colorForDiff(t.indicadores.diffAmount)} />
-          <KpiCard label="FTEs Avg" value={fmtFte(t.indicadores.ftesAsignados)} />
-          <KpiCard label="Blend Rate" value={t.indicadores.blendRate != null ? fmt(t.indicadores.blendRate) : '-'} />
-          <KpiCard label="Blend Cost" value={t.indicadores.blendCost != null ? fmt(t.indicadores.blendCost) : '-'} />
+        {/* KPI Summary Cards - Nuevos indicadores de negocio */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+          <KpiCard
+            label="Margen Real"
+            value={fmt(t.indicadores.margenReal)}
+            colorClass={colorForDiff(t.indicadores.margenReal)}
+            subtitle="Revenue asignado - Costos"
+          />
+          <KpiCard
+            label="Margen Potencial"
+            value={fmt(t.indicadores.margenPotencial)}
+            colorClass={colorForDiff(t.indicadores.margenPotencial)}
+            subtitle="Forecast - Costos"
+          />
+          <KpiCard
+            label="Cobertura"
+            value={t.indicadores.cobertura != null ? fmtPct(t.indicadores.cobertura) : '-'}
+            subtitle="FTEs asignados / Forecast"
+          />
+          <KpiCard
+            label="GM%"
+            value={fmtPct(t.indicadores.gmPct)}
+            colorClass={colorForGm(t.indicadores.gmPct)}
+            subtitle="Sobre revenue asignado"
+          />
+          <KpiCard
+            label="FTEs Avg"
+            value={fmtFte(t.indicadores.ftesAsignados)}
+            subtitle={`de ${fmtFte(t.indicadores.ftesForecast)} forecast`}
+          />
         </div>
+
+        {/* Análisis de Brecha */}
+        {data.analisisBrecha && (
+          <div className="mb-6 p-4 rounded-lg border-2 border-blue-200 bg-blue-50">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-full bg-blue-100">
+                <TrendingUp className="h-5 w-5 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-blue-900 mb-3">Análisis de Brecha</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <p className="text-xs text-blue-600 mb-1">Revenue sin staffing</p>
+                    <p className="text-lg font-bold text-blue-900">{fmt(data.analisisBrecha.revenueSinStaffing)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-blue-600 mb-1">FTEs faltantes</p>
+                    <p className="text-lg font-bold text-blue-900">{fmtFte(data.analisisBrecha.ftesFaltantes)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-blue-600 mb-1">Margen si se cubre 100%</p>
+                    <p className={`text-lg font-bold ${colorForDiff(data.analisisBrecha.margenSiSeCubre)}`}>
+                      {fmt(data.analisisBrecha.margenSiSeCubre)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-blue-600 mb-1">Cobertura actual</p>
+                    <p className="text-lg font-bold text-blue-900">
+                      {data.analisisBrecha.coberturaActual != null ? fmtPct(data.analisisBrecha.coberturaActual) : '-'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Monthly Grid */}
         <div className="rounded-lg border border-stone-200 overflow-hidden">
@@ -194,7 +278,7 @@ export function ProyectoPnlGrid({ proyectoId }: Props) {
                 className="font-medium text-stone-800"
               />
               <DataRow
-                label="No asignado"
+                label="Sin staffing"
                 months={months}
                 getValue={(m) => data.meses[m].revenue.noAsignado}
                 getTotal={() => t.revenue.noAsignado}
@@ -279,7 +363,7 @@ export function ProyectoPnlGrid({ proyectoId }: Props) {
                 formatFn={(v) => v != null ? fmtFte(v) : '-'}
               />
               <IndicadorRow
-                label="FTEs No Asig."
+                label="FTEs faltantes"
                 months={months}
                 getValue={(m) => data.meses[m].indicadores.ftesNoAsignados}
                 getTotal={() => t.indicadores.ftesNoAsignados}
@@ -317,11 +401,12 @@ export function ProyectoPnlGrid({ proyectoId }: Props) {
 
 // ---------- Sub-components ----------
 
-function KpiCard({ label, value, colorClass }: { label: string; value: string; colorClass?: string }) {
+function KpiCard({ label, value, colorClass, subtitle }: { label: string; value: string; colorClass?: string; subtitle?: string }) {
   return (
     <div className="rounded-lg border border-stone-200 p-3 bg-white">
       <p className="text-[10px] font-medium uppercase tracking-wider text-stone-400 mb-1">{label}</p>
       <p className={`text-lg font-semibold ${colorClass || 'text-stone-800'}`}>{value}</p>
+      {subtitle && <p className="text-[9px] text-stone-400 mt-1">{subtitle}</p>}
     </div>
   );
 }

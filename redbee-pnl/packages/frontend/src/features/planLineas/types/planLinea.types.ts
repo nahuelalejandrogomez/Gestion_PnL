@@ -1,3 +1,11 @@
+export type EstadoCobertura = 'CUBIERTO' | 'PARCIAL' | 'SIN_ASIGNAR';
+
+export interface CoberturaMes {
+  ftesAsignados: number;
+  porcentajeCobertura: number | null;
+  estado: EstadoCobertura;
+}
+
 export interface PlanLinea {
   id: string;
   perfilId: string;
@@ -5,8 +13,9 @@ export interface PlanLinea {
   perfilCategoria: string;
   perfilNivel: string | null;
   nombreLinea: string | null;
-  meses: Record<number, number>; // month -> ftes
+  meses: Record<number, number>; // month -> ftes forecast
   total: number;
+  cobertura: Record<number, CoberturaMes>; // month -> cobertura info
 }
 
 export interface GetPlanLineasResponse {

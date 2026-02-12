@@ -28,12 +28,31 @@ interface PnlMonthIndicadores {
   gmPct: number | null;
   blendRate: number | null;
   blendCost: number | null;
+  // Nuevos indicadores de negocio
+  margenReal: number; // Revenue asignado - Costos totales
+  margenPotencial: number; // Revenue forecast - Costos totales
+  cobertura: number | null; // % FTEs asignados / FTEs forecast
 }
 
 export interface PnlMonthData {
   revenue: PnlMonthRevenue;
   costos: PnlMonthCostos;
   indicadores: PnlMonthIndicadores;
+}
+
+// Estados posibles del proyecto (según modelo de negocio)
+export type EstadoProyecto =
+  | 'CUBIERTO' // Asignado >= Forecast Y Margen real >= 0
+  | 'SIN_CUBRIR' // Asignado < Forecast Y Margen real >= 0
+  | 'EN_PERDIDA' // Margen real < 0 Y Margen potencial >= 0
+  | 'INVIABLE' // Margen potencial < 0
+  | 'SOBRE_ASIGNADO'; // Asignado > Forecast
+
+export interface AnalisisBrechaAnual {
+  revenueSinStaffing: number; // Revenue forecast no asignado
+  ftesFaltantes: number; // FTEs forecast no asignados
+  margenSiSeCubre: number; // Margen potencial (forecast - costos)
+  coberturaActual: number | null; // % cobertura
 }
 
 export interface PnlYearResult {
@@ -45,6 +64,9 @@ export interface PnlYearResult {
   fxRates: Record<number, number | null>;
   meses: Record<number, PnlMonthData>;
   totalesAnuales: PnlMonthData;
+  // Nuevos indicadores anuales
+  estadoProyecto: EstadoProyecto;
+  analisisBrecha: AnalisisBrechaAnual;
 }
 
 function round2(n: number): number {
@@ -276,6 +298,11 @@ export class PnlService {
       const ftesNoAsignados = Math.max(0, ftesForecast - ftesAsignados);
       const diffAmount = revAsignado - costTotal;
 
+      // Nuevos indicadores de negocio
+      const margenReal = revAsignado - costTotal;
+      const margenPotencial = revForecast - costTotal;
+      const cobertura = ftesForecast > 0 ? (ftesAsignados / ftesForecast) * 100 : null;
+
       meses[m] = {
         revenue: {
           forecast: round2(revForecast),
@@ -305,6 +332,10 @@ export class PnlService {
             ftesAsignados > 0 ? round2(revAsignado / ftesAsignados) : null,
           blendCost:
             ftesAsignados > 0 ? round2(costRecursos / ftesAsignados) : null,
+          // Nuevos indicadores
+          margenReal: round2(margenReal),
+          margenPotencial: round2(margenPotencial),
+          cobertura: cobertura !== null ? round2(cobertura) : null,
         },
       };
 
@@ -323,6 +354,11 @@ export class PnlService {
     const annualDiff = acc.revAsignado - acc.costTotal;
     const avgFteForecast = acc.ftesForecast / 12;
     const avgFteAsignados = acc.ftesAsignados / 12;
+
+    // Nuevos indicadores anuales
+    const margenRealAnual = acc.revAsignado - acc.costTotal;
+    const margenPotencialAnual = acc.revForecast - acc.costTotal;
+    const coberturaAnual = acc.ftesForecast > 0 ? (acc.ftesAsignados / acc.ftesForecast) * 100 : null;
 
     const totalesAnuales: PnlMonthData = {
       revenue: {
@@ -359,7 +395,28 @@ export class PnlService {
           acc.ftesAsignados > 0
             ? round2((acc.costRecursos / acc.ftesAsignados) * 12)
             : null,
+        // Nuevos indicadores
+        margenReal: round2(margenRealAnual),
+        margenPotencial: round2(margenPotencialAnual),
+        cobertura: coberturaAnual !== null ? round2(coberturaAnual) : null,
       },
+    };
+
+    // 11. Calculate Estado del Proyecto (según modelo de negocio)
+    const estadoProyecto = this.calcularEstadoProyecto(
+      acc.revForecast,
+      acc.revAsignado,
+      acc.costTotal,
+      margenRealAnual,
+      margenPotencialAnual,
+    );
+
+    // 12. Calculate Análisis de Brecha
+    const analisisBrecha: AnalisisBrechaAnual = {
+      revenueSinStaffing: round2(acc.revNoAsignado),
+      ftesFaltantes: round2(Math.max(0, avgFteForecast - avgFteAsignados)),
+      margenSiSeCubre: round2(margenPotencialAnual),
+      coberturaActual: coberturaAnual !== null ? round2(coberturaAnual) : null,
     };
 
     return {
@@ -371,7 +428,49 @@ export class PnlService {
       fxRates: fxMap,
       meses,
       totalesAnuales,
+      estadoProyecto,
+      analisisBrecha,
     };
+  }
+
+  /**
+   * Calcula el estado del proyecto según el modelo de negocio.
+   * Prioridad:
+   * 1. INVIABLE: Margen potencial < 0 (nunca será rentable)
+   * 2. SOBRE_ASIGNADO: Asignado > Forecast (puede ser oportunidad o desvío)
+   * 3. EN_PERDIDA: Margen real < 0 Y Margen potencial >= 0 (necesita ajuste)
+   * 4. SIN_CUBRIR: Asignado < Forecast Y Margen real >= 0 (hay oportunidad)
+   * 5. CUBIERTO: Asignado >= Forecast Y Margen real >= 0 (proyecto saludable)
+   */
+  private calcularEstadoProyecto(
+    revenueForecast: number,
+    revenueAsignado: number,
+    costosTotal: number,
+    margenReal: number,
+    margenPotencial: number,
+  ): EstadoProyecto {
+    // 🔴 INVIABLE: Nunca será rentable (margen potencial < 0)
+    if (margenPotencial < 0) {
+      return 'INVIABLE';
+    }
+
+    // 🔵 SOBRE_ASIGNADO: Más staffing del previsto
+    if (revenueAsignado > revenueForecast) {
+      return 'SOBRE_ASIGNADO';
+    }
+
+    // 🟠 EN_PERDIDA: Margen real negativo pero potencial positivo
+    if (margenReal < 0 && margenPotencial >= 0) {
+      return 'EN_PERDIDA';
+    }
+
+    // 🟡 SIN_CUBRIR: Revenue potencial sin staffing
+    if (revenueAsignado < revenueForecast && margenReal >= 0) {
+      return 'SIN_CUBRIR';
+    }
+
+    // 🟢 CUBIERTO: Proyecto saludable
+    return 'CUBIERTO';
   }
 
   private buildFxMap(

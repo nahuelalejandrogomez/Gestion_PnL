@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Trash2, DollarSign, AlertCircle, Save, Download, Hash } from 'lucide-react';
+import { Plus, Trash2, DollarSign, AlertCircle, Save, Download, Hash, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import {
   Select,
@@ -163,9 +164,11 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
 
     // Auto-fill months within vigencia with 0
     const meses: Record<number, number> = {};
+    const cobertura: Record<number, any> = {};
     if (vigenciaRange) {
       for (let month = vigenciaRange.mesInicio; month <= vigenciaRange.mesFin; month++) {
         meses[month] = 0;
+        cobertura[month] = { ftesAsignados: 0, porcentajeCobertura: null, estado: 'SIN_ASIGNAR' };
       }
     }
 
@@ -178,6 +181,7 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
       nombreLinea: null,
       meses,
       total: 0,
+      cobertura,
     };
     setLocalLineas([...localLineas, newLinea]);
     const updated = new Map(dirtyLineas);
@@ -203,9 +207,11 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
 
     // Auto-fill months within vigencia with 0
     const meses: Record<number, number> = {};
+    const cobertura: Record<number, any> = {};
     if (vigenciaRange) {
       for (let month = vigenciaRange.mesInicio; month <= vigenciaRange.mesFin; month++) {
         meses[month] = 0;
+        cobertura[month] = { ftesAsignados: 0, porcentajeCobertura: null, estado: 'SIN_ASIGNAR' };
       }
     }
 
@@ -232,6 +238,7 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
         nombreLinea: null,
         meses: { ...meses },
         total: 0,
+        cobertura: { ...cobertura },
       };
       newLineas.push(newLinea);
       addedCount++;
@@ -787,6 +794,22 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
                           const isEditing = editingCell === cellKey;
                           const isDrag = isDragTarget(linea.id, month);
 
+                          // Cobertura info
+                          const coberturaInfo = linea.cobertura?.[month];
+                          const estadoCobertura = coberturaInfo?.estado || 'SIN_ASIGNAR';
+
+                          // Border color based on cobertura estado
+                          let borderColorClass = '';
+                          if (enabled && fteValue > 0) {
+                            if (estadoCobertura === 'CUBIERTO') {
+                              borderColorClass = 'border-l-4 border-l-emerald-500';
+                            } else if (estadoCobertura === 'PARCIAL') {
+                              borderColorClass = 'border-l-4 border-l-amber-500';
+                            } else {
+                              borderColorClass = 'border-l-4 border-l-red-500';
+                            }
+                          }
+
                           // Compute display value
                           let displayValue: string;
                           if (viewMode === 'money' && fteValue > 0) {
@@ -802,7 +825,25 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
                             displayValue = fteValue > 0 ? fteValue.toFixed(1) : '-';
                           }
 
-                          return (
+                          // Tooltip content
+                          const tooltipContent = coberturaInfo && fteValue > 0 ? (
+                            <div className="text-xs space-y-1">
+                              <p><strong>Forecast:</strong> {fteValue.toFixed(1)} FTE</p>
+                              <p><strong>Asignados:</strong> {coberturaInfo.ftesAsignados.toFixed(1)} FTE</p>
+                              {coberturaInfo.porcentajeCobertura !== null && (
+                                <p><strong>Cobertura:</strong> {coberturaInfo.porcentajeCobertura.toFixed(0)}%</p>
+                              )}
+                              <p className={`font-semibold ${
+                                estadoCobertura === 'CUBIERTO' ? 'text-emerald-400' :
+                                estadoCobertura === 'PARCIAL' ? 'text-amber-400' : 'text-red-400'
+                              }`}>
+                                {estadoCobertura === 'CUBIERTO' ? 'Cubierto' :
+                                 estadoCobertura === 'PARCIAL' ? 'Parcialmente cubierto' : 'Sin asignación'}
+                              </p>
+                            </div>
+                          ) : null;
+
+                          const cellContent = (
                             <td key={month} className={`py-2 px-1 ${!enabled ? 'bg-stone-50' : ''}`}>
                               {!enabled ? (
                                 <span className="text-xs text-stone-400 flex justify-center">-</span>
@@ -828,7 +869,7 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
                                     if (!dragMoved) handleCellClick(linea.id, month, fteValue);
                                   }}
                                   onMouseEnter={() => handleDragFillMove(linea.id, month)}
-                                  className={`w-full h-7 text-xs font-mono rounded px-1 ${
+                                  className={`w-full h-7 text-xs font-mono rounded px-1 ${borderColorClass} ${
                                     isDrag
                                       ? 'bg-blue-100 ring-2 ring-blue-400'
                                       : dirtyLineas.has(linea.id)
@@ -841,6 +882,22 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
                               )}
                             </td>
                           );
+
+                          // Wrap with tooltip if we have cobertura info and forecast > 0
+                          if (tooltipContent && enabled && !isEditing) {
+                            return (
+                              <Tooltip key={month}>
+                                <TooltipTrigger asChild>
+                                  {cellContent}
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="bg-stone-900 text-white border-stone-700">
+                                  {tooltipContent}
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          }
+
+                          return cellContent;
                         })}
                         <td className="py-2 px-2 text-right font-semibold tabular-nums bg-stone-50">
                           {linea.total.toFixed(2)}
@@ -894,11 +951,30 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
 
           {/* Legend */}
           {selectedTarifarioId && (
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <p className="text-xs text-blue-800">
-                Arrastrá una celda para copiar su valor a múltiples meses/filas. Revenue = FTE × Rate mensual. Usá los toggles FTE/$ y ARS/USD para cambiar la vista.
-              </p>
-            </div>
+            <>
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-xs text-blue-800">
+                  Arrastrá una celda para copiar su valor a múltiples meses/filas. Revenue = FTE × Rate mensual. Usá los toggles FTE/$ y ARS/USD para cambiar la vista.
+                </p>
+              </div>
+              <div className="mt-3 p-3 bg-stone-50 border border-stone-200 rounded-md">
+                <p className="text-xs font-semibold text-stone-700 mb-2">Indicadores de cobertura:</p>
+                <div className="flex flex-wrap gap-4 text-xs text-stone-600">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 border-l-4 border-l-emerald-500 bg-white"></div>
+                    <span><strong>Verde:</strong> Cubierto (asignación ≥ forecast)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 border-l-4 border-l-amber-500 bg-white"></div>
+                    <span><strong>Amarillo:</strong> Parcialmente cubierto</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 border-l-4 border-l-red-500 bg-white"></div>
+                    <span><strong>Rojo:</strong> Sin asignación</span>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
         </div>
       </CardContent>

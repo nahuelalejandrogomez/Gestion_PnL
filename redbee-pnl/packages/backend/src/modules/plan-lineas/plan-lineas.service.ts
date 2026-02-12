@@ -2,6 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UpsertPlanLineasDto } from './dto/upsert-plan-lineas.dto';
 
+type EstadoCobertura = 'CUBIERTO' | 'PARCIAL' | 'SIN_ASIGNAR';
+
+interface CoberturaMes {
+  ftesAsignados: number;
+  porcentajeCobertura: number | null; // null si forecast = 0
+  estado: EstadoCobertura;
+}
+
 interface PlanLineaResponse {
   id: string;
   perfilId: string;
@@ -9,8 +17,9 @@ interface PlanLineaResponse {
   perfilCategoria: string;
   perfilNivel: string | null;
   nombreLinea: string | null;
-  meses: Record<number, number>; // month -> ftes
+  meses: Record<number, number>; // month -> ftes forecast
   total: number; // sum of all months
+  cobertura: Record<number, CoberturaMes>; // month -> cobertura info
 }
 
 export interface GetPlanLineasResponse {
@@ -60,17 +69,69 @@ export class PlanLineasService {
       ],
     });
 
-    // Transform to response format
+    // Get asignaciones for this proyecto to calculate cobertura
+    const asignaciones = await this.prisma.asignacionRecurso.findMany({
+      where: { proyectoId },
+      include: {
+        recurso: {
+          select: {
+            perfil: { select: { id: true, nivel: true } },
+          },
+        },
+        meses: { where: { year } },
+      },
+    });
+
+    // Build map: perfilId -> month -> total FTEs asignados
+    const asignadosByPerfil: Record<string, Record<number, number>> = {};
+    for (const asig of asignaciones) {
+      const perfilId = asig.recurso.perfil?.id;
+      if (!perfilId) continue;
+
+      if (!asignadosByPerfil[perfilId]) {
+        asignadosByPerfil[perfilId] = {};
+        for (let m = 1; m <= 12; m++) asignadosByPerfil[perfilId][m] = 0;
+      }
+
+      for (const mes of asig.meses) {
+        const pct = Number(mes.porcentajeAsignacion);
+        if (pct === 0) continue;
+        const fte = pct / 100;
+        asignadosByPerfil[perfilId][mes.month] += fte;
+      }
+    }
+
+    // Helper: determinar estado de cobertura
+    const determinarEstado = (forecast: number, asignado: number): EstadoCobertura => {
+      if (forecast === 0) return 'SIN_ASIGNAR';
+      if (asignado === 0) return 'SIN_ASIGNAR';
+      if (asignado >= forecast) return 'CUBIERTO';
+      return 'PARCIAL';
+    };
+
+    // Transform to response format with cobertura
     const lineasResponse: PlanLineaResponse[] = lineas.map((linea) => {
       const meses: Record<number, number> = {};
+      const cobertura: Record<number, CoberturaMes> = {};
       let total = 0;
 
-      // Fill meses 1-12
+      // Fill meses 1-12 with forecast and cobertura
       for (let month = 1; month <= 12; month++) {
         const mesData = linea.meses.find((m) => m.month === month);
-        const ftes = mesData ? Number(mesData.ftes) : 0;
-        meses[month] = ftes;
-        total += ftes;
+        const ftesForecast = mesData ? Number(mesData.ftes) : 0;
+        meses[month] = ftesForecast;
+        total += ftesForecast;
+
+        // Calculate cobertura for this perfil/month
+        const ftesAsignados = asignadosByPerfil[linea.perfilId]?.[month] || 0;
+        const porcentaje = ftesForecast > 0 ? (ftesAsignados / ftesForecast) * 100 : null;
+        const estado = determinarEstado(ftesForecast, ftesAsignados);
+
+        cobertura[month] = {
+          ftesAsignados: Math.round(ftesAsignados * 100) / 100,
+          porcentajeCobertura: porcentaje !== null ? Math.round(porcentaje * 100) / 100 : null,
+          estado,
+        };
       }
 
       return {
@@ -82,6 +143,7 @@ export class PlanLineasService {
         nombreLinea: linea.nombreLinea,
         meses,
         total: Math.round(total * 100) / 100,
+        cobertura,
       };
     });
 
