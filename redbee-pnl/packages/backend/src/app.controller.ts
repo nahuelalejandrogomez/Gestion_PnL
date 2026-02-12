@@ -50,4 +50,33 @@ export class AppController {
       health: '/api/health',
     };
   }
+
+  @Get('debug/schema')
+  async debugSchema() {
+    try {
+      // Try to query proyectos with minimal select to avoid relation issues
+      const proyectos = await this.prisma.proyecto.findMany({
+        take: 1,
+        select: {
+          id: true,
+          nombre: true,
+          tarifarioId: true,
+          tarifarioRevenuePlanId: true, // Test if field exists
+        },
+      });
+
+      return {
+        success: true,
+        message: 'Schema includes tarifarioRevenuePlanId',
+        sample: proyectos[0] || null,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+        code: error.code,
+        meta: error.meta,
+      };
+    }
+  }
 }
