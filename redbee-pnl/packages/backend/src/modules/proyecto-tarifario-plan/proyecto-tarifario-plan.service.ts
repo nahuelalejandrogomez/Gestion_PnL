@@ -78,12 +78,12 @@ export class ProyectoTarifarioPlanService {
         id: linea.id,
         planId: linea.planId,
         lineaTarifarioId: linea.lineaTarifarioId,
-        rateSnapshot: Number(linea.rateSnapshot),
+        rateSnapshot: Number(linea.rateSnapshot) || 0,
         monedaSnapshot: linea.monedaSnapshot,
         perfil: linea.lineaTarifario.perfil,
         meses: linea.meses.map((mes) => ({
           month: mes.month,
-          cantidad: Number(mes.cantidad),
+          cantidad: Number(mes.cantidad) || 0,
           isOverride: mes.isOverride,
         })),
       })),
@@ -188,7 +188,7 @@ export class ProyectoTarifarioPlanService {
           data: {
             planId: plan.id,
             lineaTarifarioId,
-            rateSnapshot: tarifarioLinea.rate,
+            rateSnapshot: tarifarioLinea.rate || 0,
             monedaSnapshot: tarifarioLinea.moneda || tarifario.moneda,
           },
         });
@@ -307,24 +307,25 @@ export class ProyectoTarifarioPlanService {
           data: {
             planId: plan.id,
             lineaTarifarioId: tarifarioLinea.id,
-            rateSnapshot: tarifarioLinea.rate,
+            rateSnapshot: tarifarioLinea.rate || 0,
             monedaSnapshot: tarifarioLinea.moneda || tarifario.moneda,
           },
         });
       }
 
       // Create meses from current month to December with rate from tarifario
+      const rate = tarifarioLinea.rate || 0;
       const mesesToCreate = [];
       for (let month = currentMonth; month <= 12; month++) {
         mesesToCreate.push({
           lineaId: planLinea.id,
           month,
-          cantidad: tarifarioLinea.rate, // Set initial rate from tarifario
+          cantidad: rate, // Set initial rate from tarifario
           isOverride: false,
         });
       }
 
-      // Upsert (create if not exists, skip if exists)
+      // Upsert (create if not exists, update if exists)
       await Promise.all(
         mesesToCreate.map((mes) =>
           this.prisma.proyectoTarifarioPlanMes.upsert({
@@ -334,7 +335,10 @@ export class ProyectoTarifarioPlanService {
                 month: mes.month,
               },
             },
-            update: {}, // Don't update if exists
+            update: {
+              cantidad: mes.cantidad,
+              isOverride: mes.isOverride,
+            },
             create: mes,
           }),
         ),

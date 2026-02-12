@@ -279,7 +279,7 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
                         {linea.perfil?.nivel || '-'}
                       </td>
                       <td className="py-2 px-2 text-right text-sm font-mono text-stone-600">
-                        {linea.rateSnapshot.toLocaleString()} {linea.monedaSnapshot}
+                        {(isNaN(linea.rateSnapshot) ? 0 : linea.rateSnapshot).toLocaleString()} {linea.monedaSnapshot}
                       </td>
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((month) => {
                         const key = `${linea.lineaTarifarioId}|${month}`;
