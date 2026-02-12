@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Plus, Trash2, DollarSign, AlertCircle, Save, Download } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Plus, Trash2, DollarSign, AlertCircle, Save, Download, Hash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
@@ -34,6 +34,15 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
   const [selectedTarifarioId, setSelectedTarifarioId] = useState<string>('');
   const [dirtyLineas, setDirtyLineas] = useState<Map<string, PlanLinea>>(new Map());
   const [deletedLineaIds, setDeletedLineaIds] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<'fte' | 'money'>('fte');
+
+  // Drag-fill state
+  const [dragFillStart, setDragFillStart] = useState<string | null>(null);
+  const [dragFillCurrent, setDragFillCurrent] = useState<string | null>(null);
+  const [dragFillValue, setDragFillValue] = useState<number | null>(null);
+  const [dragMoved, setDragMoved] = useState(false);
+  const [editingCell, setEditingCell] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState<string>('');
 
   const { data: proyecto } = useProyecto(proyectoId);
   const { data: planData, isLoading: isLoadingPlan } = usePlanLineas(proyectoId, selectedYear);
@@ -305,6 +314,116 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
     setDirtyLineas(dirty);
   };
 
+  // Drag-fill handlers
+  const handleDragFillStart = (lineaId: string, month: number, value: number) => {
+    const key = `${lineaId}|${month}`;
+    setDragFillStart(key);
+    setDragFillCurrent(key);
+    setDragFillValue(value);
+    setDragMoved(false);
+  };
+
+  const handleDragFillMove = (lineaId: string, month: number) => {
+    if (dragFillStart) {
+      const key = `${lineaId}|${month}`;
+      if (key !== dragFillStart) setDragMoved(true);
+      setDragFillCurrent(key);
+    }
+  };
+
+  const handleDragFillEnd = useCallback(() => {
+    if (dragFillStart && dragFillCurrent && dragFillValue !== null && dragMoved) {
+      const [startLineaId, startMonthStr] = dragFillStart.split('|');
+      const [endLineaId, endMonthStr] = dragFillCurrent.split('|');
+      const startMonth = parseInt(startMonthStr);
+      const endMonth = parseInt(endMonthStr);
+      const minMonth = Math.min(startMonth, endMonth);
+      const maxMonth = Math.max(startMonth, endMonth);
+
+      const lineaIds = localLineas.map((l) => l.id);
+      const startIdx = lineaIds.indexOf(startLineaId);
+      const endIdx = lineaIds.indexOf(endLineaId);
+      const minIdx = Math.min(startIdx, endIdx);
+      const maxIdx = Math.max(startIdx, endIdx);
+
+      if (startIdx >= 0 && endIdx >= 0) {
+        let updated = [...localLineas];
+        const dirty = new Map(dirtyLineas);
+
+        for (let i = minIdx; i <= maxIdx; i++) {
+          const linea = updated[i];
+          const newMeses = { ...linea.meses };
+          for (let m = minMonth; m <= maxMonth; m++) {
+            if (isMonthEnabled(m)) {
+              newMeses[m] = dragFillValue;
+            }
+          }
+          const total = Object.values(newMeses).reduce((sum, v) => sum + v, 0);
+          updated[i] = { ...linea, meses: newMeses, total: Math.round(total * 100) / 100 };
+          dirty.set(linea.id, updated[i]);
+        }
+
+        setLocalLineas(updated);
+        setDirtyLineas(dirty);
+      }
+    }
+
+    setDragFillStart(null);
+    setDragFillCurrent(null);
+    setDragFillValue(null);
+    setDragMoved(false);
+  }, [dragFillStart, dragFillCurrent, dragFillValue, dragMoved, localLineas, dirtyLineas]);
+
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (dragFillStart) handleDragFillEnd();
+    };
+    document.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => document.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, [dragFillStart, handleDragFillEnd]);
+
+  // Cell editing
+  const handleCellClick = (lineaId: string, month: number, currentValue: number) => {
+    const key = `${lineaId}|${month}`;
+    setEditingCell(key);
+    setEditValue(currentValue > 0 ? currentValue.toString() : '');
+  };
+
+  const handleCellSave = useCallback((lineaId: string, month: number) => {
+    const newValue = parseFloat(editValue);
+    if (editValue === '' || isNaN(newValue) || newValue < 0) {
+      handleFtesChange(lineaId, month, 0);
+    } else {
+      handleFtesChange(lineaId, month, newValue);
+    }
+    setEditingCell(null);
+  }, [editValue]);
+
+  const handleCellKeyDown = (e: React.KeyboardEvent, lineaId: string, month: number) => {
+    if (e.key === 'Enter') handleCellSave(lineaId, month);
+    else if (e.key === 'Escape') setEditingCell(null);
+  };
+
+  // Check if cell is in drag-fill range
+  const isDragTarget = (lineaId: string, month: number): boolean => {
+    if (!dragFillStart || !dragFillCurrent || !dragMoved) return false;
+    const [startLineaId, startMonthStr] = dragFillStart.split('|');
+    const [endLineaId, endMonthStr] = dragFillCurrent.split('|');
+    const startMonth = parseInt(startMonthStr);
+    const endMonth = parseInt(endMonthStr);
+    const minMonth = Math.min(startMonth, endMonth);
+    const maxMonth = Math.max(startMonth, endMonth);
+    if (month < minMonth || month > maxMonth) return false;
+
+    const lineaIds = localLineas.map((l) => l.id);
+    const startIdx = lineaIds.indexOf(startLineaId);
+    const endIdx = lineaIds.indexOf(endLineaId);
+    const lineaIdx = lineaIds.indexOf(lineaId);
+    const minIdx = Math.min(startIdx, endIdx);
+    const maxIdx = Math.max(startIdx, endIdx);
+    return lineaIdx >= minIdx && lineaIdx <= maxIdx;
+  };
+
   const handleSave = () => {
     if (!selectedTarifarioId) {
       toast.error('Seleccioná un tarifario antes de guardar.');
@@ -425,6 +544,24 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
             </CardDescription>
           </div>
           <div className="flex items-center gap-3">
+            {/* FTE / $ Toggle */}
+            <div className="flex items-center border border-stone-200 rounded-md overflow-hidden">
+              <button
+                onClick={() => setViewMode('fte')}
+                className={`px-3 py-1.5 text-xs font-medium flex items-center gap-1 ${viewMode === 'fte' ? 'bg-stone-800 text-white' : 'bg-white text-stone-600 hover:bg-stone-50'}`}
+              >
+                <Hash className="h-3 w-3" />
+                FTE
+              </button>
+              <button
+                onClick={() => setViewMode('money')}
+                className={`px-3 py-1.5 text-xs font-medium flex items-center gap-1 ${viewMode === 'money' ? 'bg-stone-800 text-white' : 'bg-white text-stone-600 hover:bg-stone-50'}`}
+              >
+                <DollarSign className="h-3 w-3" />
+                $
+              </button>
+            </div>
+
             {/* Currency Toggle */}
             <Select value={selectedCurrency} onValueChange={(val) => setSelectedCurrency(val as 'USD' | 'ARS')}>
               <SelectTrigger className="w-[100px] border-stone-200">
@@ -636,19 +773,62 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
                         {[...Array(12)].map((_, idx) => {
                           const month = idx + 1;
                           const enabled = isMonthEnabled(month);
+                          const fteValue = linea.meses[month] || 0;
+                          const cellKey = `${linea.id}|${month}`;
+                          const isEditing = editingCell === cellKey;
+                          const isDrag = isDragTarget(linea.id, month);
+
+                          // Compute display value
+                          let displayValue: string;
+                          if (viewMode === 'money' && fteValue > 0) {
+                            const rInfo = rateMap.get(linea.perfilId);
+                            if (rInfo) {
+                              const rev = fteValue * rInfo.rate;
+                              const converted = convertRevenue(rev, rInfo.moneda, month);
+                              displayValue = Math.round(converted).toLocaleString('es-AR');
+                            } else {
+                              displayValue = fteValue > 0 ? fteValue.toFixed(1) : '-';
+                            }
+                          } else {
+                            displayValue = fteValue > 0 ? fteValue.toFixed(1) : '-';
+                          }
+
                           return (
-                            <td key={month} className={`py-2 px-2 ${!enabled ? 'bg-stone-50' : ''}`}>
-                              {enabled ? (
+                            <td key={month} className={`py-2 px-1 ${!enabled ? 'bg-stone-50' : ''}`}>
+                              {!enabled ? (
+                                <span className="text-xs text-stone-400 flex justify-center">-</span>
+                              ) : isEditing ? (
                                 <Input
                                   type="number"
                                   step="0.1"
                                   min="0"
-                                  value={linea.meses[month] || ''}
-                                  onChange={(e) => handleFtesChange(linea.id, month, parseFloat(e.target.value) || 0)}
-                                  className="h-8 text-xs text-right tabular-nums"
+                                  value={editValue}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  onKeyDown={(e) => handleCellKeyDown(e, linea.id, month)}
+                                  onBlur={() => handleCellSave(linea.id, month)}
+                                  autoFocus
+                                  className="h-7 text-center text-xs px-1"
                                 />
                               ) : (
-                                <span className="text-xs text-stone-400 flex justify-center">-</span>
+                                <button
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    handleDragFillStart(linea.id, month, fteValue);
+                                  }}
+                                  onMouseUp={() => {
+                                    if (!dragMoved) handleCellClick(linea.id, month, fteValue);
+                                  }}
+                                  onMouseEnter={() => handleDragFillMove(linea.id, month)}
+                                  className={`w-full h-7 text-xs font-mono rounded px-1 ${
+                                    isDrag
+                                      ? 'bg-blue-100 ring-2 ring-blue-400'
+                                      : dirtyLineas.has(linea.id)
+                                      ? 'bg-amber-50 hover:bg-amber-100'
+                                      : 'hover:bg-stone-100'
+                                  }`}
+                                >
+                                  {displayValue}
+                                </button>
                               )}
                             </td>
                           );
@@ -707,7 +887,7 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
           {selectedTarifarioId && (
             <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
               <p className="text-xs text-blue-800">
-                💡 <strong>Tip:</strong> Los meses fuera de la vigencia del tarifario están deshabilitados. Revenue = FTE × Rate mensual.
+                Arrastrá una celda para copiar su valor a múltiples meses/filas. Revenue = FTE × Rate mensual. Usá los toggles FTE/$ y ARS/USD para cambiar la vista.
               </p>
             </div>
           )}
