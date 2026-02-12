@@ -38,6 +38,7 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
   const [dragFillStart, setDragFillStart] = useState<string | null>(null);
   const [dragFillCurrent, setDragFillCurrent] = useState<string | null>(null);
   const [dragFillValue, setDragFillValue] = useState<number | null>(null);
+  const [dragMoved, setDragMoved] = useState(false);
 
   const { data: plan, isLoading, refetch } = usePlan(proyectoId, year);
   const { data: tarifariosData } = useTarifarios({ clienteId, estado: 'ACTIVO' });
@@ -112,41 +113,53 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
     setDragFillStart(key);
     setDragFillCurrent(key);
     setDragFillValue(value);
+    setDragMoved(false);
   };
 
   const handleDragFillMove = (lineaTarifarioId: string, month: number) => {
     if (dragFillStart) {
       const key = `${lineaTarifarioId}|${month}`;
+      if (key !== dragFillStart) {
+        setDragMoved(true);
+      }
       setDragFillCurrent(key);
     }
   };
 
   const handleDragFillEnd = useCallback(() => {
-    if (dragFillStart && dragFillCurrent && dragFillValue !== null) {
+    if (dragFillStart && dragFillCurrent && dragFillValue !== null && dragMoved) {
       const [startLineaId, startMonthStr] = dragFillStart.split('|');
       const [endLineaId, endMonthStr] = dragFillCurrent.split('|');
       const startMonth = parseInt(startMonthStr);
       const endMonth = parseInt(endMonthStr);
+      const minMonth = Math.min(startMonth, endMonth);
+      const maxMonth = Math.max(startMonth, endMonth);
 
-      // Only fill within same row (same linea)
-      if (startLineaId === endLineaId) {
+      // Get linea indices for vertical fill
+      const lineaIds = plan?.lineas.map((l) => l.lineaTarifarioId) || [];
+      const startIdx = lineaIds.indexOf(startLineaId);
+      const endIdx = lineaIds.indexOf(endLineaId);
+      const minIdx = Math.min(startIdx, endIdx);
+      const maxIdx = Math.max(startIdx, endIdx);
+
+      if (startIdx >= 0 && endIdx >= 0) {
         const newDirty = new Map(dirtyCells);
-        const minMonth = Math.min(startMonth, endMonth);
-        const maxMonth = Math.max(startMonth, endMonth);
-
-        for (let m = minMonth; m <= maxMonth; m++) {
-          const key = `${startLineaId}|${m}`;
-          newDirty.set(key, dragFillValue);
+        for (let i = minIdx; i <= maxIdx; i++) {
+          for (let m = minMonth; m <= maxMonth; m++) {
+            const key = `${lineaIds[i]}|${m}`;
+            newDirty.set(key, dragFillValue);
+          }
         }
-
         setDirtyCells(newDirty);
       }
     }
 
+    // If no drag movement happened, the mouseUp handler on the cell will open edit mode
     setDragFillStart(null);
     setDragFillCurrent(null);
     setDragFillValue(null);
-  }, [dragFillStart, dragFillCurrent, dragFillValue, dirtyCells]);
+    setDragMoved(false);
+  }, [dragFillStart, dragFillCurrent, dragFillValue, dragMoved, dirtyCells, plan?.lineas]);
 
   // Reset drag-fill on mouse up
   useEffect(() => {
@@ -401,15 +414,23 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
                         const value = getCellValue(linea.lineaTarifarioId, month);
                         const hasOverride = isOverride(linea.lineaTarifarioId, month);
                         const isDirty = dirtyCells.has(key);
-                        const isDragFillTarget = dragFillStart && dragFillCurrent && (() => {
+                        const isDragFillTarget = dragFillStart && dragFillCurrent && dragMoved && (() => {
                           const [startLineaId, startMonthStr] = dragFillStart.split('|');
-                          const [currLineaId, currMonthStr] = dragFillCurrent.split('|');
-                          if (startLineaId !== linea.lineaTarifarioId || startLineaId !== currLineaId) return false;
+                          const [, currMonthStr] = dragFillCurrent.split('|');
+                          const [currLineaId] = dragFillCurrent.split('|');
                           const startMonth = parseInt(startMonthStr);
                           const currMonth = parseInt(currMonthStr);
                           const minMonth = Math.min(startMonth, currMonth);
                           const maxMonth = Math.max(startMonth, currMonth);
-                          return month >= minMonth && month <= maxMonth;
+                          if (month < minMonth || month > maxMonth) return false;
+
+                          const lineaIds = plan?.lineas.map((l) => l.lineaTarifarioId) || [];
+                          const startIdx = lineaIds.indexOf(startLineaId);
+                          const endIdx = lineaIds.indexOf(currLineaId);
+                          const lineaIdx = lineaIds.indexOf(linea.lineaTarifarioId);
+                          const minIdx = Math.min(startIdx, endIdx);
+                          const maxIdx = Math.max(startIdx, endIdx);
+                          return lineaIdx >= minIdx && lineaIdx <= maxIdx;
                         })();
 
                         return (
@@ -428,11 +449,13 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
                               />
                             ) : (
                               <button
-                                onClick={() => handleCellClick(linea.lineaTarifarioId, month, value)}
                                 onMouseDown={(e) => {
-                                  if (e.shiftKey && value > 0) {
-                                    e.preventDefault();
-                                    handleDragFillStart(linea.lineaTarifarioId, month, value);
+                                  e.preventDefault();
+                                  handleDragFillStart(linea.lineaTarifarioId, month, value);
+                                }}
+                                onMouseUp={() => {
+                                  if (!dragMoved) {
+                                    handleCellClick(linea.lineaTarifarioId, month, value);
                                   }
                                 }}
                                 onMouseEnter={() => {
@@ -502,7 +525,7 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
                 </div>
               </div>
               <p className="text-xs text-stone-400">
-                💡 Tip: Mantené <kbd className="px-1 py-0.5 bg-stone-100 border border-stone-300 rounded text-[10px]">Shift</kbd> + arrastrá para copiar un valor a múltiples meses
+                Arrastrá una celda para copiar su valor a múltiples meses/filas
               </p>
             </div>
           </>
