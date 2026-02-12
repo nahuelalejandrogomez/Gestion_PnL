@@ -170,7 +170,7 @@ model Proyecto {
   fechaFinEstimada       DateTime?
   fechaFinReal           DateTime?
   tarifarioId            String? // TODO: revertir a required cuando Tarifarios module exista
-  tarifarioRevenuePlanId String? // Tarifario usado para Revenue Plan (independiente de tarifarioId)
+  tarifarioRevenuePlanId String? @map("tarifario_revenue_plan_id") // Tarifario usado para Revenue Plan (independiente de tarifarioId)
   contratoId             String?
   notas                  String?        @db.Text
 
