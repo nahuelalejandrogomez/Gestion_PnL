@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, FolderKanban, Users, FileText, Pencil, Trash2, BarChart3, Receipt, DollarSign } from 'lucide-react';
+import { ArrowLeft, Calendar, FolderKanban, Users, FileText, Pencil, Trash2, BarChart3, Receipt, DollarSign, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -213,11 +213,14 @@ export function ProyectoDetail() {
             </div>
             <div className="space-y-1">
               <p className="text-sm text-stone-500">Tarifario</p>
-              <p className="font-medium text-stone-800">{proyecto.tarifario?.nombre || '-'}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm text-stone-500">Contrato</p>
-              <p className="font-medium text-stone-800">{proyecto.contrato?.nombre || '-'}</p>
+              {proyecto.tarifario ? (
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  <p className="font-medium text-stone-800">{proyecto.tarifario.nombre}</p>
+                </div>
+              ) : (
+                <p className="font-medium text-stone-400">Sin tarifario</p>
+              )}
             </div>
             {proyecto.probabilidadCierre != null && (
               <div className="space-y-1">
@@ -250,11 +253,11 @@ export function ProyectoDetail() {
             Resumen
           </TabsTrigger>
           <TabsTrigger
-            value="asignaciones"
+            value="presupuesto"
             className="flex items-center gap-2 data-[state=active]:bg-stone-100 data-[state=active]:text-stone-800 rounded-md px-4"
           >
-            <Users className="h-4 w-4" />
-            Asignaciones ({proyecto._count?.asignaciones || 0})
+            <Receipt className="h-4 w-4" />
+            Tarifario
           </TabsTrigger>
           <TabsTrigger
             value="plan"
@@ -264,11 +267,11 @@ export function ProyectoDetail() {
             Revenue
           </TabsTrigger>
           <TabsTrigger
-            value="presupuesto"
+            value="asignaciones"
             className="flex items-center gap-2 data-[state=active]:bg-stone-100 data-[state=active]:text-stone-800 rounded-md px-4"
           >
-            <Receipt className="h-4 w-4" />
-            Tarifario
+            <Users className="h-4 w-4" />
+            Asignaciones ({proyecto._count?.asignaciones || 0})
           </TabsTrigger>
           <TabsTrigger
             value="pnl"
@@ -315,6 +318,14 @@ export function ProyectoDetail() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="presupuesto" className="mt-6">
+          <ProyectoTarifarioPlanGrid proyectoId={proyecto.id} clienteId={proyecto.clienteId} />
+        </TabsContent>
+
+        <TabsContent value="plan" className="mt-6">
+          <ProyectoPlanLineasGrid proyectoId={proyecto.id} />
+        </TabsContent>
+
         <TabsContent value="asignaciones" className="mt-6">
           <Card className="border-stone-200 bg-white">
             <CardHeader>
@@ -327,14 +338,6 @@ export function ProyectoDetail() {
               <AsignacionesPlanner proyectoId={id!} />
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="plan" className="mt-6">
-          <ProyectoPlanLineasGrid proyectoId={proyecto.id} />
-        </TabsContent>
-
-        <TabsContent value="presupuesto" className="mt-6">
-          <ProyectoTarifarioPlanGrid proyectoId={proyecto.id} clienteId={proyecto.clienteId} />
         </TabsContent>
 
         <TabsContent value="pnl" className="mt-6">
