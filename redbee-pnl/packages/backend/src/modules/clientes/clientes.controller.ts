@@ -26,8 +26,26 @@ export class ClientesController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.clientesService.findOne(id);
+  async findOne(@Param('id') id: string) {
+    try {
+      this.logger.log(`[findOne] Fetching cliente with ID: ${id}`);
+      const result = await this.clientesService.findOne(id);
+      this.logger.log(`[findOne] Successfully fetched cliente: ${id}`);
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `[findOne] Error fetching cliente ID ${id}: ${error.message}`,
+        error.stack,
+      );
+      this.logger.error(`[findOne] Error details: ${JSON.stringify({
+        clienteId: id,
+        errorName: error.name,
+        errorCode: error.code,
+        prismaCode: error?.code,
+        meta: error?.meta,
+      })}`);
+      throw error;
+    }
   }
 
   @Post()
@@ -42,12 +60,24 @@ export class ClientesController {
   }
 
   @Put(':id')
-  update(@Param('id') id: string, @Body() updateClienteDto: UpdateClienteDto) {
-    return this.clientesService.update(id, updateClienteDto);
+  async update(@Param('id') id: string, @Body() updateClienteDto: UpdateClienteDto) {
+    try {
+      this.logger.log(`[update] Updating cliente ID: ${id}`);
+      return await this.clientesService.update(id, updateClienteDto);
+    } catch (error) {
+      this.logger.error(`[update] Error updating cliente ID ${id}: ${error.message}`, error.stack);
+      throw error;
+    }
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.clientesService.remove(id);
+  async remove(@Param('id') id: string) {
+    try {
+      this.logger.log(`[remove] Deleting cliente ID: ${id}`);
+      return await this.clientesService.remove(id);
+    } catch (error) {
+      this.logger.error(`[remove] Error deleting cliente ID ${id}: ${error.message}`, error.stack);
+      throw error;
+    }
   }
 }

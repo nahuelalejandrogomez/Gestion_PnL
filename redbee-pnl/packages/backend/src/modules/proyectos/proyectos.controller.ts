@@ -30,8 +30,26 @@ export class ProyectosController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.proyectosService.findOne(id);
+  async findOne(@Param('id') id: string) {
+    try {
+      this.logger.log(`[findOne] Fetching proyecto with ID: ${id}`);
+      const result = await this.proyectosService.findOne(id);
+      this.logger.log(`[findOne] Successfully fetched proyecto: ${id}`);
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `[findOne] Error fetching proyecto ID ${id}: ${error.message}`,
+        error.stack,
+      );
+      this.logger.error(`[findOne] Error details: ${JSON.stringify({
+        proyectoId: id,
+        errorName: error.name,
+        errorCode: error.code,
+        prismaCode: error?.code,
+        meta: error?.meta,
+      })}`);
+      throw error;
+    }
   }
 
   @Post()
@@ -46,13 +64,25 @@ export class ProyectosController {
   }
 
   @Put(':id')
-  update(@Param('id') id: string, @Body() updateProyectoDto: UpdateProyectoDto) {
-    return this.proyectosService.update(id, updateProyectoDto);
+  async update(@Param('id') id: string, @Body() updateProyectoDto: UpdateProyectoDto) {
+    try {
+      this.logger.log(`[update] Updating proyecto ID: ${id}`);
+      return await this.proyectosService.update(id, updateProyectoDto);
+    } catch (error) {
+      this.logger.error(`[update] Error updating proyecto ID ${id}: ${error.message}`, error.stack);
+      throw error;
+    }
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.proyectosService.remove(id);
+  async remove(@Param('id') id: string) {
+    try {
+      this.logger.log(`[remove] Deleting proyecto ID: ${id}`);
+      return await this.proyectosService.remove(id);
+    } catch (error) {
+      this.logger.error(`[remove] Error deleting proyecto ID ${id}: ${error.message}`, error.stack);
+      throw error;
+    }
   }
 
   // =====================
