@@ -432,6 +432,13 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
       return;
     }
 
+    // Validate all dirty lineas have a perfilId selected
+    const lineasWithoutPerfil = Array.from(dirtyLineas.values()).filter((linea) => !linea.perfilId);
+    if (lineasWithoutPerfil.length > 0) {
+      toast.error(`Hay ${lineasWithoutPerfil.length} línea(s) sin perfil seleccionado. Seleccioná un perfil o eliminá la línea.`);
+      return;
+    }
+
     const lineasToSave = Array.from(dirtyLineas.values()).map((linea) => ({
       id: linea.id.startsWith('temp-') ? undefined : linea.id,
       perfilId: linea.perfilId,
