@@ -46,15 +46,15 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
 
   // Initialize selectedTarifarioId: proyecto.tarifarioRevenuePlanId || proyecto.tarifarioId || first ACTIVO tarifario
   useEffect(() => {
-    if (proyecto && tarifariosData?.items) {
+    if (proyecto && tarifariosData?.items && !selectedTarifarioId) {
       // Priority: tarifarioRevenuePlanId > tarifarioId > first ACTIVO
       const tarifs = tarifariosData.items.filter((t) => t.estado === 'ACTIVO');
-      const defaultId = (proyecto as any).tarifarioRevenuePlanId || proyecto.tarifarioId || tarifs[0]?.id || '';
-      if (defaultId && !selectedTarifarioId) {
+      const defaultId = (proyecto as any).tarifarioRevenuePlanId || proyecto.tarifarioId || tarifs[0]?.id;
+      if (defaultId) {
         setSelectedTarifarioId(defaultId);
       }
     }
-  }, [proyecto, tarifariosData, selectedTarifarioId]);
+  }, [proyecto, tarifariosData]); // Removed selectedTarifarioId from deps to avoid timing issues
 
   // Initialize local lineas when plan data loads
   useEffect(() => {
@@ -84,12 +84,15 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
     }
   }
 
-  // Filter perfiles to only those in the selected tarifario
+  // Filter perfiles to only those in the selected tarifario (if tarifario selected)
+  // Otherwise show all perfiles to allow manual entry
   const availablePerfiles = tarifario?.lineas
     ?.map((linea) => linea.perfil)
     .filter((perfil): perfil is NonNullable<typeof perfil> => perfil != null) || [];
   const availablePerfilIds = new Set(availablePerfiles.map((p) => p.id));
-  const perfilesForSelector = perfiles.filter((p) => availablePerfilIds.has(p.id));
+  const perfilesForSelector = selectedTarifarioId && tarifario
+    ? perfiles.filter((p) => availablePerfilIds.has(p.id))
+    : perfiles; // Show all perfiles if no tarifario selected
 
   // Get vigencia range for selected tarifario
   const getVigenciaRange = () => {
@@ -173,12 +176,17 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
 
   const handleImportFromTarifario = () => {
     if (!selectedTarifarioId) {
-      toast.error('Seleccioná un tarifario del cliente para importar líneas.');
+      toast.error('Seleccioná un tarifario del cliente arriba para importar sus líneas.');
       return;
     }
 
-    if (!tarifario?.lineas || tarifario.lineas.length === 0) {
-      toast.error('El tarifario no tiene líneas definidas.');
+    if (!tarifario) {
+      toast.error('No se encontró el tarifario seleccionado.');
+      return;
+    }
+
+    if (!tarifario.lineas || tarifario.lineas.length === 0) {
+      toast.error('El tarifario seleccionado no tiene líneas definidas.');
       return;
     }
 
@@ -581,18 +589,24 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
                               <SelectValue placeholder="Seleccionar" />
                             </SelectTrigger>
                             <SelectContent>
-                              {perfilesForSelector.map((perfil) => {
-                                const isDupe = isDuplicatePerfilSeniority(perfil.id, linea.id);
-                                return (
-                                  <SelectItem
-                                    key={perfil.id}
-                                    value={perfil.id}
-                                    disabled={isDupe}
-                                  >
-                                    {perfil.nombre} {perfil.nivel ? `(${perfil.nivel})` : ''} {isDupe ? '(ya existe)' : ''}
-                                  </SelectItem>
-                                );
-                              })}
+                              {perfilesForSelector.length === 0 ? (
+                                <div className="px-2 py-1.5 text-sm text-stone-500">
+                                  {selectedTarifarioId ? 'El tarifario no tiene perfiles' : 'Seleccioná un tarifario primero'}
+                                </div>
+                              ) : (
+                                perfilesForSelector.map((perfil) => {
+                                  const isDupe = isDuplicatePerfilSeniority(perfil.id, linea.id);
+                                  return (
+                                    <SelectItem
+                                      key={perfil.id}
+                                      value={perfil.id}
+                                      disabled={isDupe}
+                                    >
+                                      {perfil.nombre} {perfil.nivel ? `(${perfil.nivel})` : ''} {isDupe ? '(ya existe)' : ''}
+                                    </SelectItem>
+                                  );
+                                })
+                              )}
                             </SelectContent>
                           </Select>
                         </td>
