@@ -1,29 +1,40 @@
-export interface AsignacionDetalle {
-  recursoId: string;
-  recursoNombre: string;
-  perfilNombre: string;
-  porcentajeAsignacion: number;
-  tipoTiempo: string;
-  rolEnProyecto: string | null;
-  costoMensualRecurso: number;
-  monedaCosto: string;
-  horasMes: number;
-  costoAsignacion: number;
-  ftes: number;
+export interface PnlMonthRevenue {
+  forecast: number;
+  asignado: number;
+  noAsignado: number;
 }
 
-export interface PnlResult {
+export interface PnlMonthCostos {
+  recursos: number;
+  otros: number;
+  guardiasExtras: number;
+  total: number;
+}
+
+export interface PnlMonthIndicadores {
+  ftesForecast: number;
+  ftesAsignados: number;
+  ftesNoAsignados: number;
+  diffAmount: number;
+  diffPct: number | null;
+  gmPct: number | null;
+  blendRate: number | null;
+  blendCost: number | null;
+}
+
+export interface PnlMonthData {
+  revenue: PnlMonthRevenue;
+  costos: PnlMonthCostos;
+  indicadores: PnlMonthIndicadores;
+}
+
+export interface PnlYearResult {
   proyectoId: string;
   proyectoNombre: string;
-  anio: number;
-  mes: number;
-  horasBaseMes: number;
-  revenue: number;
-  costosDirectos: number;
-  ftes: number;
-  margen: number | null;
-  margenPorcentaje: number | null;
-  requiresTarifarios: boolean;
-  revenueWarning: string;
-  detalle: AsignacionDetalle[];
+  year: number;
+  monedaTarifario: string;
+  costoEmpresaPct: number;
+  fxRates: Record<number, number | null>;
+  meses: Record<number, PnlMonthData>;
+  totalesAnuales: PnlMonthData;
 }

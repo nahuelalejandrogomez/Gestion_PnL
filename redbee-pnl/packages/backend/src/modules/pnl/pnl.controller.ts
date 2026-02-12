@@ -8,13 +8,9 @@ export class PnlController {
   @Get('proyecto/:id')
   calculateByProyecto(
     @Param('id') id: string,
-    @Query('anio') anio: string,
-    @Query('mes') mes: string,
+    @Query('year') year: string,
   ) {
-    const now = new Date();
-    const anioNum = anio ? parseInt(anio, 10) : now.getFullYear();
-    const mesNum = mes ? parseInt(mes, 10) : now.getMonth() + 1;
-
-    return this.pnlService.calculateByProyecto(id, anioNum, mesNum);
+    const yearNum = year ? parseInt(year, 10) : new Date().getFullYear();
+    return this.pnlService.calculatePnlYear(id, yearNum);
   }
 }

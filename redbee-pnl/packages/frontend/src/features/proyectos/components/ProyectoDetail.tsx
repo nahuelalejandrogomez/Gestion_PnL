@@ -22,7 +22,7 @@ import { useProyectoMutations } from '../hooks/useProyectoMutations';
 import { ProyectoBadge } from './ProyectoBadge';
 import { ProyectoForm } from './ProyectoForm';
 import { AsignacionesPlanner } from '@/features/asignaciones';
-import { ProyectoPnlResumen } from '@/features/pnl';
+import { ProyectoPnlGrid, useProyectoPnlYear } from '@/features/pnl';
 import { ProyectoPlanLineasGrid } from '@/features/planLineas';
 import { ProyectoTarifarioPlanGrid } from '@/features/proyecto-tarifario-plan';
 import type { UpdateProyectoDto } from '../types/proyecto.types';
@@ -40,6 +40,8 @@ export function ProyectoDetail() {
   const { data: proyecto, isLoading, error } = useProyecto(id);
   const { updateProyecto, deleteProyecto } = useProyectoMutations();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const currentYear = new Date().getFullYear();
+  const { data: pnlData } = useProyectoPnlYear(id, currentYear);
 
   const handleUpdate = (data: UpdateProyectoDto) => {
     if (!id) return;
@@ -242,6 +244,25 @@ export function ProyectoDetail() {
         </CardContent>
       </Card>
 
+      {/* Annual KPIs */}
+      {pnlData && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {[
+            { label: 'GM%', value: pnlData.totalesAnuales.indicadores.gmPct != null ? `${pnlData.totalesAnuales.indicadores.gmPct.toFixed(1)}%` : '-', color: pnlData.totalesAnuales.indicadores.gmPct != null ? (pnlData.totalesAnuales.indicadores.gmPct >= 40 ? 'text-emerald-600' : pnlData.totalesAnuales.indicadores.gmPct >= 20 ? 'text-amber-600' : 'text-red-600') : 'text-stone-400' },
+            { label: 'Revenue', value: `U$${(pnlData.totalesAnuales.revenue.asignado / 1000).toFixed(0)}k` },
+            { label: 'Costos', value: `U$${(pnlData.totalesAnuales.costos.total / 1000).toFixed(0)}k` },
+            { label: 'Margen', value: `U$${(pnlData.totalesAnuales.indicadores.diffAmount / 1000).toFixed(0)}k`, color: pnlData.totalesAnuales.indicadores.diffAmount >= 0 ? 'text-emerald-600' : 'text-red-600' },
+            { label: 'FTEs Avg', value: pnlData.totalesAnuales.indicadores.ftesAsignados.toFixed(1) },
+            { label: 'Blend Rate', value: pnlData.totalesAnuales.indicadores.blendRate != null ? `U$${(pnlData.totalesAnuales.indicadores.blendRate / 1000).toFixed(1)}k` : '-' },
+          ].map((kpi) => (
+            <div key={kpi.label} className="rounded-lg border border-stone-200 bg-white p-3">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-stone-400">{kpi.label} {currentYear}</p>
+              <p className={`text-xl font-semibold ${kpi.color || 'text-stone-800'}`}>{kpi.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Tabs for related data */}
       <Tabs defaultValue="resumen" className="space-y-4">
         <TabsList className="bg-white border border-stone-200 p-1 rounded-lg">
@@ -264,7 +285,7 @@ export function ProyectoDetail() {
             className="flex items-center gap-2 data-[state=active]:bg-stone-100 data-[state=active]:text-stone-800 rounded-md px-4"
           >
             <DollarSign className="h-4 w-4" />
-            Revenue
+            Forecast
           </TabsTrigger>
           <TabsTrigger
             value="asignaciones"
@@ -278,7 +299,7 @@ export function ProyectoDetail() {
             className="flex items-center gap-2 data-[state=active]:bg-stone-100 data-[state=active]:text-stone-800 rounded-md px-4"
           >
             <BarChart3 className="h-4 w-4" />
-            P&L ({proyecto._count?.lineasPnL || 0})
+            P&L
           </TabsTrigger>
         </TabsList>
 
@@ -341,17 +362,7 @@ export function ProyectoDetail() {
         </TabsContent>
 
         <TabsContent value="pnl" className="mt-6">
-          <Card className="border-stone-200 bg-white">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold text-stone-800">P&L</CardTitle>
-              <CardDescription className="text-stone-500">
-                Costos directos calculados a partir de asignaciones
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ProyectoPnlResumen proyectoId={id!} />
-            </CardContent>
-          </Card>
+          <ProyectoPnlGrid proyectoId={id!} />
         </TabsContent>
       </Tabs>
 

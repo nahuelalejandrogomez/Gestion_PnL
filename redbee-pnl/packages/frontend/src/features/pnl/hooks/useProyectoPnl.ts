@@ -3,10 +3,13 @@ import { pnlApi } from '../api/pnlApi';
 
 export const PNL_QUERY_KEY = 'pnl';
 
-export function useProyectoPnl(proyectoId: string | undefined, anio?: number, mes?: number) {
+export function useProyectoPnlYear(
+  proyectoId: string | undefined,
+  year: number,
+) {
   return useQuery({
-    queryKey: [PNL_QUERY_KEY, proyectoId, anio, mes],
-    queryFn: () => pnlApi.getByProyecto(proyectoId!, anio, mes),
+    queryKey: [PNL_QUERY_KEY, proyectoId, year],
+    queryFn: () => pnlApi.getByProyectoYear(proyectoId!, year),
     enabled: !!proyectoId,
   });
 }
