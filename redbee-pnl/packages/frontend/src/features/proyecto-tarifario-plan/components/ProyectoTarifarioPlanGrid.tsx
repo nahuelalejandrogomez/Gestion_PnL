@@ -34,7 +34,7 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
   const [editValue, setEditValue] = useState<string>('');
   const [dirtyCells, setDirtyCells] = useState<Map<string, number>>(new Map());
 
-  const { data: plan, isLoading } = usePlan(proyectoId, year);
+  const { data: plan, isLoading, refetch } = usePlan(proyectoId, year);
   const { data: tarifariosData } = useTarifarios({ clienteId, estado: 'ACTIVO' });
   const updateMutation = useUpdatePlan();
   const aplicarMutation = useAplicarTarifario();
@@ -60,7 +60,13 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
     if (!selectedTarifarioId) return;
     aplicarMutation.mutate(
       { proyectoId, year, dto: { tarifarioId: selectedTarifarioId } },
-      { onSuccess: () => setShowConfirmDialog(false) }
+      {
+        onSuccess: async () => {
+          setShowConfirmDialog(false);
+          // Force refetch to show the new plan
+          await refetch();
+        }
+      }
     );
   };
 
@@ -359,9 +365,20 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
             </div>
           </>
         ) : (
-          <div className="text-center py-12 text-stone-500">
-            <p className="text-sm">No hay plan cargado para este año.</p>
-            <p className="text-xs mt-1">Seleccioná un tarifario y hacé click en "Aplicar" para comenzar.</p>
+          <div className="text-center py-12">
+            {!plan ? (
+              <>
+                <p className="text-sm text-stone-600">No hay plan cargado para {year}.</p>
+                <p className="text-xs text-stone-500 mt-1">Seleccioná un tarifario y hacé click en "Aplicar" para comenzar.</p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-stone-600">El plan está creado pero no tiene líneas.</p>
+                <p className="text-xs text-stone-500 mt-1">
+                  El tarifario seleccionado podría no tener líneas activas o hubo un error al aplicar.
+                </p>
+              </>
+            )}
           </div>
         )}
       </CardContent>
