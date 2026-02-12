@@ -111,3 +111,13 @@ export interface UpsertMesBatchDto {
 export interface RecursosCostosResponse {
   overrides: Record<string, Record<number, number>>; // { [recursoId]: { [month]: costoMensual } }
 }
+
+// Costos manuales types
+export interface CostosManualesData {
+  otrosCostos: Record<number, number>;   // { 1: 0, 2: 500, ... 12: 0 }
+  guardiasExtras: Record<number, number>;
+}
+
+export interface UpsertCostosManualesDto {
+  items: { month: number; otrosCostos: number; guardiasExtras: number }[];
+}

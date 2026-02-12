@@ -14,6 +14,7 @@ import { RecursosService } from '../recursos/recursos.service';
 import { CreateProyectoDto } from './dto/create-proyecto.dto';
 import { UpdateProyectoDto } from './dto/update-proyecto.dto';
 import { QueryProyectoDto } from './dto/query-proyecto.dto';
+import { UpsertCostosManualesDto } from './dto/costos-manuales.dto';
 
 @Controller('proyectos')
 export class ProyectosController {
@@ -100,5 +101,30 @@ export class ProyectosController {
     @Query('year') year: string,
   ) {
     return this.recursosService.getCostosByProyecto(id, Number(year) || new Date().getFullYear());
+  }
+
+  // =====================
+  // COSTOS MANUALES (otros costos, guardias + hs extras)
+  // =====================
+
+  @Get(':id/costos-manuales')
+  getCostosManuales(
+    @Param('id') id: string,
+    @Query('year') year: string,
+  ) {
+    return this.proyectosService.getCostosManuales(id, Number(year) || new Date().getFullYear());
+  }
+
+  @Put(':id/costos-manuales')
+  upsertCostosManuales(
+    @Param('id') id: string,
+    @Query('year') year: string,
+    @Body() dto: UpsertCostosManualesDto,
+  ) {
+    return this.proyectosService.upsertCostosManuales(
+      id,
+      Number(year) || new Date().getFullYear(),
+      dto,
+    );
   }
 }

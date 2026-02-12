@@ -8,6 +8,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateProyectoDto } from './dto/create-proyecto.dto';
 import { UpdateProyectoDto } from './dto/update-proyecto.dto';
 import { QueryProyectoDto } from './dto/query-proyecto.dto';
+import { UpsertCostosManualesDto } from './dto/costos-manuales.dto';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
@@ -157,6 +158,67 @@ export class ProyectosService {
       where: { id },
       data: { deletedAt: new Date() },
     });
+  }
+
+  // =====================
+  // COSTOS MANUALES
+  // =====================
+
+  async getCostosManuales(proyectoId: string, year: number) {
+    await this.findOne(proyectoId);
+
+    const rows = await this.prisma.proyectoCostoManualesMes.findMany({
+      where: { proyectoId, year },
+      orderBy: { month: 'asc' },
+    });
+
+    const otrosCostos: Record<number, number> = {};
+    const guardiasExtras: Record<number, number> = {};
+    for (let m = 1; m <= 12; m++) {
+      otrosCostos[m] = 0;
+      guardiasExtras[m] = 0;
+    }
+    for (const r of rows) {
+      otrosCostos[r.month] = Number(r.otrosCostos);
+      guardiasExtras[r.month] = Number(r.guardiasExtras);
+    }
+
+    return { otrosCostos, guardiasExtras };
+  }
+
+  async upsertCostosManuales(
+    proyectoId: string,
+    year: number,
+    dto: UpsertCostosManualesDto,
+  ) {
+    await this.findOne(proyectoId);
+
+    if (year < 2020 || year > 2100) {
+      throw new BadRequestException('Year must be between 2020 and 2100');
+    }
+
+    const results = await Promise.all(
+      dto.items.map((item) =>
+        this.prisma.proyectoCostoManualesMes.upsert({
+          where: {
+            proyectoId_year_month: { proyectoId, year, month: item.month },
+          },
+          update: {
+            otrosCostos: item.otrosCostos,
+            guardiasExtras: item.guardiasExtras,
+          },
+          create: {
+            proyectoId,
+            year,
+            month: item.month,
+            otrosCostos: item.otrosCostos,
+            guardiasExtras: item.guardiasExtras,
+          },
+        }),
+      ),
+    );
+
+    return { updated: results.length };
   }
 
   private validateDates(

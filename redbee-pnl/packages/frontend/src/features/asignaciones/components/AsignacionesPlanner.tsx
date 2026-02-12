@@ -11,11 +11,12 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useQueryClient } from '@tanstack/react-query';
-import { usePlannerData, usePlannerSave, usePlannerDeleteAsignacion, PLANNER_QUERY_KEY, useRecursosCostos, useUpsertRecursoCosto, useDeleteRecursoCosto } from '../hooks/usePlanner';
+import { usePlannerData, usePlannerSave, usePlannerDeleteAsignacion, PLANNER_QUERY_KEY, useRecursosCostos, useUpsertRecursoCosto, useDeleteRecursoCosto, useCostosManuales, useSaveCostosManuales } from '../hooks/usePlanner';
 import { useAsignacionMutations } from '../hooks/useAsignacionMutations';
 import { useConfig, DEFAULT_CONFIG, useFxRates, buildFxMap } from '@/features/config';
 import { usePlanLineas } from '@/features/planLineas';
 import { PlannerCell } from './PlannerCell';
+import { ManualCostCell } from './ManualCostCell';
 import { ResourceCombobox } from './ResourceCombobox';
 import type { PlannerRow } from '../types/asignacion.types';
 
@@ -66,6 +67,11 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
     return new Set(fxData.rates.filter(r => r.isFallback).map(r => r.month));
   }, [fxData]);
 
+  // Costos manuales (otros costos, guardias + hs extras)
+  const { data: costosManualesData } = useCostosManuales(proyectoId, year);
+  const saveCostosManualesMutation = useSaveCostosManuales(proyectoId, year);
+  const [dirtyCostosManuales, setDirtyCostosManuales] = useState<Map<string, number>>(new Map());
+
   // Salary overrides for cost view
   const { data: costosData } = useRecursosCostos(proyectoId, year);
   const upsertCostoMutation = useUpsertRecursoCosto(proyectoId, year);
@@ -89,6 +95,30 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
   }, []);
 
   const rows: PlannerRow[] = data?.rows || [];
+
+  // Costos manuales helpers
+  const getCostoManualKey = (concepto: 'otrosCostos' | 'guardiasExtras', month: number) => `${concepto}-${month}`;
+
+  const getCostoManualValue = useCallback(
+    (concepto: 'otrosCostos' | 'guardiasExtras', month: number): number => {
+      const dirtyKey = getCostoManualKey(concepto, month);
+      if (dirtyCostosManuales.has(dirtyKey)) return dirtyCostosManuales.get(dirtyKey)!;
+      if (!costosManualesData) return 0;
+      return costosManualesData[concepto]?.[month] ?? 0;
+    },
+    [dirtyCostosManuales, costosManualesData],
+  );
+
+  const handleCostoManualChange = useCallback(
+    (concepto: 'otrosCostos' | 'guardiasExtras', month: number, value: number) => {
+      setDirtyCostosManuales((prev) => {
+        const next = new Map(prev);
+        next.set(getCostoManualKey(concepto, month), value);
+        return next;
+      });
+    },
+    [],
+  );
 
   const getCellKey = (asignacionId: string, month: number) => `${asignacionId}-${month}`;
 
@@ -128,50 +158,66 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
     [handleCellChange],
   );
 
+  const hasDirtyChanges = dirtyCells.size > 0 || dirtyCostosManuales.size > 0;
+  const isSaving = saveMutation.isPending || saveCostosManualesMutation.isPending;
+
   const handleSave = () => {
-    if (dirtyCells.size === 0) return;
-    
-    // Build items from dirty cells, using rows data to get the correct asignacionId
-    const items: { asignacionId: string; year: number; month: number; porcentajeAsignacion: number }[] = [];
-    
-    for (const [key, porcentajeAsignacion] of dirtyCells.entries()) {
-      // Key format: `${asignacionId}-${month}` where asignacionId is a UUID with dashes
-      // Use lastIndexOf to correctly split UUID from month
-      const lastDash = key.lastIndexOf('-');
-      if (lastDash === -1) {
-        console.warn('[Planner] Invalid cell key format:', key);
-        continue;
+    if (!hasDirtyChanges) return;
+
+    // Save planner cells
+    if (dirtyCells.size > 0) {
+      const items: { asignacionId: string; year: number; month: number; porcentajeAsignacion: number }[] = [];
+
+      for (const [key, porcentajeAsignacion] of dirtyCells.entries()) {
+        const lastDash = key.lastIndexOf('-');
+        if (lastDash === -1) continue;
+
+        const asignacionId = key.substring(0, lastDash);
+        const month = Number(key.substring(lastDash + 1));
+
+        const rowExists = rows.some((r) => r.asignacionId === asignacionId);
+        if (!rowExists || month < 1 || month > 12 || isNaN(month)) continue;
+        if (isNaN(porcentajeAsignacion) || porcentajeAsignacion < 0) continue;
+
+        items.push({ asignacionId, year, month, porcentajeAsignacion });
       }
-      
-      const asignacionId = key.substring(0, lastDash);
-      const month = Number(key.substring(lastDash + 1));
-      
-      // Validate: asignacionId must exist in rows, month must be 1-12
-      const rowExists = rows.some((r) => r.asignacionId === asignacionId);
-      if (!rowExists) {
-        console.warn('[Planner] asignacionId not found in rows:', asignacionId);
-        continue;
+
+      if (items.length > 0) {
+        saveMutation.mutate({ items }, {
+          onSuccess: () => setDirtyCells(new Map()),
+        });
       }
-      if (month < 1 || month > 12 || isNaN(month)) {
-        console.warn('[Planner] Invalid month:', month, 'from key:', key);
-        continue;
-      }
-      if (isNaN(porcentajeAsignacion) || porcentajeAsignacion < 0) {
-        console.warn('[Planner] Invalid porcentaje:', porcentajeAsignacion);
-        continue;
-      }
-      
-      items.push({ asignacionId, year, month, porcentajeAsignacion });
     }
-    
-    if (items.length === 0) {
-      console.warn('[Planner] No valid items to save after validation');
-      return;
+
+    // Save costos manuales
+    if (dirtyCostosManuales.size > 0) {
+      // Collect all dirty months into a map: month -> { otrosCostos, guardiasExtras }
+      const monthMap = new Map<number, { otrosCostos: number; guardiasExtras: number }>();
+
+      for (const [key, value] of dirtyCostosManuales.entries()) {
+        const [concepto, monthStr] = key.split('-');
+        const month = Number(monthStr);
+        if (!monthMap.has(month)) {
+          monthMap.set(month, {
+            otrosCostos: getCostoManualValue('otrosCostos', month),
+            guardiasExtras: getCostoManualValue('guardiasExtras', month),
+          });
+        }
+        const entry = monthMap.get(month)!;
+        if (concepto === 'otrosCostos') entry.otrosCostos = value;
+        else if (concepto === 'guardiasExtras') entry.guardiasExtras = value;
+      }
+
+      const items = Array.from(monthMap.entries()).map(([month, vals]) => ({
+        month,
+        otrosCostos: vals.otrosCostos,
+        guardiasExtras: vals.guardiasExtras,
+      }));
+
+      saveCostosManualesMutation.mutate({ items }, {
+        onSuccess: () => setDirtyCostosManuales(new Map()),
+      });
     }
-    
-    saveMutation.mutate({ items }, {
-      onSuccess: () => setDirtyCells(new Map()),
-    });
   };
 
   const handleAddResource = (recursoId: string) => {
@@ -351,16 +397,40 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
     [getCellCost],
   );
 
-  // Column cost total (all costs are already converted to currencyMode by getCellCost)
+  // Get manual cost value converted to display currency
+  const getCostoManualDisplay = useCallback(
+    (concepto: 'otrosCostos' | 'guardiasExtras', month: number): number => {
+      const rawArs = getCostoManualValue(concepto, month);
+      if (rawArs === 0) return 0;
+      if (currencyMode === 'USD') {
+        const fx = getFxRate(month);
+        if (!fx || fx <= 0) return 0;
+        return rawArs / fx;
+      }
+      return rawArs;
+    },
+    [getCostoManualValue, currencyMode, getFxRate],
+  );
+
+  // Total manual costs for a month (in display currency)
+  const getManualCostsTotal = useCallback(
+    (month: number): number => {
+      return getCostoManualDisplay('otrosCostos', month) + getCostoManualDisplay('guardiasExtras', month);
+    },
+    [getCostoManualDisplay],
+  );
+
+  // Column cost total (recursos + costos manuales, all in currencyMode)
   const getColumnCostTotal = useCallback(
     (month: number): number => {
       let total = 0;
       for (const row of rows) {
         total += getCellCost(row, month);
       }
+      total += getManualCostsTotal(month);
       return total;
     },
-    [rows, getCellCost],
+    [rows, getCellCost, getManualCostsTotal],
   );
 
   // Check if rows have mixed native currencies (for UI info only)
@@ -442,7 +512,7 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-stone-500 hover:text-stone-800"
-              onClick={() => { setYear((y) => y - 1); setDirtyCells(new Map()); }}
+              onClick={() => { setYear((y) => y - 1); setDirtyCells(new Map()); setDirtyCostosManuales(new Map()); }}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -451,7 +521,7 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-stone-500 hover:text-stone-800"
-              onClick={() => { setYear((y) => y + 1); setDirtyCells(new Map()); }}
+              onClick={() => { setYear((y) => y + 1); setDirtyCells(new Map()); setDirtyCostosManuales(new Map()); }}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -529,20 +599,20 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
           )}
         </div>
         <div className="flex items-center gap-2">
-          {dirtyCells.size > 0 && (
+          {hasDirtyChanges && (
             <span className="text-xs text-amber-600 mr-2">
-              {dirtyCells.size} cambio{dirtyCells.size !== 1 ? 's' : ''} sin guardar
+              {dirtyCells.size + dirtyCostosManuales.size} cambio{(dirtyCells.size + dirtyCostosManuales.size) !== 1 ? 's' : ''} sin guardar
             </span>
           )}
           <Button
             size="sm"
             variant="outline"
-            disabled={dirtyCells.size === 0 || saveMutation.isPending}
+            disabled={!hasDirtyChanges || isSaving}
             onClick={handleSave}
             className="border-stone-200 text-stone-700"
           >
             <Save className="mr-2 h-4 w-4" />
-            {saveMutation.isPending ? 'Guardando...' : 'Guardar'}
+            {isSaving ? 'Guardando...' : 'Guardar'}
           </Button>
           <ResourceCombobox
             assignedRecursoIds={assignedRecursoIds}
@@ -861,6 +931,49 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
                   </td>
                 </tr>
               );
+              })}
+
+              {/* Manual cost rows — always visible */}
+              {(['otrosCostos', 'guardiasExtras'] as const).map((concepto) => {
+                const label = concepto === 'otrosCostos' ? 'Otros costos' : 'Guardias + hs extras';
+                const rowAnnual = MONTHS.reduce((sum, m) => sum + getCostoManualDisplay(concepto, m), 0);
+
+                return (
+                  <tr key={concepto} className="border-t border-dashed border-stone-300 bg-stone-50/60">
+                    <td className="px-3 py-1 sticky left-0 bg-stone-50 z-10">
+                      <span className="text-xs font-medium text-stone-500 italic">{label}</span>
+                    </td>
+                    {MONTHS.map((m) => {
+                      const displayValue = getCostoManualDisplay(concepto, m);
+                      const dirtyKey = getCostoManualKey(concepto, m);
+                      const isDirty = dirtyCostosManuales.has(dirtyKey);
+
+                      return (
+                        <ManualCostCell
+                          key={m}
+                          value={displayValue}
+                          isDirty={isDirty}
+                          formatFn={(v) => formatCurrency(v, currencyMode)}
+                          onChange={(newDisplayVal) => {
+                            // Convert back to ARS if in USD mode
+                            let arsValue = newDisplayVal;
+                            if (currencyMode === 'USD') {
+                              const fx = getFxRate(m);
+                              if (fx && fx > 0) arsValue = newDisplayVal * fx;
+                            }
+                            handleCostoManualChange(concepto, m, arsValue);
+                          }}
+                        />
+                      );
+                    })}
+                    <td className="text-center px-1 py-1">
+                      <span className="text-xs font-semibold text-stone-600">
+                        {rowAnnual > 0 ? formatCurrency(rowAnnual, currencyMode) : '-'}
+                      </span>
+                    </td>
+                    <td />
+                  </tr>
+                );
               })}
             </tbody>
             <tfoot>

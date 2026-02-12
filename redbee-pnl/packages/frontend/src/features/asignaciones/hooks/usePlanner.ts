@@ -5,9 +5,10 @@ import { asignacionesApi } from '../api/asignacionesApi';
 import { ASIGNACIONES_QUERY_KEY } from './useAsignaciones';
 import { PROYECTOS_QUERY_KEY } from '@/features/proyectos/hooks/useProyectos';
 import { PNL_QUERY_KEY } from '@/features/pnl';
-import type { UpsertMesBatchDto } from '../types/asignacion.types';
+import type { UpsertMesBatchDto, UpsertCostosManualesDto } from '../types/asignacion.types';
 
 export const PLANNER_QUERY_KEY = 'planner';
+export const COSTOS_MANUALES_QUERY_KEY = 'costos-manuales';
 
 export function usePlannerData(proyectoId: string, year: number) {
   return useQuery({
@@ -139,6 +140,35 @@ export function useDeleteRecursoCosto(proyectoId: string, year: number) {
     onError: (error: Error & { response?: { data?: { message?: string } } }) => {
       console.error('[Delete Salary Override Error]', error);
       toast.error(error.response?.data?.message || 'Error al eliminar override');
+    },
+  });
+}
+
+// =====================
+// COSTOS MANUALES
+// =====================
+
+export function useCostosManuales(proyectoId: string, year: number) {
+  return useQuery({
+    queryKey: [COSTOS_MANUALES_QUERY_KEY, proyectoId, year],
+    queryFn: () => asignacionesApi.getCostosManuales(proyectoId, year),
+    enabled: !!proyectoId,
+  });
+}
+
+export function useSaveCostosManuales(proyectoId: string, year: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (dto: UpsertCostosManualesDto) =>
+      asignacionesApi.saveCostosManuales(proyectoId, year, dto),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: [COSTOS_MANUALES_QUERY_KEY, proyectoId, year] });
+      queryClient.invalidateQueries({ queryKey: [PNL_QUERY_KEY, proyectoId] });
+      toast.success(`${result.updated} meses de costos manuales guardados`);
+    },
+    onError: (error: Error & { response?: { data?: { message?: string } } }) => {
+      toast.error(error.response?.data?.message || 'Error al guardar costos manuales');
     },
   });
 }

@@ -9,6 +9,8 @@ import type {
   PlannerData,
   UpsertMesBatchDto,
   RecursosCostosResponse,
+  CostosManualesData,
+  UpsertCostosManualesDto,
 } from '../types/asignacion.types';
 
 export const asignacionesApi = {
@@ -98,6 +100,28 @@ export const asignacionesApi = {
   ): Promise<{ deleted: boolean }> => {
     const { data } = await api.delete<{ deleted: boolean }>(
       `/recursos/${recursoId}/costos/${year}/${month}`,
+    );
+    return data;
+  },
+
+  // Costos manuales endpoints
+  getCostosManuales: async (proyectoId: string, year: number): Promise<CostosManualesData> => {
+    const { data } = await api.get<CostosManualesData>(
+      `/proyectos/${proyectoId}/costos-manuales`,
+      { params: { year } },
+    );
+    return data;
+  },
+
+  saveCostosManuales: async (
+    proyectoId: string,
+    year: number,
+    dto: UpsertCostosManualesDto,
+  ): Promise<{ updated: number }> => {
+    const { data } = await api.put<{ updated: number }>(
+      `/proyectos/${proyectoId}/costos-manuales`,
+      dto,
+      { params: { year } },
     );
     return data;
   },

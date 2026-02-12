@@ -184,6 +184,7 @@ model Proyecto {
   skillsRequeridos     ProyectoSkillRequerido[]
   presupuestos         ProyectoPresupuesto[]
   tarifarioPlans       ProyectoTarifarioPlan[]
+  costosManuales       ProyectoCostoManualesMes[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -771,6 +772,28 @@ model ProyectoTarifarioPlanMes {
   @@unique([lineaId, month])
   @@index([lineaId])
   @@map("proyecto_tarifario_plan_meses")
+}
+
+// ============================================
+// COSTOS MANUALES DE PROYECTO (otros costos, guardias)
+// ============================================
+
+model ProyectoCostoManualesMes {
+  id             String  @id @default(uuid())
+  proyectoId     String
+  year           Int
+  month          Int     // 1..12
+  otrosCostos    Decimal @default(0) @db.Decimal(15, 2)
+  guardiasExtras Decimal @default(0) @db.Decimal(15, 2)
+
+  proyecto Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([proyectoId, year, month])
+  @@index([proyectoId, year])
+  @@map("proyecto_costos_manuales_mes")
 }
 
 // ============================================
