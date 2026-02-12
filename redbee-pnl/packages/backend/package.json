@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "nest start --watch",
-    "build": "prisma generate && prisma migrate deploy && nest build",
+    "postinstall": "prisma generate",
+    "build": "prisma migrate deploy && nest build",
     "start": "node dist/main",
     "start:prod": "node dist/main",
     "test": "jest",
