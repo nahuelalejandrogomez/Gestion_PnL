@@ -243,8 +243,6 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
     return { mesInicio, mesFin };
   };
 
-  const activeRange = getActiveMonthRange();
-
   const isOverride = (lineaTarifarioId: string, month: number): boolean => {
     if (plan) {
       const linea = plan.lineas.find((l) => l.lineaTarifarioId === lineaTarifarioId);
