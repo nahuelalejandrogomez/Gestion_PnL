@@ -15,6 +15,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "ts-node prisma/seed.ts",
     "seed:base-rates": "ts-node prisma/seed-profiles-base-rates.ts",
+    "seed:recursos-demo": "ts-node prisma/seed-recursos-demo.ts",
     "reset:perfiles": "ts-node scripts/reset-perfiles-and-seed-rates.ts"
   },
   "dependencies": {
