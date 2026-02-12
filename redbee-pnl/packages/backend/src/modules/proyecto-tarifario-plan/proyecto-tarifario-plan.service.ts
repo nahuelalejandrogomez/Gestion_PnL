@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, UnprocessableEntityException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UpdateProyectoTarifarioPlanDto, AplicarTarifarioDto } from './dto';
 
@@ -166,18 +166,38 @@ export class ProyectoTarifarioPlanService {
 
     // Process each linea
     for (const [lineaTarifarioId, meses] of Object.entries(mesesByLinea)) {
-      // Find matching linea from tarifario
-      const tarifarioLinea = tarifario.lineas.find((l) => l.id === lineaTarifarioId);
-      if (!tarifarioLinea) {
-        throw new BadRequestException(`LineaTarifario with ID ${lineaTarifarioId} not found in tarifario`);
+      // Find matching linea from tarifario - try by ID first
+      let tarifarioLinea = tarifario.lineas.find((l) => l.id === lineaTarifarioId);
+
+      // If not found, try to reconcile by perfilId
+      if (!tarifarioLinea && meses[0]?.perfilId) {
+        const perfilId = meses[0].perfilId;
+        tarifarioLinea = tarifario.lineas.find((l) => l.perfilId === perfilId);
+
+        if (tarifarioLinea) {
+          // Reconciled - log for awareness
+          console.log(`[updatePlan] Reconciled lineaTarifarioId ${lineaTarifarioId} -> ${tarifarioLinea.id} via perfilId ${perfilId}`);
+        }
       }
+
+      // If still not found, return 422
+      if (!tarifarioLinea) {
+        const perfilId = meses[0]?.perfilId;
+        throw new UnprocessableEntityException(
+          `Línea del tarifario no encontrada (ID: ${lineaTarifarioId}${perfilId ? `, perfil: ${perfilId}` : ''}). ` +
+          `El tarifario pudo haber cambiado. Re-aplicá el tarifario o refrescá la página.`
+        );
+      }
+
+      // Use reconciled ID if different
+      const reconciledLineaTarifarioId = tarifarioLinea.id;
 
       // Find or create plan linea
       let planLinea = await this.prisma.proyectoTarifarioPlanLinea.findUnique({
         where: {
           planId_lineaTarifarioId: {
             planId: plan.id,
-            lineaTarifarioId,
+            lineaTarifarioId: reconciledLineaTarifarioId,
           },
         },
       });
@@ -187,7 +207,7 @@ export class ProyectoTarifarioPlanService {
         planLinea = await this.prisma.proyectoTarifarioPlanLinea.create({
           data: {
             planId: plan.id,
-            lineaTarifarioId,
+            lineaTarifarioId: reconciledLineaTarifarioId,
             rateSnapshot: tarifarioLinea.rate || 0,
             monedaSnapshot: tarifarioLinea.moneda || tarifario.moneda,
           },

@@ -1,9 +1,13 @@
-import { IsString, IsArray, ValidateNested, IsInt, Min, Max, IsNumber, IsBoolean } from 'class-validator';
+import { IsString, IsArray, ValidateNested, IsInt, Min, Max, IsNumber, IsBoolean, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class UpdatePlanMesDto {
   @IsString()
   lineaTarifarioId: string;
+
+  @IsString()
+  @IsOptional()
+  perfilId?: string; // For reconciliation if lineaTarifarioId not found
 
   @IsInt()
   @Min(1)

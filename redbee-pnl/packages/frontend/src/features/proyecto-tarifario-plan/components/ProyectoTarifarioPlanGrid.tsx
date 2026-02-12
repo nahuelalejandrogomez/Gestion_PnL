@@ -34,6 +34,11 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
   const [editValue, setEditValue] = useState<string>('');
   const [dirtyCells, setDirtyCells] = useState<Map<string, number>>(new Map());
 
+  // Drag-fill state
+  const [dragFillStart, setDragFillStart] = useState<string | null>(null);
+  const [dragFillCurrent, setDragFillCurrent] = useState<string | null>(null);
+  const [dragFillValue, setDragFillValue] = useState<number | null>(null);
+
   const { data: plan, isLoading, refetch } = usePlan(proyectoId, year);
   const { data: tarifariosData } = useTarifarios({ clienteId, estado: 'ACTIVO' });
   const updateMutation = useUpdatePlan();
@@ -101,13 +106,73 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
     }
   };
 
+  // Drag-fill handlers
+  const handleDragFillStart = (lineaTarifarioId: string, month: number, value: number) => {
+    const key = `${lineaTarifarioId}|${month}`;
+    setDragFillStart(key);
+    setDragFillCurrent(key);
+    setDragFillValue(value);
+  };
+
+  const handleDragFillMove = (lineaTarifarioId: string, month: number) => {
+    if (dragFillStart) {
+      const key = `${lineaTarifarioId}|${month}`;
+      setDragFillCurrent(key);
+    }
+  };
+
+  const handleDragFillEnd = useCallback(() => {
+    if (dragFillStart && dragFillCurrent && dragFillValue !== null) {
+      const [startLineaId, startMonthStr] = dragFillStart.split('|');
+      const [endLineaId, endMonthStr] = dragFillCurrent.split('|');
+      const startMonth = parseInt(startMonthStr);
+      const endMonth = parseInt(endMonthStr);
+
+      // Only fill within same row (same linea)
+      if (startLineaId === endLineaId) {
+        const newDirty = new Map(dirtyCells);
+        const minMonth = Math.min(startMonth, endMonth);
+        const maxMonth = Math.max(startMonth, endMonth);
+
+        for (let m = minMonth; m <= maxMonth; m++) {
+          const key = `${startLineaId}|${m}`;
+          newDirty.set(key, dragFillValue);
+        }
+
+        setDirtyCells(newDirty);
+      }
+    }
+
+    setDragFillStart(null);
+    setDragFillCurrent(null);
+    setDragFillValue(null);
+  }, [dragFillStart, dragFillCurrent, dragFillValue, dirtyCells]);
+
+  // Reset drag-fill on mouse up
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (dragFillStart) {
+        handleDragFillEnd();
+      }
+    };
+
+    document.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => document.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, [dragFillStart, handleDragFillEnd]);
+
   const handleGuardar = () => {
     if (!plan || dirtyCells.size === 0) return;
 
     const meses = Array.from(dirtyCells.entries()).map(([key, cantidad]) => {
       const [lineaTarifarioId, monthStr] = key.split('|');
+
+      // Find perfil for reconciliation
+      const linea = plan.lineas.find((l) => l.lineaTarifarioId === lineaTarifarioId);
+      const perfilId = linea?.perfil?.id;
+
       return {
         lineaTarifarioId,
+        perfilId, // For reconciliation
         month: parseInt(monthStr),
         cantidad,
         isOverride: true,
@@ -287,6 +352,16 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
                         const value = getCellValue(linea.lineaTarifarioId, month);
                         const hasOverride = isOverride(linea.lineaTarifarioId, month);
                         const isDirty = dirtyCells.has(key);
+                        const isDragFillTarget = dragFillStart && dragFillCurrent && (() => {
+                          const [startLineaId, startMonthStr] = dragFillStart.split('|');
+                          const [currLineaId, currMonthStr] = dragFillCurrent.split('|');
+                          if (startLineaId !== linea.lineaTarifarioId || startLineaId !== currLineaId) return false;
+                          const startMonth = parseInt(startMonthStr);
+                          const currMonth = parseInt(currMonthStr);
+                          const minMonth = Math.min(startMonth, currMonth);
+                          const maxMonth = Math.max(startMonth, currMonth);
+                          return month >= minMonth && month <= maxMonth;
+                        })();
 
                         return (
                           <td key={month} className="py-2 px-2 text-center relative">
@@ -305,8 +380,21 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
                             ) : (
                               <button
                                 onClick={() => handleCellClick(linea.lineaTarifarioId, month, value)}
+                                onMouseDown={(e) => {
+                                  if (e.shiftKey && value > 0) {
+                                    e.preventDefault();
+                                    handleDragFillStart(linea.lineaTarifarioId, month, value);
+                                  }
+                                }}
+                                onMouseEnter={() => {
+                                  if (dragFillStart) {
+                                    handleDragFillMove(linea.lineaTarifarioId, month);
+                                  }
+                                }}
                                 className={`w-full h-7 text-xs font-mono rounded px-1 ${
-                                  isDirty
+                                  isDragFillTarget
+                                    ? 'bg-blue-100 ring-2 ring-blue-400'
+                                    : isDirty
                                     ? 'bg-amber-100 ring-2 ring-amber-400'
                                     : 'hover:bg-stone-100'
                                 }`}
@@ -353,15 +441,20 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
               </div>
             )}
 
-            <div className="mt-4 flex items-center gap-2 text-xs text-stone-500">
-              <div className="flex items-center gap-1">
-                <span className="w-2 h-2 bg-blue-500 rounded-full" />
-                <span>Valor editado</span>
+            <div className="mt-4 space-y-2">
+              <div className="flex items-center gap-2 text-xs text-stone-500">
+                <div className="flex items-center gap-1">
+                  <span className="w-2 h-2 bg-blue-500 rounded-full" />
+                  <span>Valor editado</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="w-4 h-4 bg-amber-100 border-2 border-amber-400 rounded" />
+                  <span>Cambio sin guardar</span>
+                </div>
               </div>
-              <div className="flex items-center gap-1">
-                <span className="w-4 h-4 bg-amber-100 border-2 border-amber-400 rounded" />
-                <span>Cambio sin guardar</span>
-              </div>
+              <p className="text-xs text-stone-400">
+                💡 Tip: Mantené <kbd className="px-1 py-0.5 bg-stone-100 border border-stone-300 rounded text-[10px]">Shift</kbd> + arrastrá para copiar un valor a múltiples meses
+              </p>
             </div>
           </>
         ) : (

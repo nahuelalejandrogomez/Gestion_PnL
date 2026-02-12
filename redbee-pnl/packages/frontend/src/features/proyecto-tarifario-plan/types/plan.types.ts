@@ -39,6 +39,7 @@ export interface ProyectoTarifarioPlan {
 
 export interface UpdatePlanMesDto {
   lineaTarifarioId: string;
+  perfilId?: string; // For reconciliation if lineaTarifarioId not found
   month: number;
   cantidad: number;
   isOverride: boolean;
