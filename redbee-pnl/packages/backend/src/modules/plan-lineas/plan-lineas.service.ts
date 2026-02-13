@@ -82,22 +82,27 @@ export class PlanLineasService {
       },
     });
 
-    // Build map: perfilId -> month -> total FTEs asignados
+    // Build map: perfilId|nivel -> month -> total FTEs asignados
+    // Use composite key to distinguish seniority levels (BA JR vs BA SSR vs BA SR)
     const asignadosByPerfil: Record<string, Record<number, number>> = {};
     for (const asig of asignaciones) {
       const perfilId = asig.recurso.perfil?.id;
+      const nivel = asig.recurso.perfil?.nivel;
       if (!perfilId) continue;
 
-      if (!asignadosByPerfil[perfilId]) {
-        asignadosByPerfil[perfilId] = {};
-        for (let m = 1; m <= 12; m++) asignadosByPerfil[perfilId][m] = 0;
+      // Composite key: perfilId|nivel (handle null nivel as 'null')
+      const key = `${perfilId}|${nivel || 'null'}`;
+
+      if (!asignadosByPerfil[key]) {
+        asignadosByPerfil[key] = {};
+        for (let m = 1; m <= 12; m++) asignadosByPerfil[key][m] = 0;
       }
 
       for (const mes of asig.meses) {
         const pct = Number(mes.porcentajeAsignacion);
         if (pct === 0) continue;
         const fte = pct / 100;
-        asignadosByPerfil[perfilId][mes.month] += fte;
+        asignadosByPerfil[key][mes.month] += fte;
       }
     }
 
@@ -122,8 +127,9 @@ export class PlanLineasService {
         meses[month] = ftesForecast;
         total += ftesForecast;
 
-        // Calculate cobertura for this perfil/month
-        const ftesAsignados = asignadosByPerfil[linea.perfilId]?.[month] || 0;
+        // Calculate cobertura for this perfil/month using composite key
+        const key = `${linea.perfilId}|${linea.perfil.nivel || 'null'}`;
+        const ftesAsignados = asignadosByPerfil[key]?.[month] || 0;
         const porcentaje = ftesForecast > 0 ? (ftesAsignados / ftesForecast) * 100 : null;
         const estado = determinarEstado(ftesForecast, ftesAsignados);
 

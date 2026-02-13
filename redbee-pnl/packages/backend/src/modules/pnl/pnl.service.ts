@@ -171,7 +171,8 @@ export class PnlService {
     const costoEmpresaPct = appConfig ? Number(appConfig.value) : 45;
     const monedaTarifario = tarifario?.moneda || 'USD';
 
-    // 3. Rate map: perfilId -> monthly rate (normalised to per-month)
+    // 3. Rate map: perfilId|nivel -> monthly rate (normalised to per-month)
+    // Use composite key to distinguish seniority levels (BA JR vs BA SSR vs BA SR)
     const rateMap: Record<string, number> = {};
     for (const linea of tarifarioLineas) {
       let monthlyRate = Number(linea.rate);
@@ -180,7 +181,8 @@ export class PnlService {
       } else if (linea.unidad === 'DIA') {
         monthlyRate = monthlyRate * DIAS_BASE_MES;
       }
-      rateMap[linea.perfilId] = monthlyRate;
+      const key = `${linea.perfilId}|${linea.perfil.nivel || 'null'}`;
+      rateMap[key] = monthlyRate;
     }
 
     // 4. FX map: month -> effective USD/ARS
@@ -193,32 +195,37 @@ export class PnlService {
       salaryOverrides[ov.recursoId][ov.month] = Number(ov.costoMensual);
     }
 
-    // 6. Forecast FTEs: perfilId -> { month -> totalFtes }
+    // 6. Forecast FTEs: perfilId|nivel -> { month -> totalFtes }
+    // Use composite key to distinguish seniority levels (BA JR vs BA SSR vs BA SR)
     const forecastByPerfil: Record<string, Record<number, number>> = {};
     for (const linea of planLineas) {
-      const pid = linea.perfilId;
-      if (!forecastByPerfil[pid]) {
-        forecastByPerfil[pid] = {};
-        for (let m = 1; m <= 12; m++) forecastByPerfil[pid][m] = 0;
+      const key = `${linea.perfilId}|${linea.perfil.nivel || 'null'}`;
+      if (!forecastByPerfil[key]) {
+        forecastByPerfil[key] = {};
+        for (let m = 1; m <= 12; m++) forecastByPerfil[key][m] = 0;
       }
       for (const mes of linea.meses) {
-        forecastByPerfil[pid][mes.month] += Number(mes.ftes);
+        forecastByPerfil[key][mes.month] += Number(mes.ftes);
       }
     }
 
-    // 7. Assigned FTEs by perfil + resource costs by month
+    // 7. Assigned FTEs by perfil|nivel + resource costs by month
+    // Use composite key to distinguish seniority levels (BA JR vs BA SSR vs BA SR)
     const assignedByPerfil: Record<string, Record<number, number>> = {};
     const costByMonthARS: Record<number, number> = {};
     for (let m = 1; m <= 12; m++) costByMonthARS[m] = 0;
 
     for (const asig of asignaciones) {
       const perfId = asig.recurso.perfil?.id;
+      const nivel = asig.recurso.perfil?.nivel;
       const baseCosto = Number(asig.recurso.costoMensual);
       const recursoId = asig.recurso.id;
 
-      if (perfId && !assignedByPerfil[perfId]) {
-        assignedByPerfil[perfId] = {};
-        for (let m = 1; m <= 12; m++) assignedByPerfil[perfId][m] = 0;
+      const key = perfId ? `${perfId}|${nivel || 'null'}` : null;
+
+      if (key && !assignedByPerfil[key]) {
+        assignedByPerfil[key] = {};
+        for (let m = 1; m <= 12; m++) assignedByPerfil[key][m] = 0;
       }
 
       for (const mes of asig.meses) {
@@ -226,8 +233,8 @@ export class PnlService {
         if (pct === 0) continue;
         const fte = pct / 100;
 
-        if (perfId) {
-          assignedByPerfil[perfId][mes.month] += fte;
+        if (key) {
+          assignedByPerfil[key][mes.month] += fte;
         }
 
         const costForMonth =
@@ -249,7 +256,8 @@ export class PnlService {
     }
 
     // 9. Compute per-month P&L
-    const allPerfilIds = new Set([
+    // Use composite keys (perfilId|nivel) to distinguish seniority levels
+    const allPerfilKeys = new Set([
       ...Object.keys(forecastByPerfil),
       ...Object.keys(assignedByPerfil),
     ]);
@@ -276,10 +284,10 @@ export class PnlService {
       let ftesForecast = 0;
       let ftesAsignados = 0;
 
-      for (const pid of allPerfilIds) {
-        const fteFc = forecastByPerfil[pid]?.[m] || 0;
-        const fteAs = assignedByPerfil[pid]?.[m] || 0;
-        const rate = rateMap[pid] || 0;
+      for (const key of allPerfilKeys) {
+        const fteFc = forecastByPerfil[key]?.[m] || 0;
+        const fteAs = assignedByPerfil[key]?.[m] || 0;
+        const rate = rateMap[key] || 0;
 
         ftesForecast += fteFc;
         ftesAsignados += fteAs;
