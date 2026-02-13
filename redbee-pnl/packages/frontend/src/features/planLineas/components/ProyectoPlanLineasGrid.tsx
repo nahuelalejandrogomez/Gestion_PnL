@@ -11,6 +11,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -36,6 +46,7 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
   const [dirtyLineas, setDirtyLineas] = useState<Map<string, PlanLinea>>(new Map());
   const [deletedLineaIds, setDeletedLineaIds] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'fte' | 'money'>('fte');
+  const [showImportConfirm, setShowImportConfirm] = useState(false);
 
   // Drag-fill state
   const [dragFillStart, setDragFillStart] = useState<string | null>(null);
@@ -205,6 +216,13 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
       return;
     }
 
+    // Show confirmation dialog
+    setShowImportConfirm(true);
+  };
+
+  const confirmImportFromTarifario = () => {
+    if (!tarifario || !tarifario.lineas) return;
+
     // Auto-fill months within vigencia with 0
     const meses: Record<number, number> = {};
     const cobertura: Record<number, any> = {};
@@ -215,19 +233,12 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
       }
     }
 
-    // Create new lineas for all tarifario lineas (avoiding duplicates by Perfil+Seniority)
+    // Create new lineas for all tarifario lineas
     const newLineas: PlanLinea[] = [];
     let addedCount = 0;
-    let skippedCount = 0;
 
     for (const lineaTarifario of tarifario.lineas) {
       if (!lineaTarifario.perfil) continue;
-
-      // Check duplicate by Perfil + Seniority
-      if (isDuplicatePerfilSeniority(lineaTarifario.perfil.id)) {
-        skippedCount++;
-        continue;
-      }
 
       const newLinea: PlanLinea = {
         id: `temp-${Date.now()}-${addedCount}`,
@@ -245,20 +256,20 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
     }
 
     if (newLineas.length === 0) {
-      if (skippedCount > 0) {
-        toast.info('Todas las líneas del tarifario ya están agregadas (Perfil+Seniority duplicados).');
-      } else {
-        toast.info('No hay líneas nuevas para importar.');
-      }
+      toast.info('No hay líneas para importar del tarifario.');
+      setShowImportConfirm(false);
       return;
     }
 
-    setLocalLineas([...localLineas, ...newLineas]);
-    const updated = new Map(dirtyLineas);
+    // REPLACE all lines (not append) - this is the key fix
+    setLocalLineas(newLineas);
+    const updated = new Map<string, PlanLinea>();
     newLineas.forEach((linea) => updated.set(linea.id, linea));
     setDirtyLineas(updated);
+    setDeletedLineaIds([]); // Clear any pending deletions
 
-    toast.success(`${newLineas.length} línea(s) importada(s) desde tarifario${skippedCount > 0 ? ` (${skippedCount} duplicada(s) omitida(s))` : ''}.`);
+    setShowImportConfirm(false);
+    toast.success(`Plan reemplazado con ${newLineas.length} línea(s) del tarifario.`);
   };
 
   const handleRemoveLinea = (id: string) => {
@@ -978,6 +989,25 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
           )}
         </div>
       </CardContent>
+
+      {/* Import Confirmation Dialog */}
+      <AlertDialog open={showImportConfirm} onOpenChange={setShowImportConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Reemplazar plan con tarifario?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esto reemplazará completamente el plan actual para {selectedYear} con las líneas del tarifario seleccionado.
+              Se eliminarán todas las líneas existentes y sus valores. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmImportFromTarifario}>
+              Continuar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

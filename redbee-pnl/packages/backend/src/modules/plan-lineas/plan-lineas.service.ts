@@ -164,10 +164,10 @@ export class PlanLineasService {
     proyectoId: string,
     dto: UpsertPlanLineasDto,
   ): Promise<{ success: boolean; updated: number }> {
-    // Verify proyecto exists
+    // Verify proyecto exists and get current tarifario
     const proyecto = await this.prisma.proyecto.findUnique({
       where: { id: proyectoId },
-      select: { id: true, deletedAt: true },
+      select: { id: true, deletedAt: true, tarifarioRevenuePlanId: true },
     });
 
     if (!proyecto || proyecto.deletedAt) {
@@ -175,15 +175,46 @@ export class PlanLineasService {
     }
 
     await this.prisma.$transaction(async (tx) => {
-      // 0. Update proyecto.tarifarioRevenuePlanId if tarifarioId provided
-      if (dto.tarifarioId) {
+      // 0. Detect tarifario change and clear year if needed
+      const tarifarioChanged = dto.tarifarioId && dto.tarifarioId !== proyecto.tarifarioRevenuePlanId;
+
+      if (tarifarioChanged) {
+        // Tarifario changed: clear ALL lines for this year (hard delete for clean slate)
+        // This ensures "Aplicar tarifario" is idempotent per (proyectoId, year, tarifarioId)
+        const existingLineas = await tx.proyectoPlanLinea.findMany({
+          where: { proyectoId, deletedAt: null },
+          select: { id: true },
+        });
+
+        if (existingLineas.length > 0) {
+          const lineaIds = existingLineas.map(l => l.id);
+
+          // Delete associated meses first (foreign key constraint)
+          await tx.proyectoPlanLineaMes.deleteMany({
+            where: { planLineaId: { in: lineaIds }, year: dto.year },
+          });
+
+          // Soft delete the lineas for the year
+          await tx.proyectoPlanLinea.updateMany({
+            where: { id: { in: lineaIds }, proyectoId },
+            data: { deletedAt: new Date() },
+          });
+        }
+
+        // Update tarifario reference
+        await tx.proyecto.update({
+          where: { id: proyectoId },
+          data: { tarifarioRevenuePlanId: dto.tarifarioId },
+        });
+      } else if (dto.tarifarioId && !proyecto.tarifarioRevenuePlanId) {
+        // First time applying a tarifario
         await tx.proyecto.update({
           where: { id: proyectoId },
           data: { tarifarioRevenuePlanId: dto.tarifarioId },
         });
       }
 
-      // 1. Delete marked lineas (soft delete)
+      // 1. Delete marked lineas (soft delete) - only for manual deletions
       if (dto.deletedLineaIds && dto.deletedLineaIds.length > 0) {
         await tx.proyectoPlanLinea.updateMany({
           where: {
