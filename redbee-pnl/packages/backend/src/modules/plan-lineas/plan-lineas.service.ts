@@ -1,8 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UpsertPlanLineasDto } from './dto/upsert-plan-lineas.dto';
+import { determineMonthCoverageStatus } from '../pnl/helpers/coverage-any-match.helper';
 
-type EstadoCobertura = 'CUBIERTO' | 'PARCIAL' | 'SIN_ASIGNAR';
+type EstadoCobertura = 'CUBIERTO' | 'PARCIAL' | 'SIN_ASIGNAR' | 'SOBRE_ASIGNADO';
 
 interface CoberturaMes {
   ftesAsignados: number;
@@ -44,6 +45,7 @@ export class PlanLineasService {
     }
 
     // Get all plan lineas for this proyecto
+    // IMPORTANTE: Orden estable para asignación distribuida (createdAt + id)
     const lineas = await this.prisma.proyectoPlanLinea.findMany({
       where: {
         proyectoId,
@@ -63,9 +65,8 @@ export class PlanLineasService {
         },
       },
       orderBy: [
-        { perfil: { nombre: 'asc' } },
-        { nombreLinea: 'asc' },
         { createdAt: 'asc' },
+        { id: 'asc' },
       ],
     });
 
@@ -73,48 +74,72 @@ export class PlanLineasService {
     const asignaciones = await this.prisma.asignacionRecurso.findMany({
       where: { proyectoId },
       include: {
-        recurso: {
-          select: {
-            perfil: { select: { id: true, nivel: true } },
-          },
-        },
         meses: { where: { year } },
       },
     });
 
-    // Build map: perfilId|nivel -> month -> total FTEs asignados
-    // Use composite key to distinguish seniority levels (BA JR vs BA SSR vs BA SR)
-    const asignadosByPerfil: Record<string, Record<number, number>> = {};
+    // ============================================================================
+    // NUEVA LÓGICA: Coverage ANY Match (sin distinción por perfil/seniority)
+    // ============================================================================
+    // Build map: month -> total FTEs asignados (ANY perfil/seniority)
+    const asignadosByMonth: Record<number, number> = {};
+    for (let m = 1; m <= 12; m++) asignadosByMonth[m] = 0;
+
     for (const asig of asignaciones) {
-      const perfilId = asig.recurso.perfil?.id;
-      const nivel = asig.recurso.perfil?.nivel;
-      if (!perfilId) continue;
-
-      // Composite key: perfilId|nivel (handle null nivel as 'null')
-      const key = `${perfilId}|${nivel || 'null'}`;
-
-      if (!asignadosByPerfil[key]) {
-        asignadosByPerfil[key] = {};
-        for (let m = 1; m <= 12; m++) asignadosByPerfil[key][m] = 0;
-      }
-
       for (const mes of asig.meses) {
         const pct = Number(mes.porcentajeAsignacion);
         if (pct === 0) continue;
         const fte = pct / 100;
-        asignadosByPerfil[key][mes.month] += fte;
+        asignadosByMonth[mes.month] += fte;
       }
     }
 
-    // Helper: determinar estado de cobertura
-    const determinarEstado = (forecast: number, asignado: number): EstadoCobertura => {
-      if (forecast === 0) return 'SIN_ASIGNAR';
-      if (asignado === 0) return 'SIN_ASIGNAR';
-      if (asignado >= forecast) return 'CUBIERTO';
-      return 'PARCIAL';
-    };
+    // Build map: month -> total FTEs forecast (suma de todas las líneas del mes)
+    const forecastByMonth: Record<number, number> = {};
+    for (let m = 1; m <= 12; m++) forecastByMonth[m] = 0;
 
-    // Transform to response format with cobertura
+    for (const linea of lineas) {
+      for (const mes of linea.meses) {
+        forecastByMonth[mes.month] += Number(mes.ftes);
+      }
+    }
+
+    // ============================================================================
+    // ASIGNACIÓN DISTRIBUIDA: Distribuir FTEs asignados a líneas en orden
+    // ============================================================================
+    // Por cada mes, distribuir los FTEs asignados a las líneas en orden (createdAt)
+    // Esto permite que cada línea tenga su propia cobertura (verde/amarillo/rojo)
+    // según cuántos FTEs le "tocaron" en la distribución.
+
+    // Map: lineId -> month -> lineAssignedEquivalent
+    const lineAssignedByMonth: Record<string, Record<number, number>> = {};
+
+    for (let month = 1; month <= 12; month++) {
+      let assignedRemaining = asignadosByMonth[month];
+
+      // Distribuir en orden de createdAt (orden estable)
+      for (const linea of lineas) {
+        if (!lineAssignedByMonth[linea.id]) {
+          lineAssignedByMonth[linea.id] = {};
+        }
+
+        const mesData = linea.meses.find((m) => m.month === month);
+        const lineForecast = mesData ? Number(mesData.ftes) : 0;
+
+        // Asignar lo que se pueda cubrir de esta línea
+        const lineAssignedEquivalent = Math.min(lineForecast, assignedRemaining);
+        lineAssignedByMonth[linea.id][month] = lineAssignedEquivalent;
+
+        // Restar del remaining
+        assignedRemaining -= lineAssignedEquivalent;
+
+        if (assignedRemaining < 0.0001) {
+          assignedRemaining = 0; // Evitar errores de floating point
+        }
+      }
+    }
+
+    // Transform to response format with cobertura distribuida
     const lineasResponse: PlanLineaResponse[] = lineas.map((linea) => {
       const meses: Record<number, number> = {};
       const cobertura: Record<number, CoberturaMes> = {};
@@ -123,19 +148,21 @@ export class PlanLineasService {
       // Fill meses 1-12 with forecast and cobertura
       for (let month = 1; month <= 12; month++) {
         const mesData = linea.meses.find((m) => m.month === month);
-        const ftesForecast = mesData ? Number(mesData.ftes) : 0;
-        meses[month] = ftesForecast;
-        total += ftesForecast;
+        const lineForecast = mesData ? Number(mesData.ftes) : 0;
+        meses[month] = lineForecast;
+        total += lineForecast;
 
-        // Calculate cobertura for this perfil/month using composite key
-        const key = `${linea.perfilId}|${linea.perfil.nivel || 'null'}`;
-        const ftesAsignados = asignadosByPerfil[key]?.[month] || 0;
-        const porcentaje = ftesForecast > 0 ? (ftesAsignados / ftesForecast) * 100 : null;
-        const estado = determinarEstado(ftesForecast, ftesAsignados);
+        // Cobertura de ESTA LÍNEA (usando asignación distribuida)
+        const lineAssignedEquivalent = lineAssignedByMonth[linea.id]?.[month] || 0;
+        const coverageRatio =
+          lineForecast > 0 ? lineAssignedEquivalent / lineForecast : 0;
+        const porcentaje = coverageRatio > 0 ? coverageRatio * 100 : null;
+        const estado = determineMonthCoverageStatus(lineForecast, coverageRatio);
 
         cobertura[month] = {
-          ftesAsignados: Math.round(ftesAsignados * 100) / 100,
-          porcentajeCobertura: porcentaje !== null ? Math.round(porcentaje * 100) / 100 : null,
+          ftesAsignados: Math.round(lineAssignedEquivalent * 100) / 100,
+          porcentajeCobertura:
+            porcentaje !== null ? Math.round(porcentaje * 100) / 100 : null,
           estado,
         };
       }

@@ -87,6 +87,7 @@ export class PnlService {
       select: {
         id: true,
         nombre: true,
+        codigo: true,
         deletedAt: true,
         tarifarioId: true,
         tarifarioRevenuePlanId: true,
@@ -135,6 +136,7 @@ export class PnlService {
           perfil: { select: { id: true, nombre: true, nivel: true } },
           meses: { where: { year } },
         },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       }),
 
       this.prisma.asignacionRecurso.findMany({
@@ -143,6 +145,8 @@ export class PnlService {
           recurso: {
             select: {
               id: true,
+              nombre: true,
+              apellido: true,
               costoMensual: true,
               monedaCosto: true,
               perfil: { select: { id: true, nombre: true, nivel: true } },
@@ -172,7 +176,7 @@ export class PnlService {
     const monedaTarifario = tarifario?.moneda || 'USD';
 
     // 3. Rate map: perfilId|nivel -> monthly rate (normalised to per-month)
-    // Use composite key to distinguish seniority levels (BA JR vs BA SSR vs BA SR)
+    // NOTA: Perfil/seniority solo para calcular forecast revenue, NO para matching
     const rateMap: Record<string, number> = {};
     for (const linea of tarifarioLineas) {
       let monthlyRate = Number(linea.rate);
@@ -195,48 +199,48 @@ export class PnlService {
       salaryOverrides[ov.recursoId][ov.month] = Number(ov.costoMensual);
     }
 
-    // 6. Forecast FTEs: perfilId|nivel -> { month -> totalFtes }
-    // Use composite key to distinguish seniority levels (BA JR vs BA SSR vs BA SR)
-    const forecastByPerfil: Record<string, Record<number, number>> = {};
+    // ============================================================================
+    // NUEVA LÓGICA: Coverage ANY Match (sin distinción por perfil/seniority)
+    // ============================================================================
+
+    // 6. Forecast FTEs y Revenue por mes (TOTAL, sin agrupar por perfil)
+    const forecastByMonth: Record<number, { ftes: number; revenue: number }> = {};
+    for (let m = 1; m <= 12; m++) {
+      forecastByMonth[m] = { ftes: 0, revenue: 0 };
+    }
+
     for (const linea of planLineas) {
       const key = `${linea.perfilId}|${linea.perfil.nivel || 'null'}`;
-      if (!forecastByPerfil[key]) {
-        forecastByPerfil[key] = {};
-        for (let m = 1; m <= 12; m++) forecastByPerfil[key][m] = 0;
-      }
+      const rate = rateMap[key] || 0;
+
       for (const mes of linea.meses) {
-        forecastByPerfil[key][mes.month] += Number(mes.ftes);
+        const ftes = Number(mes.ftes);
+        forecastByMonth[mes.month].ftes += ftes;
+        forecastByMonth[mes.month].revenue += ftes * rate;
       }
     }
 
-    // 7. Assigned FTEs by perfil|nivel + resource costs by month
-    // Use composite key to distinguish seniority levels (BA JR vs BA SSR vs BA SR)
-    const assignedByPerfil: Record<string, Record<number, number>> = {};
+    // 7. Assigned FTEs por mes (TOTAL, sin agrupar por perfil) + resource costs
+    const assignedByMonth: Record<number, number> = {};
     const costByMonthARS: Record<number, number> = {};
-    for (let m = 1; m <= 12; m++) costByMonthARS[m] = 0;
+    for (let m = 1; m <= 12; m++) {
+      assignedByMonth[m] = 0;
+      costByMonthARS[m] = 0;
+    }
 
     for (const asig of asignaciones) {
-      const perfId = asig.recurso.perfil?.id;
-      const nivel = asig.recurso.perfil?.nivel;
       const baseCosto = Number(asig.recurso.costoMensual);
       const recursoId = asig.recurso.id;
-
-      const key = perfId ? `${perfId}|${nivel || 'null'}` : null;
-
-      if (key && !assignedByPerfil[key]) {
-        assignedByPerfil[key] = {};
-        for (let m = 1; m <= 12; m++) assignedByPerfil[key][m] = 0;
-      }
 
       for (const mes of asig.meses) {
         const pct = Number(mes.porcentajeAsignacion);
         if (pct === 0) continue;
         const fte = pct / 100;
 
-        if (key) {
-          assignedByPerfil[key][mes.month] += fte;
-        }
+        // Sumar FTE asignado (ANY, sin importar perfil)
+        assignedByMonth[mes.month] += fte;
 
+        // Sumar costo
         const costForMonth =
           salaryOverrides[recursoId]?.[mes.month] ?? baseCosto;
         costByMonthARS[mes.month] += costForMonth * (pct / 100);
@@ -255,13 +259,9 @@ export class PnlService {
       guardiasARS[cm.month] = Number(cm.guardiasExtras);
     }
 
-    // 9. Compute per-month P&L
-    // Use composite keys (perfilId|nivel) to distinguish seniority levels
-    const allPerfilKeys = new Set([
-      ...Object.keys(forecastByPerfil),
-      ...Object.keys(assignedByPerfil),
-    ]);
-
+    // 9. Compute per-month P&L usando ASIGNACIÓN DISTRIBUIDA
+    // Distribuir FTEs asignados a líneas en orden (createdAt+id) para calcular revenue
+    // Las líneas ya vienen ordenadas de Prisma con orderBy: [{ createdAt: 'asc' }, { id: 'asc' }]
     const meses: Record<number, PnlMonthData> = {};
     const acc = {
       revForecast: 0,
@@ -278,24 +278,45 @@ export class PnlService {
     for (let m = 1; m <= 12; m++) {
       const fx = fxMap[m] || 1;
 
-      let revForecast = 0;
-      let revAsignado = 0;
-      let revNoAsignado = 0;
-      let ftesForecast = 0;
-      let ftesAsignados = 0;
+      // Obtener totales del mes
+      const fteForecast = forecastByMonth[m].ftes;
+      const fteAssigned = assignedByMonth[m];
+      const forecastRevenue = forecastByMonth[m].revenue;
 
-      for (const key of allPerfilKeys) {
-        const fteFc = forecastByPerfil[key]?.[m] || 0;
-        const fteAs = assignedByPerfil[key]?.[m] || 0;
-        const rate = rateMap[key] || 0;
+      // ============================================================================
+      // ASIGNACIÓN DISTRIBUIDA: Distribuir FTEs a líneas para calcular revenue
+      // ============================================================================
+      let assignedRevenue = 0;
+      let assignedRemaining = fteAssigned;
+      let fteAssignedUsed = 0; // FTEs realmente usados (capped por forecast)
 
-        ftesForecast += fteFc;
-        ftesAsignados += fteAs;
+      for (const linea of planLineas) {
+        const mesData = linea.meses.find((mes) => mes.month === m);
+        const lineForecast = mesData ? Number(mesData.ftes) : 0;
 
-        revForecast += fteFc * rate;
-        revAsignado += Math.min(fteAs, fteFc) * rate;
-        revNoAsignado += Math.max(0, fteFc - fteAs) * rate;
+        if (lineForecast === 0) continue;
+
+        const key = `${linea.perfilId}|${linea.perfil.nivel || 'null'}`;
+        const lineRate = rateMap[key] || 0;
+
+        // Asignar lo que se pueda cubrir de esta línea
+        const lineAssignedEquivalent = Math.min(
+          lineForecast,
+          assignedRemaining,
+        );
+
+        assignedRevenue += lineAssignedEquivalent * lineRate;
+        fteAssignedUsed += lineAssignedEquivalent;
+        assignedRemaining -= lineAssignedEquivalent;
+
+        if (assignedRemaining < 0.0001) {
+          assignedRemaining = 0; // Evitar errores de floating point
+          break;
+        }
       }
+
+      const revenueSinStaffing = Math.max(0, forecastRevenue - assignedRevenue);
+      const ftesFaltantes = Math.max(0, fteForecast - fteAssigned);
 
       // Costs: convert ARS -> USD using FX
       const costRecursos = fx > 0 ? costByMonthARS[m] / fx : 0;
@@ -303,19 +324,19 @@ export class PnlService {
       const costGuardias = fx > 0 ? guardiasARS[m] / fx : 0;
       const costTotal = costRecursos + costOtros + costGuardias;
 
-      const ftesNoAsignados = Math.max(0, ftesForecast - ftesAsignados);
-      const diffAmount = revAsignado - costTotal;
+      const diffAmount = assignedRevenue - costTotal;
 
-      // Nuevos indicadores de negocio
-      const margenReal = revAsignado - costTotal;
-      const margenPotencial = revForecast - costTotal;
-      const cobertura = ftesForecast > 0 ? (ftesAsignados / ftesForecast) * 100 : null;
+      // Indicadores de negocio
+      const margenReal = assignedRevenue - costTotal;
+      const margenPotencial = forecastRevenue - costTotal;
+      const coberturaRatio = fteForecast > 0 ? fteAssigned / fteForecast : 0;
+      const coberturaRatioPct = coberturaRatio > 0 ? coberturaRatio * 100 : null;
 
       meses[m] = {
         revenue: {
-          forecast: round2(revForecast),
-          asignado: round2(revAsignado),
-          noAsignado: round2(revNoAsignado),
+          forecast: round2(forecastRevenue),
+          asignado: round2(assignedRevenue),
+          noAsignado: round2(revenueSinStaffing),
         },
         costos: {
           recursos: round2(costRecursos),
@@ -324,38 +345,40 @@ export class PnlService {
           total: round2(costTotal),
         },
         indicadores: {
-          ftesForecast: round2(ftesForecast),
-          ftesAsignados: round2(ftesAsignados),
-          ftesNoAsignados: round2(ftesNoAsignados),
+          ftesForecast: round2(fteForecast),
+          ftesAsignados: round2(fteAssigned),
+          ftesNoAsignados: round2(ftesFaltantes),
           diffAmount: round2(diffAmount),
           diffPct:
-            revAsignado > 0
-              ? round2((diffAmount / revAsignado) * 100)
+            assignedRevenue > 0
+              ? round2((diffAmount / assignedRevenue) * 100)
               : null,
           gmPct:
-            revAsignado > 0
-              ? round2(((revAsignado - costTotal) / revAsignado) * 100)
+            assignedRevenue > 0
+              ? round2(((assignedRevenue - costTotal) / assignedRevenue) * 100)
               : null,
           blendRate:
-            ftesAsignados > 0 ? round2(revAsignado / ftesAsignados) : null,
+            fteAssignedUsed > 0
+              ? round2(assignedRevenue / fteAssignedUsed)
+              : null,
           blendCost:
-            ftesAsignados > 0 ? round2(costRecursos / ftesAsignados) : null,
-          // Nuevos indicadores
+            fteAssignedUsed > 0 ? round2(costRecursos / fteAssignedUsed) : null,
           margenReal: round2(margenReal),
           margenPotencial: round2(margenPotencial),
-          cobertura: cobertura !== null ? round2(cobertura) : null,
+          cobertura:
+            coberturaRatioPct !== null ? round2(coberturaRatioPct) : null,
         },
       };
 
-      acc.revForecast += revForecast;
-      acc.revAsignado += revAsignado;
-      acc.revNoAsignado += revNoAsignado;
+      acc.revForecast += forecastRevenue;
+      acc.revAsignado += assignedRevenue;
+      acc.revNoAsignado += revenueSinStaffing;
       acc.costRecursos += costRecursos;
       acc.costOtros += costOtros;
       acc.costGuardias += costGuardias;
       acc.costTotal += costTotal;
-      acc.ftesForecast += ftesForecast;
-      acc.ftesAsignados += ftesAsignados;
+      acc.ftesForecast += fteForecast;
+      acc.ftesAsignados += fteAssigned;
     }
 
     // 10. Annual totals (FTEs averaged, amounts summed)
