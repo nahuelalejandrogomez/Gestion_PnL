@@ -32,4 +32,18 @@ export const proyectosApi = {
   delete: async (id: string): Promise<void> => {
     await api.delete(`/proyectos/${id}`);
   },
+
+  removeTarifario: async (
+    proyectoId: string,
+  ): Promise<{
+    ok: boolean;
+    deletedPlanLineas: number;
+    deletedPlanCells: number;
+    deletedForecastPlans: number;
+    deletedForecastLineas: number;
+    deletedForecastCells: number;
+  }> => {
+    const { data } = await api.delete(`/proyectos/${proyectoId}/tarifario`);
+    return data;
+  },
 };

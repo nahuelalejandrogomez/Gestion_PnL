@@ -221,6 +221,122 @@ export class ProyectosService {
     return { updated: results.length };
   }
 
+  // =====================
+  // TARIFARIO MANAGEMENT
+  // =====================
+
+  /**
+   * Remove tarifario assignment from proyecto and cascade delete all related data
+   * Returns counts of deleted records
+   */
+  async removeTarifario(proyectoId: string): Promise<{
+    ok: boolean;
+    deletedPlanLineas: number;
+    deletedPlanCells: number;
+    deletedForecastPlans: number;
+    deletedForecastLineas: number;
+    deletedForecastCells: number;
+  }> {
+    // Verify proyecto exists
+    const proyecto = await this.findOne(proyectoId);
+
+    if (!proyecto.tarifarioRevenuePlanId) {
+      // No tarifario assigned - idempotent operation
+      return {
+        ok: true,
+        deletedPlanLineas: 0,
+        deletedPlanCells: 0,
+        deletedForecastPlans: 0,
+        deletedForecastLineas: 0,
+        deletedForecastCells: 0,
+      };
+    }
+
+    let deletedPlanLineas = 0;
+    let deletedPlanCells = 0;
+    let deletedForecastPlans = 0;
+    let deletedForecastLineas = 0;
+    let deletedForecastCells = 0;
+
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Delete ProyectoPlanLinea + ProyectoPlanLineaMes (tarifario plan)
+      const planLineas = await tx.proyectoPlanLinea.findMany({
+        where: { proyectoId, deletedAt: null },
+        select: { id: true },
+      });
+
+      if (planLineas.length > 0) {
+        const planLineaIds = planLineas.map((l) => l.id);
+
+        // Delete meses first (foreign key constraint)
+        const deletedMeses = await tx.proyectoPlanLineaMes.deleteMany({
+          where: { planLineaId: { in: planLineaIds } },
+        });
+        deletedPlanCells = deletedMeses.count;
+
+        // Soft delete lineas
+        const deletedLineas = await tx.proyectoPlanLinea.updateMany({
+          where: { id: { in: planLineaIds } },
+          data: { deletedAt: new Date() },
+        });
+        deletedPlanLineas = deletedLineas.count;
+      }
+
+      // 2. Delete ProyectoTarifarioPlan + lineas + meses (forecast/revenue plan)
+      const forecastPlans = await tx.proyectoTarifarioPlan.findMany({
+        where: { proyectoId },
+        select: { id: true },
+      });
+
+      if (forecastPlans.length > 0) {
+        const forecastPlanIds = forecastPlans.map((p) => p.id);
+
+        // Get forecast lineas
+        const forecastLineas = await tx.proyectoTarifarioPlanLinea.findMany({
+          where: { planId: { in: forecastPlanIds } },
+          select: { id: true },
+        });
+
+        if (forecastLineas.length > 0) {
+          const forecastLineaIds = forecastLineas.map((l) => l.id);
+
+          // Delete meses first
+          const deletedForecastMeses = await tx.proyectoTarifarioPlanMes.deleteMany({
+            where: { lineaId: { in: forecastLineaIds } },
+          });
+          deletedForecastCells = deletedForecastMeses.count;
+
+          // Delete lineas
+          const deletedLineas = await tx.proyectoTarifarioPlanLinea.deleteMany({
+            where: { id: { in: forecastLineaIds } },
+          });
+          deletedForecastLineas = deletedLineas.count;
+        }
+
+        // Delete plans
+        const deletedPlans = await tx.proyectoTarifarioPlan.deleteMany({
+          where: { id: { in: forecastPlanIds } },
+        });
+        deletedForecastPlans = deletedPlans.count;
+      }
+
+      // 3. Clear tarifario reference
+      await tx.proyecto.update({
+        where: { id: proyectoId },
+        data: { tarifarioRevenuePlanId: null },
+      });
+    });
+
+    return {
+      ok: true,
+      deletedPlanLineas,
+      deletedPlanCells,
+      deletedForecastPlans,
+      deletedForecastLineas,
+      deletedForecastCells,
+    };
+  }
+
   private validateDates(
     dto: Partial<Pick<CreateProyectoDto, 'fechaInicio' | 'fechaFinEstimada' | 'fechaFinReal'>>,
   ) {

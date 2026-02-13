@@ -127,4 +127,29 @@ export class ProyectosController {
       dto,
     );
   }
+
+  // =====================
+  // TARIFARIO MANAGEMENT
+  // =====================
+
+  /**
+   * DELETE /proyectos/:id/tarifario
+   * Removes tarifario assignment from proyecto and cascade deletes all related data:
+   * - Plan lineas (ProyectoPlanLinea + ProyectoPlanLineaMes)
+   * - Forecast/Revenue plan (ProyectoTarifarioPlan + lineas + meses)
+   * Sets proyecto.tarifarioRevenuePlanId = null
+   */
+  @Delete(':id/tarifario')
+  async removeTarifario(@Param('id') id: string) {
+    this.logger.log(`[removeTarifario] Removing tarifario from proyecto ID: ${id}`);
+    try {
+      return await this.proyectosService.removeTarifario(id);
+    } catch (error) {
+      this.logger.error(
+        `[removeTarifario] Error removing tarifario from proyecto ID ${id}: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
 }

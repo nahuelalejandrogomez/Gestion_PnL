@@ -29,6 +29,7 @@ import { usePerfiles } from '@/features/perfiles';
 import { useTarifarios, useTarifario } from '@/features/tarifarios';
 import { useFxRates } from '@/features/revenue/hooks/useClienteRevenue';
 import { useProyecto } from '@/features/proyectos/hooks/useProyecto';
+import { useProyectoMutations } from '@/features/proyectos/hooks/useProyectoMutations';
 import { convertCurrency, formatCurrency, buildFxMap } from '@/lib/fx';
 import type { PlanLinea } from '../types/planLinea.types';
 
@@ -48,6 +49,7 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
   const [viewMode, setViewMode] = useState<'fte' | 'money'>('fte');
   const [showImportConfirm, setShowImportConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showRemoveTarifarioConfirm, setShowRemoveTarifarioConfirm] = useState(false);
 
   // Drag-fill state
   const [dragFillStart, setDragFillStart] = useState<string | null>(null);
@@ -63,6 +65,7 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
   const { data: tarifariosData } = useTarifarios(proyecto?.clienteId ? { clienteId: proyecto.clienteId, estado: 'ACTIVO' } : undefined);
   const { data: fxData } = useFxRates(selectedYear);
   const { upsertPlanLineas, deletePlanLineas } = usePlanLineasMutations(proyectoId);
+  const { removeTarifario } = useProyectoMutations();
   // Fetch selected tarifario with lineas (getById includes lineas, getAll does not)
   const { data: tarifarioWithLineas } = useTarifario(selectedTarifarioId);
 
@@ -493,6 +496,23 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
     });
   };
 
+  const handleRemoveTarifario = () => {
+    setShowRemoveTarifarioConfirm(true);
+  };
+
+  const confirmRemoveTarifario = () => {
+    removeTarifario.mutate(proyectoId, {
+      onSuccess: () => {
+        // Clear all local state
+        setLocalLineas([]);
+        setDirtyLineas(new Map());
+        setDeletedLineaIds([]);
+        setSelectedTarifarioId('');
+        setShowRemoveTarifarioConfirm(false);
+      },
+    });
+  };
+
   // Calculate revenue for a linea in a month
   const calculateLineaRevenue = (linea: PlanLinea, month: number): number => {
     const ftes = linea.meses[month] || 0;
@@ -661,31 +681,42 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
           <label className="text-sm font-medium text-stone-700 mb-1.5 block">
             Tarifario del Cliente
           </label>
-          <Select value={selectedTarifarioId} onValueChange={setSelectedTarifarioId}>
-            <SelectTrigger className="w-full max-w-md border-stone-200">
-              <SelectValue placeholder="Seleccionar tarifario..." />
-            </SelectTrigger>
-            <SelectContent>
-              {tarifarios.length === 0 ? (
-                <div className="px-2 py-1.5 text-sm text-stone-500">
-                  No hay tarifarios activos
-                </div>
-              ) : (
-                tarifarios.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    <div className="flex items-center gap-2">
-                      <span>{t.nombre}</span>
-                      <Badge variant="outline" className="text-xs">{t.moneda}</Badge>
-                      <span className="text-xs text-stone-500">
-                        ({new Date(t.fechaVigenciaDesde).toLocaleDateString('es-AR')} -{' '}
-                        {t.fechaVigenciaHasta ? new Date(t.fechaVigenciaHasta).toLocaleDateString('es-AR') : 'indefinido'})
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-3">
+            <Select value={selectedTarifarioId} onValueChange={setSelectedTarifarioId}>
+              <SelectTrigger className="w-full max-w-md border-stone-200">
+                <SelectValue placeholder="Seleccionar tarifario..." />
+              </SelectTrigger>
+              <SelectContent>
+                {tarifarios.length === 0 ? (
+                  <div className="px-2 py-1.5 text-sm text-stone-500">
+                    No hay tarifarios activos
+                  </div>
+                ) : (
+                  tarifarios.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      <div className="flex items-center gap-2">
+                        <span>{t.nombre}</span>
+                        <Badge variant="outline" className="text-xs">{t.moneda}</Badge>
+                        <span className="text-xs text-stone-500">
+                          ({new Date(t.fechaVigenciaDesde).toLocaleDateString('es-AR')} -{' '}
+                          {t.fechaVigenciaHasta ? new Date(t.fechaVigenciaHasta).toLocaleDateString('es-AR') : 'indefinido'})
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+            <Button
+              onClick={handleRemoveTarifario}
+              disabled={!(proyecto as any)?.tarifarioRevenuePlanId || removeTarifario.isPending}
+              variant="destructive"
+              size="sm"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Quitar tarifario
+            </Button>
+          </div>
           {vigenciaRange && (
             <p className="text-xs text-stone-500 mt-2">
               Meses activos: <strong>{MONTH_NAMES[vigenciaRange.mesInicio - 1]}</strong> a{' '}
@@ -1060,6 +1091,37 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
               className="bg-red-600 hover:bg-red-700"
             >
               Sí, eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Remove Tarifario Confirmation Dialog */}
+      <AlertDialog open={showRemoveTarifarioConfirm} onOpenChange={setShowRemoveTarifarioConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-600">⚠️ ¿Quitar tarifario del proyecto?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p className="font-semibold text-stone-800">
+                Esta acción eliminará en cascada:
+              </p>
+              <ul className="text-sm text-stone-600 space-y-1 list-disc pl-5">
+                <li>Todas las líneas del plan tarifario mensual (todos los años)</li>
+                <li>Todos los planes de forecast/revenue asociados</li>
+                <li>La asignación del tarifario al proyecto</li>
+              </ul>
+              <p className="text-sm text-red-600 font-medium">
+                Esta acción no se puede deshacer.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmRemoveTarifario}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Sí, quitar tarifario
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
