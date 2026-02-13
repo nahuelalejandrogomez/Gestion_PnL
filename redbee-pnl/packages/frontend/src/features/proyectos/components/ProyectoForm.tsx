@@ -222,14 +222,17 @@ export function ProyectoForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-stone-700">Tarifario (Opcional)</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select 
+                    onValueChange={(value) => field.onChange(value === '__none__' ? '' : value)} 
+                    value={field.value || '__none__'}
+                  >
                     <FormControl>
                       <SelectTrigger className="h-10 bg-white border-stone-200 focus:ring-stone-300">
                         <SelectValue placeholder="Sin tarifario" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">Sin tarifario</SelectItem>
+                      <SelectItem value="__none__">Sin tarifario</SelectItem>
                       {tarifariosData?.items
                         ?.filter((t) => t.estado === 'ACTIVO')
                         .map((tarifario) => (
