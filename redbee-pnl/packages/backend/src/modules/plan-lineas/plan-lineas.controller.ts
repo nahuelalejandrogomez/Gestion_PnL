@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Param, Query, Body } from '@nestjs/common';
+import { Controller, Get, Put, Delete, Param, Query, Body } from '@nestjs/common';
 import { PlanLineasService } from './plan-lineas.service';
 import { QueryPlanLineasDto } from './dto/query-plan-lineas.dto';
 import { UpsertPlanLineasDto } from './dto/upsert-plan-lineas.dto';
@@ -21,5 +21,13 @@ export class PlanLineasController {
     @Body() dto: UpsertPlanLineasDto,
   ) {
     return this.planLineasService.upsertPlanLineas(proyectoId, dto);
+  }
+
+  @Delete()
+  deletePlanLineas(
+    @Param('proyectoId') proyectoId: string,
+    @Query() query: QueryPlanLineasDto,
+  ) {
+    return this.planLineasService.deletePlanLineas(proyectoId, query.year);
   }
 }

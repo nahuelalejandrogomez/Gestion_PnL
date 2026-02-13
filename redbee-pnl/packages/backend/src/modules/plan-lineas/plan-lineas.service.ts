@@ -282,4 +282,70 @@ export class PlanLineasService {
       updated: dto.lineas.length,
     };
   }
+
+  async deletePlanLineas(
+    proyectoId: string,
+    year: number,
+  ): Promise<{ ok: boolean; deletedLines: number; deletedCells: number }> {
+    // Verify proyecto exists
+    const proyecto = await this.prisma.proyecto.findUnique({
+      where: { id: proyectoId },
+      select: { id: true, deletedAt: true },
+    });
+
+    if (!proyecto || proyecto.deletedAt) {
+      throw new NotFoundException(`Proyecto con ID ${proyectoId} no encontrado`);
+    }
+
+    let deletedLines = 0;
+    let deletedCells = 0;
+
+    await this.prisma.$transaction(async (tx) => {
+      // Get all plan lineas for this proyecto (not deleted)
+      const lineas = await tx.proyectoPlanLinea.findMany({
+        where: { proyectoId, deletedAt: null },
+        select: { id: true },
+      });
+
+      if (lineas.length === 0) {
+        // No plan exists - idempotent operation
+        return;
+      }
+
+      const lineaIds = lineas.map(l => l.id);
+
+      // Delete all meses for this year (hard delete)
+      const deletedMesesResult = await tx.proyectoPlanLineaMes.deleteMany({
+        where: {
+          planLineaId: { in: lineaIds },
+          year,
+        },
+      });
+      deletedCells = deletedMesesResult.count;
+
+      // Soft delete all lineas (regardless of year, clean slate)
+      const deletedLineasResult = await tx.proyectoPlanLinea.updateMany({
+        where: {
+          id: { in: lineaIds },
+          proyectoId,
+        },
+        data: {
+          deletedAt: new Date(),
+        },
+      });
+      deletedLines = deletedLineasResult.count;
+
+      // Clear tarifario reference if exists
+      await tx.proyecto.update({
+        where: { id: proyectoId },
+        data: { tarifarioRevenuePlanId: null },
+      });
+    });
+
+    return {
+      ok: true,
+      deletedLines,
+      deletedCells,
+    };
+  }
 }

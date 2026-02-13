@@ -20,4 +20,15 @@ export const planLineasApi = {
     );
     return data;
   },
+
+  deletePlanLineas: async (
+    proyectoId: string,
+    year: number,
+  ): Promise<{ ok: boolean; deletedLines: number; deletedCells: number }> => {
+    const { data } = await api.delete<{ ok: boolean; deletedLines: number; deletedCells: number }>(
+      `/proyectos/${proyectoId}/plan-lineas`,
+      { params: { year } },
+    );
+    return data;
+  },
 };

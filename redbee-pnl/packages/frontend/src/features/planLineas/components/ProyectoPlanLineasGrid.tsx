@@ -47,6 +47,7 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
   const [deletedLineaIds, setDeletedLineaIds] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'fte' | 'money'>('fte');
   const [showImportConfirm, setShowImportConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Drag-fill state
   const [dragFillStart, setDragFillStart] = useState<string | null>(null);
@@ -61,7 +62,7 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
   const { data: perfilesData } = usePerfiles({ page: 1, limit: 100 });
   const { data: tarifariosData } = useTarifarios(proyecto?.clienteId ? { clienteId: proyecto.clienteId, estado: 'ACTIVO' } : undefined);
   const { data: fxData } = useFxRates(selectedYear);
-  const { upsertPlanLineas } = usePlanLineasMutations(proyectoId);
+  const { upsertPlanLineas, deletePlanLineas } = usePlanLineasMutations(proyectoId);
   // Fetch selected tarifario with lineas (getById includes lineas, getAll does not)
   const { data: tarifarioWithLineas } = useTarifario(selectedTarifarioId);
 
@@ -475,6 +476,23 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
     });
   };
 
+  const handleDeletePlan = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeletePlan = () => {
+    deletePlanLineas.mutate(selectedYear, {
+      onSuccess: () => {
+        // Clear local state
+        setLocalLineas([]);
+        setDirtyLineas(new Map());
+        setDeletedLineaIds([]);
+        setSelectedTarifarioId('');
+        setShowDeleteConfirm(false);
+      },
+    });
+  };
+
   // Calculate revenue for a linea in a month
   const calculateLineaRevenue = (linea: PlanLinea, month: number): number => {
     const ftes = linea.meses[month] || 0;
@@ -623,6 +641,18 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
               <Save className="mr-2 h-4 w-4" />
               Guardar
             </Button>
+
+            {/* Delete Plan Button */}
+            {localLineas.length > 0 && (
+              <Button
+                onClick={handleDeletePlan}
+                disabled={deletePlanLineas.isPending}
+                variant="destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Eliminar plan
+              </Button>
+            )}
           </div>
         </div>
 
@@ -1004,6 +1034,32 @@ export function ProyectoPlanLineasGrid({ proyectoId }: ProyectoPlanLineasGridPro
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={confirmImportFromTarifario}>
               Continuar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Plan Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-600">⚠️ ¿Eliminar plan completo?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p className="font-semibold">
+                Vas a eliminar el plan completo del año {selectedYear} (todas las líneas y valores mensuales).
+              </p>
+              <p className="text-sm text-stone-500">
+                Esta acción no se puede deshacer. Podrás aplicar un nuevo tarifario después de eliminar.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeletePlan}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Sí, eliminar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

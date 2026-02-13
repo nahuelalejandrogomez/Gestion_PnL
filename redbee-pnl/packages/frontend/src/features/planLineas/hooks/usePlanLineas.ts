@@ -27,7 +27,19 @@ export function usePlanLineasMutations(proyectoId: string) {
     },
   });
 
+  const deletePlanLineas = useMutation({
+    mutationFn: (year: number) => planLineasApi.deletePlanLineas(proyectoId, year),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [PLAN_LINEAS_QUERY_KEY, proyectoId] });
+      toast.success('Plan eliminado exitosamente');
+    },
+    onError: (error: Error) => {
+      toast.error(`Error al eliminar plan: ${error.message}`);
+    },
+  });
+
   return {
     upsertPlanLineas,
+    deletePlanLineas,
   };
 }
