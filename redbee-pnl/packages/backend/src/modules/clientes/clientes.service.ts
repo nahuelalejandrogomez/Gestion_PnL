@@ -52,7 +52,13 @@ export class ClientesService {
     const cliente = await this.prisma.cliente.findUnique({
       where: { id },
       include: {
-        proyectos: true,
+        proyectos: {
+          where: { deletedAt: null },
+          orderBy: [
+            { estado: 'asc' },
+            { nombre: 'asc' },
+          ],
+        },
         contratos: true,
       },
     });

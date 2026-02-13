@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { usePlan, useUpdatePlan, useAplicarTarifario } from '../hooks/usePlan';
 import { useTarifarios } from '@/features/tarifarios';
+import { useProyectoMutations } from '@/features/proyectos/hooks/useProyectoMutations';
 
 const MONTH_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
@@ -30,6 +31,7 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [selectedTarifarioId, setSelectedTarifarioId] = useState<string>('');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showDeleteTarifarioDialog, setShowDeleteTarifarioDialog] = useState(false);
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>('');
   const [dirtyCells, setDirtyCells] = useState<Map<string, number>>(new Map());
@@ -44,6 +46,7 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
   const { data: tarifariosData } = useTarifarios({ clienteId, estado: 'ACTIVO' });
   const updateMutation = useUpdatePlan();
   const aplicarMutation = useAplicarTarifario();
+  const { removeTarifario } = useProyectoMutations();
 
   // Sync selectedTarifarioId with plan data
   useEffect(() => {
@@ -74,6 +77,21 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
         }
       }
     );
+  };
+
+  const handleDeleteTarifarioClick = () => {
+    setShowDeleteTarifarioDialog(true);
+  };
+
+  const handleConfirmDeleteTarifario = () => {
+    removeTarifario.mutate(proyectoId, {
+      onSuccess: async () => {
+        setShowDeleteTarifarioDialog(false);
+        setSelectedTarifarioId('');
+        setDirtyCells(new Map());
+        await refetch();
+      },
+    });
   };
 
   const handleCellClick = (lineaTarifarioId: string, month: number, currentValue: number) => {
@@ -353,6 +371,17 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
             >
               {aplicarMutation.isPending ? 'Aplicando...' : 'Aplicar'}
             </Button>
+            {plan && plan.lineas.length > 0 && (
+              <Button
+                onClick={handleDeleteTarifarioClick}
+                variant="outline"
+                disabled={removeTarifario.isPending}
+                className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                {removeTarifario.isPending ? 'Borrando...' : 'Borrar tarifario'}
+              </Button>
+            )}
           </div>
           {vigenciaRange ? (
             <p className="text-xs text-stone-500 mt-2">
@@ -584,6 +613,43 @@ export function ProyectoTarifarioPlanGrid({ proyectoId, clienteId }: Props) {
               disabled={aplicarMutation.isPending}
             >
               {aplicarMutation.isPending ? 'Aplicando...' : 'Aplicar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Tarifario Dialog */}
+      <AlertDialog open={showDeleteTarifarioDialog} onOpenChange={setShowDeleteTarifarioDialog}>
+        <AlertDialogContent className="border-red-200">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-800">
+              ⚠️ Borrar tarifario del proyecto
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-stone-600">
+              <strong className="text-red-600">Esta acción es destructiva y no se puede deshacer.</strong>
+              <br />
+              <br />
+              Se eliminarán:
+              <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+                <li>Todas las líneas del plan tarifario mensual</li>
+                <li>Todos los datos de forecast/revenue plan</li>
+                <li>Valores editados manualmente</li>
+              </ul>
+              <br />
+              La asociación del proyecto con el tarifario se removerá completamente.
+              Podrás volver a aplicar un tarifario desde cero después.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-stone-200 text-stone-600">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDeleteTarifario}
+              className="bg-red-600 text-white hover:bg-red-700"
+              disabled={removeTarifario.isPending}
+            >
+              {removeTarifario.isPending ? 'Borrando...' : 'Sí, borrar tarifario'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

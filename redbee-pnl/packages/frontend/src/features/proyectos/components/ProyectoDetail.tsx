@@ -215,10 +215,12 @@ export function ProyectoDetail() {
             </div>
             <div className="space-y-1">
               <p className="text-sm text-stone-500">Tarifario</p>
-              {proyecto.tarifario ? (
+              {(proyecto.tarifario || proyecto.tarifarioRevenuePlan) ? (
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                  <p className="font-medium text-stone-800">{proyecto.tarifario.nombre}</p>
+                  <p className="font-medium text-stone-800">
+                    {proyecto.tarifario?.nombre || proyecto.tarifarioRevenuePlan?.nombre}
+                  </p>
                 </div>
               ) : (
                 <p className="font-medium text-stone-400">Sin tarifario</p>

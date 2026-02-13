@@ -48,7 +48,7 @@ export function useProyectoMutations() {
 
   const removeTarifario = useMutation({
     mutationFn: (proyectoId: string) => proyectosApi.removeTarifario(proyectoId),
-    onSuccess: (result, proyectoId) => {
+    onSuccess: (_, proyectoId) => {
       queryClient.invalidateQueries({ queryKey: [PROYECTOS_QUERY_KEY, proyectoId] });
       queryClient.invalidateQueries({ queryKey: ['plan-lineas', proyectoId] });
       toast.success('Tarifario desasignado exitosamente');

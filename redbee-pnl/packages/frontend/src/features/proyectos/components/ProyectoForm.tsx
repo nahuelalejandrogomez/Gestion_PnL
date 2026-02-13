@@ -79,6 +79,7 @@ interface ProyectoFormProps {
   proyecto?: Proyecto | null;
   onSubmit: (data: CreateProyectoDto | UpdateProyectoDto) => void;
   isLoading?: boolean;
+  preselectedClienteId?: string; // New prop to lock cliente
 }
 
 const tipoOptions: { value: TipoProyecto; label: string }[] = [
@@ -102,6 +103,7 @@ export function ProyectoForm({
   proyecto,
   onSubmit,
   isLoading,
+  preselectedClienteId,
 }: ProyectoFormProps) {
   const isEditing = !!proyecto;
 
@@ -110,7 +112,7 @@ export function ProyectoForm({
   const form = useForm<ProyectoFormData>({
     resolver: standardSchemaResolver(proyectoSchema),
     defaultValues: {
-      clienteId: proyecto?.clienteId || '',
+      clienteId: proyecto?.clienteId || preselectedClienteId || '',
       nombre: proyecto?.nombre || '',
       codigo: proyecto?.codigo || '',
       tipo: proyecto?.tipo || 'PROYECTO',
@@ -130,7 +132,7 @@ export function ProyectoForm({
   useEffect(() => {
     if (open) {
       form.reset({
-        clienteId: proyecto?.clienteId || '',
+        clienteId: proyecto?.clienteId || preselectedClienteId || '',
         nombre: proyecto?.nombre || '',
         codigo: proyecto?.codigo || '',
         tipo: proyecto?.tipo || 'PROYECTO',
@@ -143,7 +145,7 @@ export function ProyectoForm({
         notas: proyecto?.notas || '',
       });
     }
-  }, [open, proyecto, form]);
+  }, [open, proyecto, preselectedClienteId, form]);
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
@@ -191,7 +193,11 @@ export function ProyectoForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-stone-700">Cliente</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    value={field.value}
+                    disabled={!!preselectedClienteId || isEditing}
+                  >
                     <FormControl>
                       <SelectTrigger className="h-10 bg-white border-stone-200 focus:ring-stone-300">
                         <SelectValue placeholder="Seleccionar cliente" />

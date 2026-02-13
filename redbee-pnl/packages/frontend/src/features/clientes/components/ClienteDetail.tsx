@@ -21,19 +21,22 @@ import { useClienteMutations } from '../hooks/useClienteMutations';
 import { ClienteBadge } from './ClienteBadge';
 import { ClienteForm } from './ClienteForm';
 import { ContratosSection } from '@/features/contratos/components/ContratosSection';
-import { ProyectosTable } from '@/features/proyectos';
+import { ProyectosTable, ProyectoForm, useProyectoMutations } from '@/features/proyectos';
 import { ClienteRevenueTab } from '@/features/revenue';
 import { TarifariosTab, useTarifarios } from '@/features/tarifarios';
 import { useState } from 'react';
 import type { UpdateClienteDto } from '../types/cliente.types';
+import type { CreateProyectoDto } from '@/features/proyectos/types/proyecto.types';
 
 export function ClienteDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: cliente, isLoading, error } = useCliente(id);
   const { updateCliente, deleteCliente } = useClienteMutations();
+  const { createProyecto } = useProyectoMutations();
   const { data: tarifariosData } = useTarifarios({ clienteId: id, estado: 'ACTIVO' });
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isCreateProyectoOpen, setIsCreateProyectoOpen] = useState(false);
 
   const handleUpdate = (data: UpdateClienteDto) => {
     if (!id) return;
@@ -49,6 +52,14 @@ export function ClienteDetail() {
     if (!id) return;
     deleteCliente.mutate(id, {
       onSuccess: () => navigate('/clientes'),
+    });
+  };
+
+  const handleCreateProyecto = (data: CreateProyectoDto | any) => {
+    createProyecto.mutate(data as CreateProyectoDto, {
+      onSuccess: () => {
+        setIsCreateProyectoOpen(false);
+      },
     });
   };
 
@@ -236,7 +247,12 @@ export function ClienteDetail() {
         </TabsList>
 
         <TabsContent value="proyectos" className="mt-6">
-          <ProyectosTable clienteId={cliente.id} hideClienteColumn={true} />
+          <ProyectosTable 
+            clienteId={cliente.id} 
+            hideClienteColumn={true} 
+            showCreateButton={true}
+            onCreateClick={() => setIsCreateProyectoOpen(true)}
+          />
         </TabsContent>
 
         <TabsContent value="contratos" className="mt-6">
@@ -259,6 +275,15 @@ export function ClienteDetail() {
         cliente={cliente}
         onSubmit={handleUpdate}
         isLoading={updateCliente.isPending}
+      />
+
+      {/* Create Proyecto Dialog */}
+      <ProyectoForm
+        open={isCreateProyectoOpen}
+        onOpenChange={setIsCreateProyectoOpen}
+        onSubmit={handleCreateProyecto}
+        isLoading={createProyecto.isPending}
+        preselectedClienteId={cliente.id}
       />
     </div>
   );

@@ -83,6 +83,9 @@ export class ProyectosService {
         tarifario: {
           select: { id: true, nombre: true },
         },
+        tarifarioRevenuePlan: {
+          select: { id: true, nombre: true },
+        },
         contrato: {
           select: { id: true, nombre: true, tipo: true },
         },

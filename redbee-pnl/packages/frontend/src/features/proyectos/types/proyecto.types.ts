@@ -40,6 +40,10 @@ export interface ProyectoWithRelations extends Proyecto {
     id: string;
     nombre: string;
   } | null;
+  tarifarioRevenuePlan?: {
+    id: string;
+    nombre: string;
+  } | null;
   contrato?: {
     id: string;
     nombre: string;
