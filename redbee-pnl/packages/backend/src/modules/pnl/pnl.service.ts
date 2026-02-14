@@ -396,10 +396,43 @@ export class PnlService {
       acc.ftesAsignados += fteAssigned;
     }
 
-    // 10. Annual totals (FTEs averaged, amounts summed)
+    // 10. Annual totals
     const annualDiff = acc.revAsignado - acc.costTotal;
-    const avgFteForecast = acc.ftesForecast / 12;
-    const avgFteAsignados = acc.ftesAsignados / 12;
+
+    // A) FTEs: SUMA anual (no promedio)
+    // Regla: Total anual = suma de ene a dic (meses vacíos = 0)
+    const totalFtesForecast = acc.ftesForecast; // Ya es suma
+    const totalFtesAsignados = acc.ftesAsignados; // Ya es suma
+    const totalFtesNoAsignados = totalFtesForecast - totalFtesAsignados;
+
+    // B) Blend Rate y Blend Cost: PROMEDIO de meses con valor
+    // Regla: Promedio simple de meses donde hay número, ignorar meses vacíos
+    let sumBlendRate = 0;
+    let countBlendRate = 0;
+    let sumBlendCost = 0;
+    let countBlendCost = 0;
+
+    for (let m = 1; m <= 12; m++) {
+      const monthData = meses[m];
+      if (monthData.indicadores.blendRate !== null) {
+        sumBlendRate += monthData.indicadores.blendRate;
+        countBlendRate++;
+      }
+      if (monthData.indicadores.blendCost !== null) {
+        sumBlendCost += monthData.indicadores.blendCost;
+        countBlendCost++;
+      }
+    }
+
+    const avgBlendRate = countBlendRate > 0 ? sumBlendRate / countBlendRate : null;
+    const avgBlendCost = countBlendCost > 0 ? sumBlendCost / countBlendCost : null;
+
+    // C) GM%: RECALCULAR con valores anuales
+    // Regla: GM% anual = (Revenue anual - Costos anuales) / Revenue anual
+    // No promediar porcentajes mensuales
+    const gmPctAnual = acc.revAsignado > 0
+      ? ((acc.revAsignado - acc.costTotal) / acc.revAsignado) * 100
+      : null;
 
     // Nuevos indicadores anuales
     const margenRealAnual = acc.revAsignado - acc.costTotal;
@@ -419,28 +452,20 @@ export class PnlService {
         total: round2(acc.costTotal),
       },
       indicadores: {
-        ftesForecast: round2(avgFteForecast),
-        ftesAsignados: round2(avgFteAsignados),
-        ftesNoAsignados: round2(avgFteForecast - avgFteAsignados),
+        // A) FTEs: Suma anual (no promedio)
+        ftesForecast: round2(totalFtesForecast),
+        ftesAsignados: round2(totalFtesAsignados),
+        ftesNoAsignados: round2(totalFtesNoAsignados),
         diffAmount: round2(annualDiff),
         diffPct:
           acc.revAsignado > 0
             ? round2((annualDiff / acc.revAsignado) * 100)
             : null,
-        gmPct:
-          acc.revAsignado > 0
-            ? round2(
-                ((acc.revAsignado - acc.costTotal) / acc.revAsignado) * 100,
-              )
-            : null,
-        blendRate:
-          acc.ftesAsignados > 0
-            ? round2((acc.revAsignado / acc.ftesAsignados) * 12)
-            : null,
-        blendCost:
-          acc.ftesAsignados > 0
-            ? round2((acc.costRecursos / acc.ftesAsignados) * 12)
-            : null,
+        // C) GM%: Recalculado con valores anuales (no promedio de meses)
+        gmPct: gmPctAnual !== null ? round2(gmPctAnual) : null,
+        // B) Blend Rate/Cost: Promedio de meses con valor
+        blendRate: avgBlendRate !== null ? round2(avgBlendRate) : null,
+        blendCost: avgBlendCost !== null ? round2(avgBlendCost) : null,
       },
     };
 
