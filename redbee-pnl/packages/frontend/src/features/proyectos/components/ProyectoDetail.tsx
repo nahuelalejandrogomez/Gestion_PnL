@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, FolderKanban, Users, FileText, Pencil, Trash2, BarChart3, Receipt, DollarSign, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Calendar, FolderKanban, Users, Pencil, Trash2, BarChart3, Receipt, DollarSign, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -324,7 +324,7 @@ export function ProyectoDetail() {
             className="flex items-center gap-2 data-[state=active]:bg-stone-100 data-[state=active]:text-stone-800 rounded-md px-4"
           >
             <FolderKanban className="h-4 w-4" />
-            Resumen
+            Resumen mes actual
           </TabsTrigger>
           <TabsTrigger
             value="presupuesto"
@@ -357,39 +357,117 @@ export function ProyectoDetail() {
         </TabsList>
 
         <TabsContent value="resumen" className="mt-6">
-          <Card className="border-stone-200 bg-white">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold text-stone-800">Resumen del Proyecto</CardTitle>
-              <CardDescription className="text-stone-500">
-                Métricas y estado general
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="rounded-lg border border-stone-200 p-4 text-center">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <Users className="h-5 w-5 text-stone-400" />
-                  </div>
-                  <p className="text-2xl font-semibold text-stone-800">{proyecto._count?.asignaciones || 0}</p>
-                  <p className="text-sm text-stone-500">Recursos asignados</p>
-                </div>
-                <div className="rounded-lg border border-stone-200 p-4 text-center">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <BarChart3 className="h-5 w-5 text-stone-400" />
-                  </div>
-                  <p className="text-2xl font-semibold text-stone-800">{proyecto._count?.lineasPnL || 0}</p>
-                  <p className="text-sm text-stone-500">Líneas P&L</p>
-                </div>
-                <div className="rounded-lg border border-stone-200 p-4 text-center">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <FileText className="h-5 w-5 text-stone-400" />
-                  </div>
-                  <p className="text-2xl font-semibold text-stone-800">{proyecto._count?.skillsRequeridos || 0}</p>
-                  <p className="text-sm text-stone-500">Skills requeridos</p>
-                </div>
+          {/* B) TAB "Resumen mes actual": Indicadores del mes corriente */}
+          {pnlData && pnlData.meses && (() => {
+            const currentMonth = new Date().getMonth() + 1; // 1-12
+            const monthData = pnlData.meses[currentMonth];
+            
+            if (!monthData) {
+              return (
+                <Card className="border-stone-200 bg-white">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold text-stone-800">Resumen mes actual</CardTitle>
+                    <CardDescription className="text-stone-500">
+                      No hay datos para el mes {currentMonth}/{currentYear}
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              );
+            }
+
+            // Calcular indicadores del mes actual (misma estructura que header pero solo este mes)
+            const costosDirectosMes = monthData.costos.recursos + monthData.costos.guardiasExtras;
+            const costosTotalesMes = monthData.costos.total;
+            const laborMarginMes = monthData.revenue.asignado > 0
+              ? ((monthData.revenue.asignado - costosDirectosMes) / monthData.revenue.asignado) * 100
+              : null;
+            const grossProjectMes = monthData.revenue.asignado > 0
+              ? ((monthData.revenue.asignado - costosTotalesMes) / monthData.revenue.asignado) * 100
+              : null;
+
+            return (
+              <div className="space-y-4">
+                {/* Sección: REVENUE & FORECAST - MES ACTUAL */}
+                <Card className="border-stone-200 bg-white">
+                  <CardHeader>
+                    <CardTitle className="text-sm font-semibold text-stone-600 uppercase tracking-wide">
+                      Revenue & Forecast - Mes {currentMonth}/{currentYear}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                      {[
+                        { label: 'FTE Potencial', value: formatNumberFull(0), color: undefined },
+                        { label: 'FTE', value: formatNumberFull(monthData.indicadores.ftesAsignados), color: undefined },
+                        { label: 'Fcst Rev. Pot', value: formatCurrencyFull(0, 'USD'), color: undefined },
+                        { label: 'Fcst Rev.', value: formatCurrencyFull(monthData.revenue.forecast, 'USD'), color: undefined },
+                        { label: 'Revenue', value: formatCurrencyFull(monthData.revenue.asignado, 'USD'), color: undefined },
+                        { label: 'Dif. Estimación Rev.', value: formatCurrencyFull(monthData.revenue.noAsignado, 'USD'), color: undefined },
+                      ].map((item, idx) => (
+                        <div key={idx} className="rounded-lg border border-stone-200 p-3 bg-white hover:shadow-sm transition-shadow">
+                          <p className="text-[10px] font-medium uppercase tracking-wider text-stone-400 mb-1">{item.label}</p>
+                          <p className={`text-base font-semibold ${item.color || 'text-stone-800'}`}>{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Sección: COSTOS & MÁRGENES - MES ACTUAL */}
+                <Card className="border-stone-200 bg-white">
+                  <CardHeader>
+                    <CardTitle className="text-sm font-semibold text-stone-600 uppercase tracking-wide">
+                      Costos & Márgenes - Mes {currentMonth}/{currentYear}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                      {[
+                        { label: 'Forecast Cost. Pot.', value: formatCurrencyFull(0, 'USD') },
+                        { label: 'Forecast Costos', value: formatCurrencyFull(0, 'USD') },
+                        { label: 'Costos Directos', value: formatCurrencyFull(costosDirectosMes, 'USD') },
+                        { label: 'Dif. Estimación CD', value: formatCurrencyFull(0, 'USD') },
+                        { 
+                          label: 'Labor Margin', 
+                          value: formatPercentage(laborMarginMes),
+                          color: laborMarginMes !== null 
+                            ? (laborMarginMes >= 40 ? 'text-emerald-600' : laborMarginMes >= 20 ? 'text-amber-600' : 'text-red-600')
+                            : 'text-stone-400'
+                        },
+                        { label: 'Costos Indirectos', value: formatCurrencyFull(monthData.costos.otros, 'USD') },
+                        { label: 'Costos Totales', value: formatCurrencyFull(costosTotalesMes, 'USD') },
+                        { 
+                          label: 'Gross Project', 
+                          value: formatPercentage(grossProjectMes),
+                          color: grossProjectMes !== null 
+                            ? (grossProjectMes >= 40 ? 'text-emerald-600' : grossProjectMes >= 20 ? 'text-amber-600' : 'text-red-600')
+                            : 'text-stone-400'
+                        },
+                        { label: 'Blend Rate', value: monthData.indicadores.blendRate !== null ? formatCurrencyFull(monthData.indicadores.blendRate, 'USD') : '-' },
+                        { label: 'Blend Cost', value: monthData.indicadores.blendCost !== null ? formatCurrencyFull(monthData.indicadores.blendCost, 'USD') : '-' },
+                      ].map((item, idx) => (
+                        <div key={idx} className="rounded-lg border border-stone-200 p-3 bg-white hover:shadow-sm transition-shadow">
+                          <p className="text-[10px] font-medium uppercase tracking-wider text-stone-400 mb-1">{item.label}</p>
+                          <p className={`text-base font-semibold ${item.color || 'text-stone-800'}`}>{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-            </CardContent>
-          </Card>
+            );
+          })()}
+
+          {!pnlData && (
+            <Card className="border-stone-200 bg-white">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-stone-800">Resumen mes actual</CardTitle>
+                <CardDescription className="text-stone-500">
+                  Cargando datos del P&L...
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="presupuesto" className="mt-6">

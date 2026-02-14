@@ -22,7 +22,7 @@ interface PnlMonthCostos {
 interface PnlMonthIndicadores {
   ftesForecast: number;
   ftesAsignados: number;
-  ftesNoAsignados: number;
+  ftesNoAsignados: number; // Dif. FTEs = Forecast - Asignado (con signo: + si falta, - si sobra)
   diffAmount: number;
   diffPct: number | null;
   gmPct: number | null;
@@ -335,7 +335,12 @@ export class PnlService {
       }
 
       const revenueSinStaffing = Math.max(0, forecastRevenue - assignedRevenue);
-      const ftesFaltantes = Math.max(0, fteForecast - fteAssigned);
+      
+      // E) NUEVA LÓGICA: Dif. FTEs Fcst vs Asig con SIGNO
+      // Positivo si falta (Forecast > Asignado)
+      // Negativo si sobra (Asignado > Forecast)
+      // Fórmula: Forecast - Asignado
+      const difFtes = fteForecast - fteAssigned;
 
       // Costs: convert ARS -> USD using FX
       const costRecursos = fx > 0 ? costByMonthARS[m] / fx : 0;
@@ -366,7 +371,8 @@ export class PnlService {
         indicadores: {
           ftesForecast: round2(fteForecast),
           ftesAsignados: round2(fteAssigned),
-          ftesNoAsignados: round2(ftesFaltantes),
+          // Dif. FTEs con signo: positivo si falta, negativo si sobra
+          ftesNoAsignados: round2(difFtes),
           diffAmount: round2(diffAmount),
           diffPct:
             assignedRevenue > 0

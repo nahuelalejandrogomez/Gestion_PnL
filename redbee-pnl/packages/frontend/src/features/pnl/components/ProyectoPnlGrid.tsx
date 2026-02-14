@@ -267,14 +267,26 @@ export function ProyectoPnlGrid({ proyectoId }: Props) {
                 getValue={(m) => data.meses[m].indicadores.ftesAsignados}
                 getTotal={() => t.indicadores.ftesAsignados}
                 formatFn={(v) => v != null ? fmtFte(v) : '-'}
+                // D) SEMÁFORO: ROJO si Asignados > Forecast, NARANJA si Asignados < Forecast
+                colorFn={(v) => {
+                  if (v === null) return 'text-stone-500';
+                  const totalForecast = t.indicadores.ftesForecast;
+                  if (v > totalForecast) return 'text-red-600'; // Sobreasignado
+                  if (v < totalForecast) return 'text-amber-600'; // Falta asignar
+                  return 'text-stone-600'; // Igual
+                }}
               />
               <IndicadorRow
-                label="FTEs faltantes"
+                label="Dif. FTEs Fcst vs Asig"
                 months={months}
                 getValue={(m) => data.meses[m].indicadores.ftesNoAsignados}
                 getTotal={() => t.indicadores.ftesNoAsignados}
                 formatFn={(v) => v != null ? fmtFte(v) : '-'}
-                colorFn={(v) => (v != null && v > 0 ? 'text-amber-600' : 'text-stone-500')}
+                // E) Color según signo: NEGATIVO (sobra) = ROJO, POSITIVO (falta) = NARANJA
+                colorFn={(v) => {
+                  if (v === null || v === 0) return 'text-stone-500';
+                  return v < 0 ? 'text-red-600' : 'text-amber-600';
+                }}
               />
               <IndicadorRow
                 label="Blend Rate"
