@@ -25,6 +25,7 @@ import { AsignacionesPlanner } from '@/features/asignaciones';
 import { ProyectoPnlGrid, useProyectoPnlYear } from '@/features/pnl';
 import { ProyectoPlanLineasGrid } from '@/features/planLineas';
 import { ProyectoTarifarioPlanGrid } from '@/features/proyecto-tarifario-plan';
+import { formatCurrencyFull, formatPercentage, formatNumberFull } from '@/lib/formatNumber';
 import type { UpdateProyectoDto } from '../types/proyecto.types';
 
 const tipoLabels: Record<string, string> = {
@@ -246,22 +247,72 @@ export function ProyectoDetail() {
         </CardContent>
       </Card>
 
-      {/* Annual KPIs */}
-      {pnlData && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          {[
-            { label: 'GM%', value: pnlData.totalesAnuales.indicadores.gmPct != null ? `${pnlData.totalesAnuales.indicadores.gmPct.toFixed(1)}%` : '-', color: pnlData.totalesAnuales.indicadores.gmPct != null ? (pnlData.totalesAnuales.indicadores.gmPct >= 40 ? 'text-emerald-600' : pnlData.totalesAnuales.indicadores.gmPct >= 20 ? 'text-amber-600' : 'text-red-600') : 'text-stone-400' },
-            { label: 'Revenue', value: `U$${(pnlData.totalesAnuales.revenue.asignado / 1000).toFixed(0)}k` },
-            { label: 'Costos', value: `U$${(pnlData.totalesAnuales.costos.total / 1000).toFixed(0)}k` },
-            { label: 'Margen', value: `U$${(pnlData.totalesAnuales.indicadores.diffAmount / 1000).toFixed(0)}k`, color: pnlData.totalesAnuales.indicadores.diffAmount >= 0 ? 'text-emerald-600' : 'text-red-600' },
-            { label: 'FTEs Avg', value: pnlData.totalesAnuales.indicadores.ftesAsignados.toFixed(1) },
-            { label: 'Blend Rate', value: pnlData.totalesAnuales.indicadores.blendRate != null ? `U$${(pnlData.totalesAnuales.indicadores.blendRate / 1000).toFixed(1)}k` : '-' },
-          ].map((kpi) => (
-            <div key={kpi.label} className="rounded-lg border border-stone-200 bg-white p-3">
-              <p className="text-[10px] font-medium uppercase tracking-wider text-stone-400">{kpi.label} {currentYear}</p>
-              <p className={`text-xl font-semibold ${kpi.color || 'text-stone-800'}`}>{kpi.value}</p>
-            </div>
-          ))}
+      {/* Annual KPIs - 16 Indicadores de Negocio */}
+      {pnlData && pnlData.indicadoresNegocio && (
+        <div className="space-y-4">
+          {/* Sección: REVENUE & FORECAST */}
+          <Card className="border-stone-200 bg-white">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold text-stone-600 uppercase tracking-wide">Revenue & Forecast {currentYear}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                {[
+                  { label: 'FTE Potencial', value: formatNumberFull(pnlData.indicadoresNegocio.ftePotencial) },
+                  { label: 'FTE', value: formatNumberFull(pnlData.indicadoresNegocio.fte) },
+                  { label: 'Fcst Rev. Pot', value: formatCurrencyFull(pnlData.indicadoresNegocio.fcstRevPot, 'USD') },
+                  { label: 'Fcst Rev.', value: formatCurrencyFull(pnlData.indicadoresNegocio.fcstRev, 'USD') },
+                  { label: 'Revenue', value: formatCurrencyFull(pnlData.indicadoresNegocio.revenue, 'USD') },
+                  { label: 'Dif. Estimación Rev.', value: formatCurrencyFull(pnlData.indicadoresNegocio.difEstimacionRev, 'USD') },
+                ].map((kpi) => (
+                  <div key={kpi.label} className="rounded-lg border border-stone-200 bg-stone-50 p-3">
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-stone-500 mb-1">{kpi.label}</p>
+                    <p className="text-base font-semibold text-stone-800">{kpi.value}</p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Sección: COSTOS & MÁRGENES */}
+          <Card className="border-stone-200 bg-white">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold text-stone-600 uppercase tracking-wide">Costos & Márgenes {currentYear}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                {[
+                  { label: 'Forecast Cost. Pot.', value: formatCurrencyFull(pnlData.indicadoresNegocio.forecastCostPot, 'USD') },
+                  { label: 'Forecast Costos', value: formatCurrencyFull(pnlData.indicadoresNegocio.forecastCostos, 'USD') },
+                  { label: 'Costos Directos', value: formatCurrencyFull(pnlData.indicadoresNegocio.costosDirectos, 'USD') },
+                  { label: 'Dif. Estimación CD', value: formatCurrencyFull(pnlData.indicadoresNegocio.difEstimacionCD, 'USD') },
+                  { 
+                    label: 'Labor Margin', 
+                    value: formatPercentage(pnlData.indicadoresNegocio.laborMargin),
+                    color: pnlData.indicadoresNegocio.laborMargin !== null 
+                      ? (pnlData.indicadoresNegocio.laborMargin >= 40 ? 'text-emerald-600' : pnlData.indicadoresNegocio.laborMargin >= 20 ? 'text-amber-600' : 'text-red-600')
+                      : 'text-stone-400'
+                  },
+                  { label: 'Costos Indirectos', value: formatCurrencyFull(pnlData.indicadoresNegocio.costosIndirectos, 'USD') },
+                  { label: 'Costos Totales', value: formatCurrencyFull(pnlData.indicadoresNegocio.costosTotales, 'USD') },
+                  { 
+                    label: 'Gross Project', 
+                    value: formatPercentage(pnlData.indicadoresNegocio.grossProject),
+                    color: pnlData.indicadoresNegocio.grossProject !== null 
+                      ? (pnlData.indicadoresNegocio.grossProject >= 20 ? 'text-emerald-600' : pnlData.indicadoresNegocio.grossProject >= 10 ? 'text-amber-600' : 'text-red-600')
+                      : 'text-stone-400'
+                  },
+                  { label: 'Blend Rate', value: pnlData.indicadoresNegocio.blendRate !== null ? formatCurrencyFull(pnlData.indicadoresNegocio.blendRate, 'USD') : '-' },
+                  { label: 'Blend Cost', value: pnlData.indicadoresNegocio.blendCost !== null ? formatCurrencyFull(pnlData.indicadoresNegocio.blendCost, 'USD') : '-' },
+                ].map((kpi) => (
+                  <div key={kpi.label} className="rounded-lg border border-stone-200 bg-stone-50 p-3">
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-stone-500 mb-1">{kpi.label}</p>
+                    <p className={`text-base font-semibold ${kpi.color || 'text-stone-800'}`}>{kpi.value}</p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 

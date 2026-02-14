@@ -20,10 +20,31 @@ export interface PnlMonthIndicadores {
   gmPct: number | null;
   blendRate: number | null;
   blendCost: number | null;
-  // Nuevos indicadores de negocio
-  margenReal: number; // Revenue asignado - Costos totales
-  margenPotencial: number; // Revenue forecast - Costos totales
-  cobertura: number | null; // % FTEs asignados / FTEs forecast
+}
+
+// Nuevos indicadores de negocio (16 indicadores anuales)
+export interface IndicadoresNegocio {
+  // Revenue & Forecast
+  ftePotencial: number; // Placeholder en 0
+  fte: number; // Suma anual de FTEs asignados
+  fcstRevPot: number; // Placeholder en 0
+  fcstRev: number; // Revenue forecast anual
+  revenue: number; // Revenue asignado anual
+  difEstimacionRev: number; // Revenue sin staffing anual
+  
+  // Costos
+  forecastCostPot: number; // Placeholder en 0
+  forecastCostos: number; // Placeholder en 0
+  costosDirectos: number; // Recursos + Guardias anual
+  difEstimacionCD: number; // Placeholder en 0
+  
+  // Márgenes y ratios
+  laborMargin: number | null; // (Revenue - CD) / Revenue
+  costosIndirectos: number; // Otros costos anual
+  costosTotales: number; // CD + CI
+  grossProject: number | null; // (Revenue - CT) / Revenue
+  blendRate: number | null; // Revenue / FTE / 160
+  blendCost: number | null; // CD / FTE / 160
 }
 
 export interface PnlMonthData {
@@ -56,7 +77,5 @@ export interface PnlYearResult {
   fxRates: Record<number, number | null>;
   meses: Record<number, PnlMonthData>;
   totalesAnuales: PnlMonthData;
-  // Nuevos indicadores anuales
-  estadoProyecto: EstadoProyecto;
-  analisisBrecha: AnalisisBrechaAnual;
+  indicadoresNegocio: IndicadoresNegocio; // 16 indicadores de negocio
 }

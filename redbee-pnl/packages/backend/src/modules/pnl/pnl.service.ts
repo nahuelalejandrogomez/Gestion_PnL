@@ -28,10 +28,31 @@ interface PnlMonthIndicadores {
   gmPct: number | null;
   blendRate: number | null;
   blendCost: number | null;
-  // Nuevos indicadores de negocio
-  margenReal: number; // Revenue asignado - Costos totales
-  margenPotencial: number; // Revenue forecast - Costos totales
-  cobertura: number | null; // % FTEs asignados / FTEs forecast
+}
+
+// Nuevos indicadores de negocio (16 indicadores anuales)
+export interface IndicadoresNegocio {
+  // Revenue & Forecast
+  ftePotencial: number; // Placeholder en 0
+  fte: number; // Suma anual de FTEs asignados
+  fcstRevPot: number; // Placeholder en 0
+  fcstRev: number; // Revenue forecast anual
+  revenue: number; // Revenue asignado anual
+  difEstimacionRev: number; // Revenue sin staffing anual
+  
+  // Costos
+  forecastCostPot: number; // Placeholder en 0
+  forecastCostos: number; // Placeholder en 0
+  costosDirectos: number; // Recursos + Guardias anual
+  difEstimacionCD: number; // Placeholder en 0
+  
+  // Márgenes y ratios
+  laborMargin: number | null; // (Revenue - CD) / Revenue
+  costosIndirectos: number; // Otros costos anual
+  costosTotales: number; // CD + CI
+  grossProject: number | null; // (Revenue - CT) / Revenue
+  blendRate: number | null; // Revenue / FTE / 160
+  blendCost: number | null; // CD / FTE / 160
 }
 
 export interface PnlMonthData {
@@ -64,9 +85,7 @@ export interface PnlYearResult {
   fxRates: Record<number, number | null>;
   meses: Record<number, PnlMonthData>;
   totalesAnuales: PnlMonthData;
-  // Nuevos indicadores anuales
-  estadoProyecto: EstadoProyecto;
-  analisisBrecha: AnalisisBrechaAnual;
+  indicadoresNegocio: IndicadoresNegocio; // 16 indicadores de negocio
 }
 
 function round2(n: number): number {
@@ -363,10 +382,6 @@ export class PnlService {
               : null,
           blendCost:
             fteAssignedUsed > 0 ? round2(costRecursos / fteAssignedUsed) : null,
-          margenReal: round2(margenReal),
-          margenPotencial: round2(margenPotencial),
-          cobertura:
-            coberturaRatioPct !== null ? round2(coberturaRatioPct) : null,
         },
       };
 
@@ -426,28 +441,45 @@ export class PnlService {
           acc.ftesAsignados > 0
             ? round2((acc.costRecursos / acc.ftesAsignados) * 12)
             : null,
-        // Nuevos indicadores
-        margenReal: round2(margenRealAnual),
-        margenPotencial: round2(margenPotencialAnual),
-        cobertura: coberturaAnual !== null ? round2(coberturaAnual) : null,
       },
     };
 
-    // 11. Calculate Estado del Proyecto (según modelo de negocio)
-    const estadoProyecto = this.calcularEstadoProyecto(
-      acc.revForecast,
-      acc.revAsignado,
-      acc.costTotal,
-      margenRealAnual,
-      margenPotencialAnual,
-    );
-
-    // 12. Calculate Análisis de Brecha
-    const analisisBrecha: AnalisisBrechaAnual = {
-      revenueSinStaffing: round2(acc.revNoAsignado),
-      ftesFaltantes: round2(Math.max(0, avgFteForecast - avgFteAsignados)),
-      margenSiSeCubre: round2(margenPotencialAnual),
-      coberturaActual: coberturaAnual !== null ? round2(coberturaAnual) : null,
+    // 11. Calcular los 16 indicadores de negocio
+    const costosDirectos = acc.costRecursos + acc.costGuardias;
+    const costosIndirectos = acc.costOtros;
+    const costosTotales = costosDirectos + costosIndirectos;
+    const fteAnual = acc.ftesAsignados; // Suma anual de FTEs (promedio mensual ya calculado)
+    
+    const indicadoresNegocio: IndicadoresNegocio = {
+      // Revenue & Forecast
+      ftePotencial: 0, // Placeholder
+      fte: round2(fteAnual),
+      fcstRevPot: 0, // Placeholder
+      fcstRev: round2(acc.revForecast),
+      revenue: round2(acc.revAsignado),
+      difEstimacionRev: round2(acc.revNoAsignado),
+      
+      // Costos
+      forecastCostPot: 0, // Placeholder
+      forecastCostos: 0, // Placeholder
+      costosDirectos: round2(costosDirectos),
+      difEstimacionCD: 0, // Placeholder
+      
+      // Márgenes y ratios
+      laborMargin: acc.revAsignado > 0
+        ? round2(((acc.revAsignado - costosDirectos) / acc.revAsignado) * 100)
+        : null,
+      costosIndirectos: round2(costosIndirectos),
+      costosTotales: round2(costosTotales),
+      grossProject: acc.revAsignado > 0
+        ? round2(((acc.revAsignado - costosTotales) / acc.revAsignado) * 100)
+        : null,
+      blendRate: fteAnual > 0
+        ? round2(acc.revAsignado / fteAnual / 160)
+        : null,
+      blendCost: fteAnual > 0
+        ? round2(costosDirectos / fteAnual / 160)
+        : null,
     };
 
     return {
@@ -459,49 +491,8 @@ export class PnlService {
       fxRates: fxMap,
       meses,
       totalesAnuales,
-      estadoProyecto,
-      analisisBrecha,
+      indicadoresNegocio,
     };
-  }
-
-  /**
-   * Calcula el estado del proyecto según el modelo de negocio.
-   * Prioridad:
-   * 1. INVIABLE: Margen potencial < 0 (nunca será rentable)
-   * 2. SOBRE_ASIGNADO: Asignado > Forecast (puede ser oportunidad o desvío)
-   * 3. EN_PERDIDA: Margen real < 0 Y Margen potencial >= 0 (necesita ajuste)
-   * 4. SIN_CUBRIR: Asignado < Forecast Y Margen real >= 0 (hay oportunidad)
-   * 5. CUBIERTO: Asignado >= Forecast Y Margen real >= 0 (proyecto saludable)
-   */
-  private calcularEstadoProyecto(
-    revenueForecast: number,
-    revenueAsignado: number,
-    costosTotal: number,
-    margenReal: number,
-    margenPotencial: number,
-  ): EstadoProyecto {
-    // 🔴 INVIABLE: Nunca será rentable (margen potencial < 0)
-    if (margenPotencial < 0) {
-      return 'INVIABLE';
-    }
-
-    // 🔵 SOBRE_ASIGNADO: Más staffing del previsto
-    if (revenueAsignado > revenueForecast) {
-      return 'SOBRE_ASIGNADO';
-    }
-
-    // 🟠 EN_PERDIDA: Margen real negativo pero potencial positivo
-    if (margenReal < 0 && margenPotencial >= 0) {
-      return 'EN_PERDIDA';
-    }
-
-    // 🟡 SIN_CUBRIR: Revenue potencial sin staffing
-    if (revenueAsignado < revenueForecast && margenReal >= 0) {
-      return 'SIN_CUBRIR';
-    }
-
-    // 🟢 CUBIERTO: Proyecto saludable
-    return 'CUBIERTO';
   }
 
   private buildFxMap(
