@@ -50,7 +50,6 @@ export function ProyectoPnlGrid({ proyectoId, clienteId }: Props) {
 
   // Usar el hook correcto dependiendo de si es proyecto o cliente
   const isClienteView = !!clienteId;
-  const entityId = clienteId || proyectoId;
 
   const proyectoQuery = useProyectoPnlYear(proyectoId, year);
   const clienteQuery = useClientePnlYear(clienteId, year);
