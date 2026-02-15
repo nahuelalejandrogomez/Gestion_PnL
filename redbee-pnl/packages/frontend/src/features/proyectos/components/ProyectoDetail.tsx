@@ -258,9 +258,7 @@ export function ProyectoDetail() {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                 {[
-                  { label: 'FTE Potencial', value: formatNumberFull(pnlData.indicadoresNegocio.ftePotencial) },
                   { label: 'FTE', value: formatNumberFull(pnlData.indicadoresNegocio.fte) },
-                  { label: 'Fcst Rev. Pot', value: formatCurrencyFull(pnlData.indicadoresNegocio.fcstRevPot, 'USD') },
                   { label: 'Fcst Rev.', value: formatCurrencyFull(pnlData.indicadoresNegocio.fcstRev, 'USD') },
                   { label: 'Revenue', value: formatCurrencyFull(pnlData.indicadoresNegocio.revenue, 'USD') },
                   { label: 'Dif. Estimación Rev.', value: formatCurrencyFull(pnlData.indicadoresNegocio.difEstimacionRev, 'USD') },
@@ -282,23 +280,22 @@ export function ProyectoDetail() {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                 {[
-                  { label: 'Forecast Cost. Pot.', value: formatCurrencyFull(pnlData.indicadoresNegocio.forecastCostPot, 'USD') },
                   { label: 'Forecast Costos', value: formatCurrencyFull(pnlData.indicadoresNegocio.forecastCostos, 'USD') },
                   { label: 'Costos Directos', value: formatCurrencyFull(pnlData.indicadoresNegocio.costosDirectos, 'USD') },
                   { label: 'Dif. Estimación CD', value: formatCurrencyFull(pnlData.indicadoresNegocio.difEstimacionCD, 'USD') },
-                  { 
-                    label: 'Labor Margin', 
+                  {
+                    label: 'Labor Margin',
                     value: formatPercentage(pnlData.indicadoresNegocio.laborMargin),
-                    color: pnlData.indicadoresNegocio.laborMargin !== null 
+                    color: pnlData.indicadoresNegocio.laborMargin !== null
                       ? (pnlData.indicadoresNegocio.laborMargin >= 40 ? 'text-emerald-600' : pnlData.indicadoresNegocio.laborMargin >= 20 ? 'text-amber-600' : 'text-red-600')
                       : 'text-stone-400'
                   },
                   { label: 'Costos Indirectos', value: formatCurrencyFull(pnlData.indicadoresNegocio.costosIndirectos, 'USD') },
                   { label: 'Costos Totales', value: formatCurrencyFull(pnlData.indicadoresNegocio.costosTotales, 'USD') },
-                  { 
-                    label: 'Gross Margin', 
+                  {
+                    label: 'Gross Margin',
                     value: formatPercentage(pnlData.indicadoresNegocio.grossProject),
-                    color: pnlData.indicadoresNegocio.grossProject !== null 
+                    color: pnlData.indicadoresNegocio.grossProject !== null
                       ? (pnlData.indicadoresNegocio.grossProject >= 20 ? 'text-emerald-600' : pnlData.indicadoresNegocio.grossProject >= 10 ? 'text-amber-600' : 'text-red-600')
                       : 'text-stone-400'
                   },
@@ -397,9 +394,7 @@ export function ProyectoDetail() {
                   <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                       {[
-                        { label: 'FTE Potencial', value: formatNumberFull(0), color: undefined },
                         { label: 'FTE', value: formatNumberFull(monthData.indicadores.ftesAsignados), color: undefined },
-                        { label: 'Fcst Rev. Pot', value: formatCurrencyFull(0, 'USD'), color: undefined },
                         { label: 'Fcst Rev.', value: formatCurrencyFull(monthData.revenue.forecast, 'USD'), color: undefined },
                         { label: 'Revenue', value: formatCurrencyFull(monthData.revenue.asignado, 'USD'), color: undefined },
                         { label: 'Dif. Estimación Rev.', value: formatCurrencyFull(monthData.revenue.noAsignado, 'USD'), color: undefined },
@@ -423,23 +418,22 @@ export function ProyectoDetail() {
                   <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                       {[
-                        { label: 'Forecast Cost. Pot.', value: formatCurrencyFull(0, 'USD') },
                         { label: 'Forecast Costos', value: formatCurrencyFull(0, 'USD') },
                         { label: 'Costos Directos', value: formatCurrencyFull(costosDirectosMes, 'USD') },
                         { label: 'Dif. Estimación CD', value: formatCurrencyFull(0, 'USD') },
-                        { 
-                          label: 'Labor Margin', 
+                        {
+                          label: 'Labor Margin',
                           value: formatPercentage(laborMarginMes),
-                          color: laborMarginMes !== null 
+                          color: laborMarginMes !== null
                             ? (laborMarginMes >= 40 ? 'text-emerald-600' : laborMarginMes >= 20 ? 'text-amber-600' : 'text-red-600')
                             : 'text-stone-400'
                         },
                         { label: 'Costos Indirectos', value: formatCurrencyFull(monthData.costos.otros, 'USD') },
                         { label: 'Costos Totales', value: formatCurrencyFull(costosTotalesMes, 'USD') },
-                        { 
-                          label: 'Gross Margin', 
+                        {
+                          label: 'Gross Margin',
                           value: formatPercentage(grossProjectMes),
-                          color: grossProjectMes !== null 
+                          color: grossProjectMes !== null
                             ? (grossProjectMes >= 40 ? 'text-emerald-600' : grossProjectMes >= 20 ? 'text-amber-600' : 'text-red-600')
                             : 'text-stone-400'
                         },
