@@ -299,8 +299,8 @@ export function ProyectoDetail() {
                       ? (pnlData.indicadoresNegocio.grossProject >= 20 ? 'text-emerald-600' : pnlData.indicadoresNegocio.grossProject >= 10 ? 'text-amber-600' : 'text-red-600')
                       : 'text-stone-400'
                   },
-                  { label: 'Blend Rate', value: pnlData.indicadoresNegocio.blendRate !== null ? formatCurrencyFull(pnlData.indicadoresNegocio.blendRate, 'USD') : '-' },
-                  { label: 'Blend Cost', value: pnlData.indicadoresNegocio.blendCost !== null ? formatCurrencyFull(pnlData.indicadoresNegocio.blendCost, 'USD') : '-' },
+                  { label: 'Blend Rate', value: pnlData.totalesAnuales.indicadores.blendRate !== null ? formatCurrencyFull(pnlData.totalesAnuales.indicadores.blendRate, 'USD') : '-' },
+                  { label: 'Blend Cost', value: pnlData.totalesAnuales.indicadores.blendCost !== null ? formatCurrencyFull(pnlData.totalesAnuales.indicadores.blendCost, 'USD') : '-' },
                 ].map((kpi) => (
                   <div key={kpi.label} className="rounded-lg border border-stone-200 bg-stone-50 p-3">
                     <p className="text-[10px] font-medium uppercase tracking-wider text-stone-500 mb-1">{kpi.label}</p>
