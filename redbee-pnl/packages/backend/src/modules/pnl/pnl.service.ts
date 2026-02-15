@@ -602,7 +602,10 @@ export class PnlService {
     );
 
     // 4. Consolidar (sumar) todos los P&L
-    return this.consolidatePnls(pnlProyectos, clienteId, cliente.nombre, year);
+    const pnlConsolidado = this.consolidatePnls(pnlProyectos, clienteId, cliente.nombre, year);
+
+    // 5. Mezclar datos reales ingresados manualmente
+    return this.mixRealDataIntoMonths(pnlConsolidado, clienteId, year);
   }
 
   /**
@@ -853,5 +856,57 @@ export class PnlService {
       totalesAnuales,
       indicadoresNegocio,
     };
+  }
+
+  /**
+   * Mezcla datos reales ingresados manualmente en el P&L del cliente
+   * Agrega campos de datos reales sin sobrescribir los proyectados
+   */
+  private async mixRealDataIntoMonths(
+    pnl: PnlYearResult,
+    clienteId: string,
+    year: number,
+  ): Promise<PnlYearResult> {
+    // 1. Fetch todos los datos reales del cliente para este año
+    const realData = await this.prisma.clientePnlMesReal.findMany({
+      where: { clienteId, year },
+    });
+
+    // Si no hay datos reales, retornar el P&L sin cambios
+    if (realData.length === 0) {
+      (pnl as any).hasRealData = false;
+      return pnl;
+    }
+
+    // Marcar que hay datos reales
+    (pnl as any).hasRealData = true;
+
+    // 2. Crear un mapa mes -> datos reales
+    const realMap: Record<number, typeof realData[0]> = {};
+    for (const r of realData) {
+      realMap[r.month] = r;
+    }
+
+    // 3. Por cada mes, agregar datos reales como campos separados
+    for (let m = 1; m <= 12; m++) {
+      const real = realMap[m];
+      const month: any = pnl.meses[m];
+
+      if (real) {
+        // Agregar datos reales como campos separados
+        month.revenueReal = real.revenueReal ? Number(real.revenueReal) : null;
+        month.recursosReales = real.recursosReales ? Number(real.recursosReales) : null;
+        month.otrosReales = real.otrosReales ? Number(real.otrosReales) : null;
+      } else {
+        // No hay datos reales este mes
+        month.revenueReal = null;
+        month.recursosReales = null;
+        month.otrosReales = null;
+      }
+    }
+
+    // Los totales anuales no se modifican - se mantienen basados en datos proyectados
+    // El frontend decidirá cómo mostrar y calcular totales con datos reales
+    return pnl;
   }
 }

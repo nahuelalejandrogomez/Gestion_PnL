@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateClienteDto } from './dto/create-cliente.dto';
 import { UpdateClienteDto } from './dto/update-cliente.dto';
 import { QueryClienteDto } from './dto/query-cliente.dto';
+import { UpdateClientePnlRealDto } from './dto/update-cliente-pnl-real.dto';
 
 @Injectable()
 export class ClientesService {
@@ -104,5 +105,49 @@ export class ClientesService {
       where: { id },
       data: { deletedAt: new Date() },
     });
+  }
+
+  async updatePnlReal(
+    clienteId: string,
+    year: number,
+    dto: UpdateClientePnlRealDto,
+  ) {
+    // Validar que el cliente existe
+    await this.findOne(clienteId);
+
+    // Validar año razonable
+    if (year < 2020 || year > 2030) {
+      throw new Error('Year must be between 2020 and 2030');
+    }
+
+    // Upsert cada mes con datos reales
+    const upsertPromises = dto.meses.map((mes) =>
+      this.prisma.clientePnlMesReal.upsert({
+        where: {
+          clienteId_year_month: {
+            clienteId,
+            year,
+            month: mes.month,
+          },
+        },
+        update: {
+          revenueReal: mes.revenueReal ?? null,
+          recursosReales: mes.recursosReales ?? null,
+          otrosReales: mes.otrosReales ?? null,
+        },
+        create: {
+          clienteId,
+          year,
+          month: mes.month,
+          revenueReal: mes.revenueReal ?? null,
+          recursosReales: mes.recursosReales ?? null,
+          otrosReales: mes.otrosReales ?? null,
+        },
+      }),
+    );
+
+    await Promise.all(upsertPromises);
+
+    return { success: true, updated: dto.meses.length };
   }
 }

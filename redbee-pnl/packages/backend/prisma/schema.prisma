@@ -145,11 +145,12 @@ model Cliente {
   horasBaseMes      Int           @default(160)
   notas             String?       @db.Text
 
-  proyectos    Proyecto[]
-  contratos    Contrato[]
-  objetivos    Objetivo[]
-  tarifarios   Tarifario[]
-  presupuestos ClientePresupuesto[]
+  proyectos       Proyecto[]
+  contratos       Contrato[]
+  objetivos       Objetivo[]
+  tarifarios      Tarifario[]
+  presupuestos    ClientePresupuesto[]
+  pnlMesesReales  ClientePnlMesReal[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -794,6 +795,31 @@ model ProyectoCostoManualesMes {
   @@unique([proyectoId, year, month])
   @@index([proyectoId, year])
   @@map("proyecto_costos_manuales_mes")
+}
+
+// ============================================
+// DATOS REALES P&L CLIENTE
+// ============================================
+
+// Datos reales ingresados manualmente para el P&L del Cliente
+// Se usa para mezclar datos reales con proyectados en la vista consolidada
+model ClientePnlMesReal {
+  id             String   @id @default(uuid())
+  clienteId      String
+  year           Int
+  month          Int // 1..12
+  revenueReal    Decimal? @db.Decimal(12, 2)
+  recursosReales Decimal? @db.Decimal(12, 2)
+  otrosReales    Decimal? @db.Decimal(12, 2)
+
+  cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([clienteId, year, month])
+  @@index([clienteId, year])
+  @@map("cliente_pnl_mes_real")
 }
 
 // ============================================

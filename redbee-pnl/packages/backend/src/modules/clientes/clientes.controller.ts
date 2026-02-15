@@ -13,6 +13,7 @@ import { ClientesService } from './clientes.service';
 import { CreateClienteDto } from './dto/create-cliente.dto';
 import { UpdateClienteDto } from './dto/update-cliente.dto';
 import { QueryClienteDto } from './dto/query-cliente.dto';
+import { UpdateClientePnlRealDto } from './dto/update-cliente-pnl-real.dto';
 import { PnlService } from '../pnl/pnl.service';
 
 @Controller('clientes')
@@ -95,6 +96,26 @@ export class ClientesController {
     } catch (error) {
       this.logger.error(
         `[getClientePnl] Error fetching P&L for cliente ID ${id}: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+  @Put(':id/pnl/:year/real')
+  async updateClientePnlReal(
+    @Param('id') id: string,
+    @Param('year') year: string,
+    @Body() dto: UpdateClientePnlRealDto,
+  ) {
+    try {
+      this.logger.log(`[updateClientePnlReal] Updating real P&L data for cliente ID: ${id}, year: ${year}`);
+      const result = await this.clientesService.updatePnlReal(id, Number(year), dto);
+      this.logger.log(`[updateClientePnlReal] Successfully updated real P&L data for cliente: ${id}`);
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `[updateClientePnlReal] Error updating real P&L data for cliente ID ${id}: ${error.message}`,
         error.stack,
       );
       throw error;

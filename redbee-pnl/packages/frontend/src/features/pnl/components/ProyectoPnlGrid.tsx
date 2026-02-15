@@ -2,7 +2,10 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { useProyectoPnlYear, useClientePnlYear } from '../hooks/useProyectoPnl';
+import { usePnlRealData } from '../hooks/usePnlRealData';
+import { EditablePnlCell } from './EditablePnlCell';
 
 const MONTH_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
@@ -56,6 +59,11 @@ export function ProyectoPnlGrid({ proyectoId, clienteId }: Props) {
 
   const { data, isLoading } = isClienteView ? clienteQuery : proyectoQuery;
 
+  // Hook para gestionar datos reales (solo para cliente)
+  const realDataHook = isClienteView && clienteId
+    ? usePnlRealData(clienteId, year)
+    : null;
+
   const currentYear = now.getFullYear();
   const years = Array.from({ length: 3 }, (_, i) => currentYear - 1 + i);
 
@@ -105,6 +113,18 @@ export function ProyectoPnlGrid({ proyectoId, clienteId }: Props) {
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
   const t = data.totalesAnuales;
 
+  // Determinar si un mes es editable (solo meses pasados y actual)
+  const isMonthEditable = (month: number) => {
+    if (!isClienteView || !data.hasRealData) return false;
+    const today = new Date();
+    const currentMonth = today.getMonth() + 1; // getMonth() returns 0-11
+    const currentYearActual = today.getFullYear();
+
+    if (year < currentYearActual) return true; // Años pasados son editables
+    if (year > currentYearActual) return false; // Años futuros no son editables
+    return month <= currentMonth; // Año actual: solo hasta mes actual
+  };
+
   return (
     <Card className="border-stone-200 bg-white">
       <CardHeader className="pb-4">
@@ -115,6 +135,28 @@ export function ProyectoPnlGrid({ proyectoId, clienteId }: Props) {
             </CardTitle>
           </div>
           <div className="flex items-center gap-3">
+            {/* Save/Cancel buttons when editing real data */}
+            {realDataHook?.hasDirtyData && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={realDataHook.handleCancel}
+                  disabled={realDataHook.isSaving}
+                  className="text-xs"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={realDataHook.handleSave}
+                  disabled={realDataHook.isSaving}
+                  className="text-xs bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {realDataHook.isSaving ? 'Guardando...' : 'Guardar cambios'}
+                </Button>
+              </>
+            )}
             {/* Currency toggle */}
             <div className="flex items-center rounded-md border border-stone-200 overflow-hidden">
               <button
@@ -189,6 +231,35 @@ export function ProyectoPnlGrid({ proyectoId, clienteId }: Props) {
                 fmt={fmt}
                 className="font-medium text-stone-800"
               />
+              {/* Revenue Real - solo en vista cliente */}
+              {isClienteView && realDataHook && (
+                <tr className="border-t border-stone-50 hover:bg-stone-50/40 transition-colors">
+                  <td className="py-1.5 px-3 text-stone-600 sticky left-0 bg-white z-10">
+                    Revenue Real
+                  </td>
+                  {months.map((m) => {
+                    const monthData = data.meses[m];
+                    const editable = isMonthEditable(m);
+                    const dirtyVal = realDataHook.getDirtyValue(m, 'revenueReal');
+                    const displayValue = dirtyVal !== undefined ? dirtyVal : monthData.revenueReal;
+
+                    return (
+                      <EditablePnlCell
+                        key={m}
+                        value={displayValue ?? null}
+                        onChange={(val) => realDataHook.handleCellEdit(m, 'revenueReal', val)}
+                        isEditable={editable}
+                        isDirty={realDataHook.isDirty(m, 'revenueReal')}
+                        formatFn={(v) => v !== null ? fmt(v, m) : '-'}
+                        className="text-blue-600"
+                      />
+                    );
+                  })}
+                  <td className="py-1.5 px-3 text-right tabular-nums font-semibold bg-stone-50/60 text-blue-600">
+                    -
+                  </td>
+                </tr>
+              )}
               <DataRow
                 label="Sin staffing"
                 months={months}
@@ -208,6 +279,35 @@ export function ProyectoPnlGrid({ proyectoId, clienteId }: Props) {
                 fmt={fmt}
                 className="text-stone-600"
               />
+              {/* Recursos Real - solo en vista cliente */}
+              {isClienteView && realDataHook && (
+                <tr className="border-t border-stone-50 hover:bg-stone-50/40 transition-colors">
+                  <td className="py-1.5 px-3 text-stone-600 sticky left-0 bg-white z-10">
+                    Recursos Real
+                  </td>
+                  {months.map((m) => {
+                    const monthData = data.meses[m];
+                    const editable = isMonthEditable(m);
+                    const dirtyVal = realDataHook.getDirtyValue(m, 'recursosReales');
+                    const displayValue = dirtyVal !== undefined ? dirtyVal : monthData.recursosReales;
+
+                    return (
+                      <EditablePnlCell
+                        key={m}
+                        value={displayValue ?? null}
+                        onChange={(val) => realDataHook.handleCellEdit(m, 'recursosReales', val)}
+                        isEditable={editable}
+                        isDirty={realDataHook.isDirty(m, 'recursosReales')}
+                        formatFn={(v) => v !== null ? fmt(v, m) : '-'}
+                        className="text-blue-600"
+                      />
+                    );
+                  })}
+                  <td className="py-1.5 px-3 text-right tabular-nums font-semibold bg-stone-50/60 text-blue-600">
+                    -
+                  </td>
+                </tr>
+              )}
               <DataRow
                 label="Otros costos"
                 months={months}
@@ -216,6 +316,35 @@ export function ProyectoPnlGrid({ proyectoId, clienteId }: Props) {
                 fmt={fmt}
                 className="text-stone-600"
               />
+              {/* Otros Costos Real - solo en vista cliente */}
+              {isClienteView && realDataHook && (
+                <tr className="border-t border-stone-50 hover:bg-stone-50/40 transition-colors">
+                  <td className="py-1.5 px-3 text-stone-600 sticky left-0 bg-white z-10">
+                    Otros Real
+                  </td>
+                  {months.map((m) => {
+                    const monthData = data.meses[m];
+                    const editable = isMonthEditable(m);
+                    const dirtyVal = realDataHook.getDirtyValue(m, 'otrosReales');
+                    const displayValue = dirtyVal !== undefined ? dirtyVal : monthData.otrosReales;
+
+                    return (
+                      <EditablePnlCell
+                        key={m}
+                        value={displayValue ?? null}
+                        onChange={(val) => realDataHook.handleCellEdit(m, 'otrosReales', val)}
+                        isEditable={editable}
+                        isDirty={realDataHook.isDirty(m, 'otrosReales')}
+                        formatFn={(v) => v !== null ? fmt(v, m) : '-'}
+                        className="text-blue-600"
+                      />
+                    );
+                  })}
+                  <td className="py-1.5 px-3 text-right tabular-nums font-semibold bg-stone-50/60 text-blue-600">
+                    -
+                  </td>
+                </tr>
+              )}
               <DataRow
                 label="Guardias + Extras"
                 months={months}

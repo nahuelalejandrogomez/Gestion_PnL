@@ -51,6 +51,10 @@ export interface PnlMonthData {
   revenue: PnlMonthRevenue;
   costos: PnlMonthCostos;
   indicadores: PnlMonthIndicadores;
+  // Datos reales ingresados manualmente (solo para Cliente P&L)
+  revenueReal?: number | null;
+  recursosReales?: number | null;
+  otrosReales?: number | null;
 }
 
 // Estados posibles del proyecto (según modelo de negocio)
@@ -78,4 +82,5 @@ export interface PnlYearResult {
   meses: Record<number, PnlMonthData>;
   totalesAnuales: PnlMonthData;
   indicadoresNegocio: IndicadoresNegocio; // 16 indicadores de negocio
+  hasRealData?: boolean; // Indica si hay datos reales ingresados (solo para Cliente P&L)
 }
