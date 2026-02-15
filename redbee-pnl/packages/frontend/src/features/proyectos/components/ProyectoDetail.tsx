@@ -296,7 +296,7 @@ export function ProyectoDetail() {
                   { label: 'Costos Indirectos', value: formatCurrencyFull(pnlData.indicadoresNegocio.costosIndirectos, 'USD') },
                   { label: 'Costos Totales', value: formatCurrencyFull(pnlData.indicadoresNegocio.costosTotales, 'USD') },
                   { 
-                    label: 'Gross Project', 
+                    label: 'Gross Margin', 
                     value: formatPercentage(pnlData.indicadoresNegocio.grossProject),
                     color: pnlData.indicadoresNegocio.grossProject !== null 
                       ? (pnlData.indicadoresNegocio.grossProject >= 20 ? 'text-emerald-600' : pnlData.indicadoresNegocio.grossProject >= 10 ? 'text-amber-600' : 'text-red-600')
@@ -437,7 +437,7 @@ export function ProyectoDetail() {
                         { label: 'Costos Indirectos', value: formatCurrencyFull(monthData.costos.otros, 'USD') },
                         { label: 'Costos Totales', value: formatCurrencyFull(costosTotalesMes, 'USD') },
                         { 
-                          label: 'Gross Project', 
+                          label: 'Gross Margin', 
                           value: formatPercentage(grossProjectMes),
                           color: grossProjectMes !== null 
                             ? (grossProjectMes >= 40 ? 'text-emerald-600' : grossProjectMes >= 20 ? 'text-amber-600' : 'text-red-600')

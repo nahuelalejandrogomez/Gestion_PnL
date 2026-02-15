@@ -45,7 +45,7 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [dirtyCells, setDirtyCells] = useState<Map<string, number>>(new Map());
   const [viewMode, setViewMode] = useState<ViewMode>('percentage');
-  const [currencyMode, setCurrencyMode] = useState<CurrencyMode>('ARS');
+  const [currencyMode, setCurrencyMode] = useState<CurrencyMode>('USD');
   const paintRef = useRef<{ active: boolean; value: number }>({ active: false, value: 0 });
 
   const queryClient = useQueryClient();

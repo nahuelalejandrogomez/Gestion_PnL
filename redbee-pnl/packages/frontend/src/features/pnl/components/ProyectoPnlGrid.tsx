@@ -12,12 +12,11 @@ interface Props {
 
 type Moneda = 'USD' | 'ARS';
 
-function fmtK(val: number, moneda: Moneda): string {
-  const symbol = moneda === 'USD' ? 'U$' : '$';
-  if (Math.abs(val) >= 1000) {
-    return `${symbol}${(val / 1000).toFixed(1)}k`;
-  }
-  return `${symbol}${Math.round(val).toLocaleString('es-AR')}`;
+// Formato de moneda sin abreviaciones (números completos)
+function fmtCurrency(val: number, moneda: Moneda): string {
+  const symbol = moneda === 'USD' ? 'USD' : 'ARS';
+  const formatted = Math.round(val).toLocaleString('en-US');
+  return `${symbol} ${formatted}`;
 }
 
 function fmtPct(val: number | null): string {
@@ -75,7 +74,7 @@ export function ProyectoPnlGrid({ proyectoId }: Props) {
 
   const fmt = (val: number, month?: number): string => {
     const converted = month != null ? cv(val, month) : cvTotal(val);
-    return fmtK(converted, moneda);
+    return fmtCurrency(converted, moneda);
   };
 
   if (isLoading) {
@@ -176,7 +175,7 @@ export function ProyectoPnlGrid({ proyectoId }: Props) {
                 className="text-stone-600"
               />
               <DataRow
-                label="Asignado"
+                label="Revenue"
                 months={months}
                 getValue={(m) => data.meses[m].revenue.asignado}
                 getTotal={() => t.revenue.asignado}
@@ -184,7 +183,7 @@ export function ProyectoPnlGrid({ proyectoId }: Props) {
                 className="font-medium text-stone-800"
               />
               <DataRow
-                label="Dif. Estimación Rev."
+                label="Sin staffing"
                 months={months}
                 getValue={(m) => data.meses[m].revenue.noAsignado}
                 getTotal={() => t.revenue.noAsignado}
