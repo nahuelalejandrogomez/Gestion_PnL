@@ -8,8 +8,19 @@ export function useProyectoPnlYear(
   year: number,
 ) {
   return useQuery({
-    queryKey: [PNL_QUERY_KEY, proyectoId, year],
+    queryKey: [PNL_QUERY_KEY, 'proyecto', proyectoId, year],
     queryFn: () => pnlApi.getByProyectoYear(proyectoId!, year),
     enabled: !!proyectoId,
+  });
+}
+
+export function useClientePnlYear(
+  clienteId: string | undefined,
+  year: number,
+) {
+  return useQuery({
+    queryKey: [PNL_QUERY_KEY, 'cliente', clienteId, year],
+    queryFn: () => pnlApi.getByClienteYear(clienteId!, year),
+    enabled: !!clienteId,
   });
 }

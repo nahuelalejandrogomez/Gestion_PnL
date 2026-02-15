@@ -12,4 +12,14 @@ export const pnlApi = {
     );
     return data;
   },
+
+  getByClienteYear: async (
+    clienteId: string,
+    year: number,
+  ): Promise<PnlYearResult> => {
+    const { data } = await api.get<PnlYearResult>(
+      `/clientes/${clienteId}/pnl/${year}`,
+    );
+    return data;
+  },
 };

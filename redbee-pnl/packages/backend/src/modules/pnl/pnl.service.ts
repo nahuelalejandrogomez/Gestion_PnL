@@ -561,4 +561,297 @@ export class PnlService {
 
     return fxMap;
   }
+
+  /**
+   * Calcula P&L consolidado para un cliente, sumando todos sus proyectos activos
+   */
+  async calculateClientePnlYear(
+    clienteId: string,
+    year: number,
+  ): Promise<PnlYearResult> {
+    // 1. Obtener cliente y validar
+    const cliente = await this.prisma.cliente.findUnique({
+      where: { id: clienteId },
+      select: { id: true, nombre: true, deletedAt: true },
+    });
+
+    if (!cliente || cliente.deletedAt) {
+      throw new NotFoundException(
+        `Cliente con ID ${clienteId} no encontrado`,
+      );
+    }
+
+    // 2. Obtener todos los proyectos activos del cliente
+    const proyectos = await this.prisma.proyecto.findMany({
+      where: {
+        clienteId,
+        deletedAt: null,
+        estado: { not: 'CERRADO' },
+      },
+      select: { id: true, nombre: true },
+    });
+
+    // Si no hay proyectos, retornar P&L vacío
+    if (proyectos.length === 0) {
+      return this.createEmptyPnlYear(clienteId, cliente.nombre, year);
+    }
+
+    // 3. Obtener P&L de cada proyecto
+    const pnlProyectos = await Promise.all(
+      proyectos.map((p) => this.calculatePnlYear(p.id, year)),
+    );
+
+    // 4. Consolidar (sumar) todos los P&L
+    return this.consolidatePnls(pnlProyectos, clienteId, cliente.nombre, year);
+  }
+
+  /**
+   * Crea un P&L vacío (todos los valores en 0)
+   */
+  private createEmptyPnlYear(
+    entityId: string,
+    entityName: string,
+    year: number,
+  ): PnlYearResult {
+    const emptyMonth: PnlMonthData = {
+      revenue: { forecast: 0, asignado: 0, noAsignado: 0 },
+      costos: { recursos: 0, otros: 0, guardiasExtras: 0, total: 0 },
+      indicadores: {
+        ftesForecast: 0,
+        ftesAsignados: 0,
+        ftesNoAsignados: 0,
+        diffAmount: 0,
+        diffPct: null,
+        gmPct: null,
+        blendRate: null,
+        blendCost: null,
+      },
+    };
+
+    const meses: Record<number, PnlMonthData> = {};
+    for (let m = 1; m <= 12; m++) {
+      meses[m] = { ...emptyMonth };
+    }
+
+    const emptyIndicadores: IndicadoresNegocio = {
+      ftePotencial: 0,
+      fte: 0,
+      fcstRevPot: 0,
+      fcstRev: 0,
+      revenue: 0,
+      difEstimacionRev: 0,
+      forecastCostPot: 0,
+      forecastCostos: 0,
+      costosDirectos: 0,
+      difEstimacionCD: 0,
+      laborMargin: null,
+      costosIndirectos: 0,
+      costosTotales: 0,
+      grossProject: null,
+      blendRate: null,
+      blendCost: null,
+    };
+
+    return {
+      proyectoId: entityId,
+      proyectoNombre: entityName,
+      year,
+      monedaTarifario: 'USD',
+      costoEmpresaPct: 45,
+      fxRates: {},
+      meses,
+      totalesAnuales: { ...emptyMonth },
+      indicadoresNegocio: emptyIndicadores,
+    };
+  }
+
+  /**
+   * Consolida múltiples P&Ls de proyectos en uno solo
+   */
+  private consolidatePnls(
+    pnls: PnlYearResult[],
+    entityId: string,
+    entityName: string,
+    year: number,
+  ): PnlYearResult {
+    // Inicializar acumuladores mensuales
+    const meses: Record<number, PnlMonthData> = {};
+    for (let m = 1; m <= 12; m++) {
+      meses[m] = {
+        revenue: { forecast: 0, asignado: 0, noAsignado: 0 },
+        costos: { recursos: 0, otros: 0, guardiasExtras: 0, total: 0 },
+        indicadores: {
+          ftesForecast: 0,
+          ftesAsignados: 0,
+          ftesNoAsignados: 0,
+          diffAmount: 0,
+          diffPct: null,
+          gmPct: null,
+          blendRate: null,
+          blendCost: null,
+        },
+      };
+    }
+
+    // Acumuladores anuales
+    const acc = {
+      revForecast: 0,
+      revAsignado: 0,
+      revNoAsignado: 0,
+      costRecursos: 0,
+      costOtros: 0,
+      costGuardias: 0,
+      costTotal: 0,
+      ftesForecast: 0,
+      ftesAsignados: 0,
+    };
+
+    // Sumar valores de cada proyecto
+    for (const pnl of pnls) {
+      for (let m = 1; m <= 12; m++) {
+        const monthData = pnl.meses[m];
+        meses[m].revenue.forecast += monthData.revenue.forecast;
+        meses[m].revenue.asignado += monthData.revenue.asignado;
+        meses[m].revenue.noAsignado += monthData.revenue.noAsignado;
+        meses[m].costos.recursos += monthData.costos.recursos;
+        meses[m].costos.otros += monthData.costos.otros;
+        meses[m].costos.guardiasExtras += monthData.costos.guardiasExtras;
+        meses[m].costos.total += monthData.costos.total;
+        meses[m].indicadores.ftesForecast += monthData.indicadores.ftesForecast;
+        meses[m].indicadores.ftesAsignados +=
+          monthData.indicadores.ftesAsignados;
+        meses[m].indicadores.ftesNoAsignados +=
+          monthData.indicadores.ftesNoAsignados;
+        meses[m].indicadores.diffAmount += monthData.indicadores.diffAmount;
+      }
+
+      // Sumar totales anuales
+      acc.revForecast += pnl.totalesAnuales.revenue.forecast;
+      acc.revAsignado += pnl.totalesAnuales.revenue.asignado;
+      acc.revNoAsignado += pnl.totalesAnuales.revenue.noAsignado;
+      acc.costRecursos += pnl.totalesAnuales.costos.recursos;
+      acc.costOtros += pnl.totalesAnuales.costos.otros;
+      acc.costGuardias += pnl.totalesAnuales.costos.guardiasExtras;
+      acc.costTotal += pnl.totalesAnuales.costos.total;
+      acc.ftesForecast += pnl.totalesAnuales.indicadores.ftesForecast;
+      acc.ftesAsignados += pnl.totalesAnuales.indicadores.ftesAsignados;
+    }
+
+    // Recalcular indicadores mensuales derivados
+    for (let m = 1; m <= 12; m++) {
+      const month = meses[m];
+      const rev = month.revenue.asignado;
+      const cost = month.costos.total;
+
+      month.indicadores.diffPct = rev > 0 ? round2((month.indicadores.diffAmount / rev) * 100) : null;
+      month.indicadores.gmPct = rev > 0 ? round2(((rev - cost) / rev) * 100) : null;
+
+      // Blend Rate/Cost mensual: promedio ponderado
+      // Solo calcular si hay FTEs asignados
+      if (month.indicadores.ftesAsignados > 0) {
+        month.indicadores.blendRate = round2(rev / month.indicadores.ftesAsignados);
+        month.indicadores.blendCost = round2(month.costos.recursos / month.indicadores.ftesAsignados);
+      }
+    }
+
+    // Calcular totales anuales consolidados
+    const totalFtesNoAsignados = acc.ftesForecast - acc.ftesAsignados;
+    const annualDiff = acc.revAsignado - acc.costTotal;
+
+    // Blend Rate/Cost anual: promedio de meses con valor
+    let sumBlendRate = 0;
+    let countBlendRate = 0;
+    let sumBlendCost = 0;
+    let countBlendCost = 0;
+
+    for (let m = 1; m <= 12; m++) {
+      if (meses[m].indicadores.blendRate !== null) {
+        sumBlendRate += meses[m].indicadores.blendRate!;
+        countBlendRate++;
+      }
+      if (meses[m].indicadores.blendCost !== null) {
+        sumBlendCost += meses[m].indicadores.blendCost!;
+        countBlendCost++;
+      }
+    }
+
+    const avgBlendRate = countBlendRate > 0 ? sumBlendRate / countBlendRate : null;
+    const avgBlendCost = countBlendCost > 0 ? sumBlendCost / countBlendCost : null;
+
+    const gmPctAnual = acc.revAsignado > 0
+      ? ((acc.revAsignado - acc.costTotal) / acc.revAsignado) * 100
+      : null;
+
+    const totalesAnuales: PnlMonthData = {
+      revenue: {
+        forecast: round2(acc.revForecast),
+        asignado: round2(acc.revAsignado),
+        noAsignado: round2(acc.revNoAsignado),
+      },
+      costos: {
+        recursos: round2(acc.costRecursos),
+        otros: round2(acc.costOtros),
+        guardiasExtras: round2(acc.costGuardias),
+        total: round2(acc.costTotal),
+      },
+      indicadores: {
+        ftesForecast: round2(acc.ftesForecast),
+        ftesAsignados: round2(acc.ftesAsignados),
+        ftesNoAsignados: round2(totalFtesNoAsignados),
+        diffAmount: round2(annualDiff),
+        diffPct: acc.revAsignado > 0 ? round2((annualDiff / acc.revAsignado) * 100) : null,
+        gmPct: gmPctAnual !== null ? round2(gmPctAnual) : null,
+        blendRate: avgBlendRate !== null ? round2(avgBlendRate) : null,
+        blendCost: avgBlendCost !== null ? round2(avgBlendCost) : null,
+      },
+    };
+
+    // Calcular indicadores de negocio consolidados
+    const costosDirectos = acc.costRecursos + acc.costGuardias;
+    const costosIndirectos = acc.costOtros;
+    const costosTotales = costosDirectos + costosIndirectos;
+    const fteAnual = acc.ftesAsignados;
+
+    const indicadoresNegocio: IndicadoresNegocio = {
+      ftePotencial: 0,
+      fte: round2(fteAnual),
+      fcstRevPot: 0,
+      fcstRev: round2(acc.revForecast),
+      revenue: round2(acc.revAsignado),
+      difEstimacionRev: round2(acc.revNoAsignado),
+      forecastCostPot: 0,
+      forecastCostos: 0,
+      costosDirectos: round2(costosDirectos),
+      difEstimacionCD: 0,
+      laborMargin: acc.revAsignado > 0
+        ? round2(((acc.revAsignado - costosDirectos) / acc.revAsignado) * 100)
+        : null,
+      costosIndirectos: round2(costosIndirectos),
+      costosTotales: round2(costosTotales),
+      grossProject: acc.revAsignado > 0
+        ? round2(((acc.revAsignado - costosTotales) / acc.revAsignado) * 100)
+        : null,
+      blendRate: fteAnual > 0
+        ? round2(acc.revAsignado / fteAnual / 160)
+        : null,
+      blendCost: fteAnual > 0
+        ? round2(costosDirectos / fteAnual / 160)
+        : null,
+    };
+
+    // FX rates: usar las del primer proyecto (asumiendo USD)
+    const fxRates = pnls.length > 0 ? pnls[0].fxRates : {};
+
+    return {
+      proyectoId: entityId,
+      proyectoNombre: entityName,
+      year,
+      monedaTarifario: 'USD',
+      costoEmpresaPct: pnls.length > 0 ? pnls[0].costoEmpresaPct : 45,
+      fxRates,
+      meses,
+      totalesAnuales,
+      indicadoresNegocio,
+    };
+  }
 }

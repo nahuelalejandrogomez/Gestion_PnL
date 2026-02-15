@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useProyectoPnlYear } from '../hooks/useProyectoPnl';
+import { useProyectoPnlYear, useClientePnlYear } from '../hooks/useProyectoPnl';
 
 const MONTH_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
 interface Props {
-  proyectoId: string;
+  proyectoId?: string;
+  clienteId?: string;
 }
 
 type Moneda = 'USD' | 'ARS';
@@ -42,12 +43,19 @@ function colorForDiff(diff: number): string {
   return 'text-stone-500';
 }
 
-export function ProyectoPnlGrid({ proyectoId }: Props) {
+export function ProyectoPnlGrid({ proyectoId, clienteId }: Props) {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [moneda, setMoneda] = useState<Moneda>('USD');
 
-  const { data, isLoading } = useProyectoPnlYear(proyectoId, year);
+  // Usar el hook correcto dependiendo de si es proyecto o cliente
+  const isClienteView = !!clienteId;
+  const entityId = clienteId || proyectoId;
+
+  const proyectoQuery = useProyectoPnlYear(proyectoId, year);
+  const clienteQuery = useClientePnlYear(clienteId, year);
+
+  const { data, isLoading } = isClienteView ? clienteQuery : proyectoQuery;
 
   const currentYear = now.getFullYear();
   const years = Array.from({ length: 3 }, (_, i) => currentYear - 1 + i);
@@ -104,7 +112,7 @@ export function ProyectoPnlGrid({ proyectoId }: Props) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <CardTitle className="text-lg font-semibold text-stone-800">
-              P&L Mensual
+              {isClienteView ? 'P&L Cliente' : 'P&L Mensual'}
             </CardTitle>
           </div>
           <div className="flex items-center gap-3">

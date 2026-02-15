@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, FileText, FolderKanban, Pencil, Trash2, CheckCircle, DollarSign, Receipt } from 'lucide-react';
+import { ArrowLeft, Calendar, FileText, FolderKanban, Pencil, Trash2, CheckCircle, DollarSign, Receipt, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -24,6 +24,7 @@ import { ContratosSection } from '@/features/contratos/components/ContratosSecti
 import { ProyectosTable, ProyectoForm, useProyectoMutations } from '@/features/proyectos';
 import { ClienteRevenueTab } from '@/features/revenue';
 import { TarifariosTab, useTarifarios } from '@/features/tarifarios';
+import { ProyectoPnlGrid } from '@/features/pnl';
 import { useState } from 'react';
 import type { UpdateClienteDto } from '../types/cliente.types';
 import type { CreateProyectoDto } from '@/features/proyectos/types/proyecto.types';
@@ -244,6 +245,13 @@ export function ClienteDetail() {
             <DollarSign className="h-4 w-4" />
             Revenue
           </TabsTrigger>
+          <TabsTrigger
+            value="pnl"
+            className="flex items-center gap-2 data-[state=active]:bg-stone-100 data-[state=active]:text-stone-800 rounded-md px-4"
+          >
+            <BarChart3 className="h-4 w-4" />
+            P&L
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="proyectos" className="mt-6">
@@ -265,6 +273,10 @@ export function ClienteDetail() {
 
         <TabsContent value="revenue" className="mt-6">
           <ClienteRevenueTab clienteId={cliente.id} />
+        </TabsContent>
+
+        <TabsContent value="pnl" className="mt-6">
+          <ProyectoPnlGrid clienteId={cliente.id} />
         </TabsContent>
       </Tabs>
 

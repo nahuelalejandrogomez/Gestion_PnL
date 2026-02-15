@@ -13,12 +13,16 @@ import { ClientesService } from './clientes.service';
 import { CreateClienteDto } from './dto/create-cliente.dto';
 import { UpdateClienteDto } from './dto/update-cliente.dto';
 import { QueryClienteDto } from './dto/query-cliente.dto';
+import { PnlService } from '../pnl/pnl.service';
 
 @Controller('clientes')
 export class ClientesController {
   private readonly logger = new Logger(ClientesController.name);
 
-  constructor(private readonly clientesService: ClientesService) {}
+  constructor(
+    private readonly clientesService: ClientesService,
+    private readonly pnlService: PnlService,
+  ) {}
 
   @Get()
   findAll(@Query() query: QueryClienteDto) {
@@ -77,6 +81,22 @@ export class ClientesController {
       return await this.clientesService.remove(id);
     } catch (error) {
       this.logger.error(`[remove] Error deleting cliente ID ${id}: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  @Get(':id/pnl/:year')
+  async getClientePnl(@Param('id') id: string, @Param('year') year: string) {
+    try {
+      this.logger.log(`[getClientePnl] Fetching P&L for cliente ID: ${id}, year: ${year}`);
+      const result = await this.pnlService.calculateClientePnlYear(id, Number(year));
+      this.logger.log(`[getClientePnl] Successfully fetched P&L for cliente: ${id}`);
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `[getClientePnl] Error fetching P&L for cliente ID ${id}: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
