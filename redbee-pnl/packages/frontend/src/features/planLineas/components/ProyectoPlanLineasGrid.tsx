@@ -27,7 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { usePlanLineas, usePlanLineasMutations } from '../hooks/usePlanLineas';
 import { usePerfiles } from '@/features/perfiles';
 import { useTarifarios, useTarifario } from '@/features/tarifarios';
-import { useFxRates } from '@/features/revenue/hooks/useClienteRevenue';
+import { useFxRates } from '@/features/config';
 import { useProyecto } from '@/features/proyectos/hooks/useProyecto';
 import { useProyectoMutations } from '@/features/proyectos/hooks/useProyectoMutations';
 import { convertCurrency, formatCurrency, buildFxMap } from '@/lib/fx';

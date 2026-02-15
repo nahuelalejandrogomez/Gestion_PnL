@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, FileText, FolderKanban, Pencil, Trash2, CheckCircle, DollarSign, Receipt, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Calendar, FileText, FolderKanban, Pencil, Trash2, CheckCircle, Receipt, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -22,7 +22,6 @@ import { ClienteBadge } from './ClienteBadge';
 import { ClienteForm } from './ClienteForm';
 import { ContratosSection } from '@/features/contratos/components/ContratosSection';
 import { ProyectosTable, ProyectoForm, useProyectoMutations } from '@/features/proyectos';
-import { ClienteRevenueTab } from '@/features/revenue';
 import { TarifariosTab, useTarifarios } from '@/features/tarifarios';
 import { ProyectoPnlGrid } from '@/features/pnl';
 import { useState } from 'react';
@@ -239,13 +238,6 @@ export function ClienteDetail() {
             Tarifarios ({tarifariosData?.total || 0})
           </TabsTrigger>
           <TabsTrigger
-            value="revenue"
-            className="flex items-center gap-2 data-[state=active]:bg-stone-100 data-[state=active]:text-stone-800 rounded-md px-4"
-          >
-            <DollarSign className="h-4 w-4" />
-            Revenue
-          </TabsTrigger>
-          <TabsTrigger
             value="pnl"
             className="flex items-center gap-2 data-[state=active]:bg-stone-100 data-[state=active]:text-stone-800 rounded-md px-4"
           >
@@ -269,10 +261,6 @@ export function ClienteDetail() {
 
         <TabsContent value="tarifarios" className="mt-6">
           <TarifariosTab clienteId={cliente.id} clienteNombre={cliente.nombre} />
-        </TabsContent>
-
-        <TabsContent value="revenue" className="mt-6">
-          <ClienteRevenueTab clienteId={cliente.id} />
         </TabsContent>
 
         <TabsContent value="pnl" className="mt-6">
