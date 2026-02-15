@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { pnlApi, ClientePnlRealMesDto } from '../api/pnlApi';
+import { pnlApi } from '../api/pnlApi';
+import type { ClientePnlRealMesDto } from '../api/pnlApi';
 import { PNL_QUERY_KEY } from './useProyectoPnl';
 
 type CellKey = `${number}-${string}`; // "month-field" format
