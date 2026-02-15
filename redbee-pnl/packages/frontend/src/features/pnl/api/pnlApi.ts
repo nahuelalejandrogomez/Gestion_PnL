@@ -6,6 +6,7 @@ export interface ClientePnlRealMesDto {
   revenueReal?: number;
   recursosReales?: number;
   otrosReales?: number;
+  ftesReales?: number;
 }
 
 export interface UpdateClientePnlRealDto {

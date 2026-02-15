@@ -55,6 +55,7 @@ export interface PnlMonthData {
   revenueReal?: number | null;
   recursosReales?: number | null;
   otrosReales?: number | null;
+  ftesReales?: number | null;
 }
 
 // Estados posibles del proyecto (según modelo de negocio)

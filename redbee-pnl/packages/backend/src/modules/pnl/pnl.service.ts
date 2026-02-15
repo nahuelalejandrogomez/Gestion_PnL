@@ -897,11 +897,13 @@ export class PnlService {
         month.revenueReal = real.revenueReal ? Number(real.revenueReal) : null;
         month.recursosReales = real.recursosReales ? Number(real.recursosReales) : null;
         month.otrosReales = real.otrosReales ? Number(real.otrosReales) : null;
+        month.ftesReales = real.ftesReales ? Number(real.ftesReales) : null;
       } else {
         // No hay datos reales este mes
         month.revenueReal = null;
         month.recursosReales = null;
         month.otrosReales = null;
+        month.ftesReales = null;
       }
     }
 

@@ -134,6 +134,7 @@ export class ClientesService {
           revenueReal: mes.revenueReal ?? null,
           recursosReales: mes.recursosReales ?? null,
           otrosReales: mes.otrosReales ?? null,
+          ftesReales: mes.ftesReales ?? null,
         },
         create: {
           clienteId,
@@ -142,6 +143,7 @@ export class ClientesService {
           revenueReal: mes.revenueReal ?? null,
           recursosReales: mes.recursosReales ?? null,
           otrosReales: mes.otrosReales ?? null,
+          ftesReales: mes.ftesReales ?? null,
         },
       }),
     );

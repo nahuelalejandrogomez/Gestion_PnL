@@ -115,7 +115,7 @@ export function ProyectoPnlGrid({ proyectoId, clienteId }: Props) {
 
   // Determinar si un mes es editable (solo meses pasados y actual)
   const isMonthEditable = (month: number) => {
-    if (!isClienteView || !data.hasRealData) return false;
+    if (!isClienteView) return false; // Solo editable en vista de cliente
     const today = new Date();
     const currentMonth = today.getMonth() + 1; // getMonth() returns 0-11
     const currentYearActual = today.getFullYear();
@@ -411,6 +411,35 @@ export function ProyectoPnlGrid({ proyectoId, clienteId }: Props) {
                   return 'text-stone-600'; // Igual
                 }}
               />
+              {/* FTEs Real - solo en vista cliente */}
+              {isClienteView && realDataHook && (
+                <tr className="border-t border-stone-50 hover:bg-stone-50/40 transition-colors">
+                  <td className="py-1.5 px-3 text-stone-600 sticky left-0 bg-white z-10">
+                    FTEs Real
+                  </td>
+                  {months.map((m) => {
+                    const monthData = data.meses[m];
+                    const editable = isMonthEditable(m);
+                    const dirtyVal = realDataHook.getDirtyValue(m, 'ftesReales');
+                    const displayValue = dirtyVal !== undefined ? dirtyVal : monthData.ftesReales;
+
+                    return (
+                      <EditablePnlCell
+                        key={m}
+                        value={displayValue ?? null}
+                        onChange={(val) => realDataHook.handleCellEdit(m, 'ftesReales', val)}
+                        isEditable={editable}
+                        isDirty={realDataHook.isDirty(m, 'ftesReales')}
+                        formatFn={(v) => v !== null ? fmtFte(v) : '-'}
+                        className="text-blue-600"
+                      />
+                    );
+                  })}
+                  <td className="py-1.5 px-3 text-right tabular-nums font-semibold bg-stone-50/60 text-blue-600">
+                    -
+                  </td>
+                </tr>
+              )}
               <IndicadorRow
                 label="Dif. FTEs Fcst vs Asig"
                 months={months}

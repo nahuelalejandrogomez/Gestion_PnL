@@ -21,6 +21,11 @@ export class ClientePnlRealMesDto {
   @IsNumber()
   @Min(0)
   otrosReales?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  ftesReales?: number;
 }
 
 export class UpdateClientePnlRealDto {

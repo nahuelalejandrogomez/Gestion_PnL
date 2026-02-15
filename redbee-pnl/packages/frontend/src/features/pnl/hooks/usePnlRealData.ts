@@ -32,6 +32,8 @@ export function usePnlRealData(clienteId: string, year: number) {
           mesDto.recursosReales = value ?? undefined;
         } else if (field === 'otrosReales') {
           mesDto.otrosReales = value ?? undefined;
+        } else if (field === 'ftesReales') {
+          mesDto.ftesReales = value ?? undefined;
         }
       });
 
