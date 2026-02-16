@@ -224,11 +224,11 @@ export function ClienteDetail() {
             Proyectos ({cliente.proyectos?.length || 0})
           </TabsTrigger>
           <TabsTrigger
-            value="contratos"
+            value="pnl"
             className="flex items-center gap-2 data-[state=active]:bg-stone-100 data-[state=active]:text-stone-800 rounded-md px-4"
           >
-            <FileText className="h-4 w-4" />
-            Contratos ({cliente.contratosVigentes || 0})
+            <BarChart3 className="h-4 w-4" />
+            P&L
           </TabsTrigger>
           <TabsTrigger
             value="tarifarios"
@@ -238,33 +238,33 @@ export function ClienteDetail() {
             Tarifarios ({tarifariosData?.total || 0})
           </TabsTrigger>
           <TabsTrigger
-            value="pnl"
+            value="contratos"
             className="flex items-center gap-2 data-[state=active]:bg-stone-100 data-[state=active]:text-stone-800 rounded-md px-4"
           >
-            <BarChart3 className="h-4 w-4" />
-            P&L
+            <FileText className="h-4 w-4" />
+            Contratos ({cliente.contratosVigentes || 0})
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="proyectos" className="mt-6">
-          <ProyectosTable 
-            clienteId={cliente.id} 
-            hideClienteColumn={true} 
+          <ProyectosTable
+            clienteId={cliente.id}
+            hideClienteColumn={true}
             showCreateButton={true}
             onCreateClick={() => setIsCreateProyectoOpen(true)}
           />
         </TabsContent>
 
-        <TabsContent value="contratos" className="mt-6">
-          <ContratosSection clienteId={cliente.id} />
+        <TabsContent value="pnl" className="mt-6">
+          <ProyectoPnlGrid clienteId={cliente.id} />
         </TabsContent>
 
         <TabsContent value="tarifarios" className="mt-6">
           <TarifariosTab clienteId={cliente.id} clienteNombre={cliente.nombre} />
         </TabsContent>
 
-        <TabsContent value="pnl" className="mt-6">
-          <ProyectoPnlGrid clienteId={cliente.id} />
+        <TabsContent value="contratos" className="mt-6">
+          <ContratosSection clienteId={cliente.id} />
         </TabsContent>
       </Tabs>
 
