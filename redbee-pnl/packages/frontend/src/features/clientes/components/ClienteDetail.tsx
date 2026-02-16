@@ -214,15 +214,8 @@ export function ClienteDetail() {
       </Card>
 
       {/* Tabs for related data */}
-      <Tabs defaultValue="proyectos" className="space-y-4">
+      <Tabs defaultValue="pnl" className="space-y-4">
         <TabsList className="bg-white border border-stone-200 p-1 rounded-lg">
-          <TabsTrigger
-            value="proyectos"
-            className="flex items-center gap-2 data-[state=active]:bg-stone-100 data-[state=active]:text-stone-800 rounded-md px-4"
-          >
-            <FolderKanban className="h-4 w-4" />
-            Proyectos ({cliente.proyectos?.length || 0})
-          </TabsTrigger>
           <TabsTrigger
             value="pnl"
             className="flex items-center gap-2 data-[state=active]:bg-stone-100 data-[state=active]:text-stone-800 rounded-md px-4"
@@ -231,11 +224,11 @@ export function ClienteDetail() {
             P&L
           </TabsTrigger>
           <TabsTrigger
-            value="tarifarios"
+            value="proyectos"
             className="flex items-center gap-2 data-[state=active]:bg-stone-100 data-[state=active]:text-stone-800 rounded-md px-4"
           >
-            <Receipt className="h-4 w-4" />
-            Tarifarios ({tarifariosData?.total || 0})
+            <FolderKanban className="h-4 w-4" />
+            Proyectos ({cliente.proyectos?.length || 0})
           </TabsTrigger>
           <TabsTrigger
             value="contratos"
@@ -244,7 +237,18 @@ export function ClienteDetail() {
             <FileText className="h-4 w-4" />
             Contratos ({cliente.contratosVigentes || 0})
           </TabsTrigger>
+          <TabsTrigger
+            value="tarifarios"
+            className="flex items-center gap-2 data-[state=active]:bg-stone-100 data-[state=active]:text-stone-800 rounded-md px-4"
+          >
+            <Receipt className="h-4 w-4" />
+            Tarifarios ({tarifariosData?.total || 0})
+          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="pnl" className="mt-6">
+          <ProyectoPnlGrid clienteId={cliente.id} />
+        </TabsContent>
 
         <TabsContent value="proyectos" className="mt-6">
           <ProyectosTable
@@ -255,16 +259,12 @@ export function ClienteDetail() {
           />
         </TabsContent>
 
-        <TabsContent value="pnl" className="mt-6">
-          <ProyectoPnlGrid clienteId={cliente.id} />
+        <TabsContent value="contratos" className="mt-6">
+          <ContratosSection clienteId={cliente.id} />
         </TabsContent>
 
         <TabsContent value="tarifarios" className="mt-6">
           <TarifariosTab clienteId={cliente.id} clienteNombre={cliente.nombre} />
-        </TabsContent>
-
-        <TabsContent value="contratos" className="mt-6">
-          <ContratosSection clienteId={cliente.id} />
         </TabsContent>
       </Tabs>
 
