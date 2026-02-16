@@ -220,6 +220,21 @@ export function ProyectoPnlGrid({ proyectoId, clienteId }: Props) {
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
   const t = data.totalesAnuales;
 
+  // Annual KPIs for executive header (Cliente view)
+  let annualRevenue = 0;
+  let annualCostos = 0;
+  let annualFtes = 0;
+  if (isClienteView) {
+    for (let m = 1; m <= 12; m++) {
+      annualRevenue += getEffectiveRevenue(m);
+      annualCostos += getEffectiveCostos(m);
+      annualFtes += getEffectiveFtes(m);
+    }
+  }
+  const annualGm = annualRevenue > 0 ? ((annualRevenue - annualCostos) / annualRevenue) * 100 : null;
+  const annualBlendRate = annualFtes > 0 ? annualRevenue / annualFtes / 160 : null;
+  const annualBlendCost = annualFtes > 0 ? annualCostos / annualFtes / 160 : null;
+
   return (
     <Card className="border-stone-200 bg-white">
       <CardHeader className="pb-4">
@@ -289,6 +304,42 @@ export function ProyectoPnlGrid({ proyectoId, clienteId }: Props) {
         </div>
       </CardHeader>
       <CardContent className="overflow-x-auto">
+        {/* Executive KPI Header (Cliente view only) */}
+        {isClienteView && (
+          <div className="grid grid-cols-5 gap-3 mb-5">
+            <div className="rounded-lg border border-stone-200 bg-stone-50/50 px-4 py-3">
+              <p className="text-[10px] font-medium text-stone-500 uppercase tracking-wider mb-1">GM%</p>
+              <p className={`text-xl font-bold tabular-nums ${colorForGm(annualGm)}`}>
+                {fmtPct(annualGm)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-stone-200 bg-stone-50/50 px-4 py-3">
+              <p className="text-[10px] font-medium text-stone-500 uppercase tracking-wider mb-1">Revenue</p>
+              <p className="text-xl font-bold tabular-nums text-stone-800">
+                {annualRevenue > 0 ? fmtCurrency(cvTotal(annualRevenue), moneda) : '-'}
+              </p>
+            </div>
+            <div className="rounded-lg border border-stone-200 bg-stone-50/50 px-4 py-3">
+              <p className="text-[10px] font-medium text-stone-500 uppercase tracking-wider mb-1">FTEs</p>
+              <p className="text-xl font-bold tabular-nums text-stone-800">
+                {annualFtes > 0 ? fmtFte(annualFtes) : '-'}
+              </p>
+            </div>
+            <div className="rounded-lg border border-stone-200 bg-stone-50/50 px-4 py-3">
+              <p className="text-[10px] font-medium text-stone-500 uppercase tracking-wider mb-1">Blend Rate</p>
+              <p className="text-xl font-bold tabular-nums text-stone-800">
+                {annualBlendRate != null ? fmtCurrency(cvTotal(annualBlendRate), moneda) : '-'}
+              </p>
+            </div>
+            <div className="rounded-lg border border-stone-200 bg-stone-50/50 px-4 py-3">
+              <p className="text-[10px] font-medium text-stone-500 uppercase tracking-wider mb-1">Blend Cost</p>
+              <p className="text-xl font-bold tabular-nums text-stone-800">
+                {annualBlendCost != null ? fmtCurrency(cvTotal(annualBlendCost), moneda) : '-'}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Monthly Grid */}
         <div className="rounded-lg border border-stone-200 overflow-hidden">
           <table className="w-full text-xs">
