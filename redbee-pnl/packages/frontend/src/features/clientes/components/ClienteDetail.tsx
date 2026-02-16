@@ -23,7 +23,8 @@ import { ClienteForm } from './ClienteForm';
 import { ContratosSection } from '@/features/contratos/components/ContratosSection';
 import { ProyectosTable, ProyectoForm, useProyectoMutations } from '@/features/proyectos';
 import { TarifariosTab, useTarifarios } from '@/features/tarifarios';
-import { ProyectoPnlGrid } from '@/features/pnl';
+import { ProyectoPnlGrid, useClientePnlYear } from '@/features/pnl';
+import type { PnlYearResult } from '@/features/pnl';
 import { useState } from 'react';
 import type { UpdateClienteDto } from '../types/cliente.types';
 import type { CreateProyectoDto } from '@/features/proyectos/types/proyecto.types';
@@ -35,6 +36,8 @@ export function ClienteDetail() {
   const { updateCliente, deleteCliente } = useClienteMutations();
   const { createProyecto } = useProyectoMutations();
   const { data: tarifariosData } = useTarifarios({ clienteId: id, estado: 'ACTIVO' });
+  const currentYear = new Date().getFullYear();
+  const { data: pnlData } = useClientePnlYear(cliente?.id, currentYear);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCreateProyectoOpen, setIsCreateProyectoOpen] = useState(false);
 
@@ -213,6 +216,9 @@ export function ClienteDetail() {
         </CardContent>
       </Card>
 
+      {/* Executive KPIs */}
+      {pnlData && <ClienteKpiHeader data={pnlData} year={currentYear} />}
+
       {/* Tabs for related data */}
       <Tabs defaultValue="pnl" className="space-y-4">
         <TabsList className="bg-white border border-stone-200 p-1 rounded-lg">
@@ -285,6 +291,85 @@ export function ClienteDetail() {
         isLoading={createProyecto.isPending}
         preselectedClienteId={cliente.id}
       />
+    </div>
+  );
+}
+
+// --- Executive KPI Header ---
+
+function fmtPct(val: number | null): string {
+  if (val === null) return '-';
+  return `${val.toFixed(1)}%`;
+}
+
+function fmtCurrency(val: number): string {
+  return `USD ${Math.round(val).toLocaleString('en-US')}`;
+}
+
+function fmtFte(val: number): string {
+  if (val === 0) return '-';
+  return val.toFixed(1);
+}
+
+function colorForGm(gm: number | null): string {
+  if (gm === null) return 'text-stone-400';
+  if (gm >= 40) return 'text-emerald-600';
+  if (gm >= 20) return 'text-amber-600';
+  return 'text-red-600';
+}
+
+function ClienteKpiHeader({ data, year }: { data: PnlYearResult; year: number }) {
+  let totalRevenue = 0;
+  let totalCostos = 0;
+  let totalFtes = 0;
+
+  for (let m = 1; m <= 12; m++) {
+    const md = data.meses[m];
+    totalRevenue += md.revenueReal != null ? md.revenueReal : md.revenue.asignado;
+    if (md.recursosReales != null && md.otrosReales != null) {
+      totalCostos += md.recursosReales + md.otrosReales;
+    } else {
+      totalCostos += md.costos.total;
+    }
+    totalFtes += md.ftesReales != null ? md.ftesReales : md.indicadores.ftesAsignados;
+  }
+
+  const gm = totalRevenue > 0 ? ((totalRevenue - totalCostos) / totalRevenue) * 100 : null;
+  const blendRate = totalFtes > 0 ? totalRevenue / totalFtes / 160 : null;
+  const blendCost = totalFtes > 0 ? totalCostos / totalFtes / 160 : null;
+
+  return (
+    <div className="grid grid-cols-5 gap-3">
+      <div className="rounded-lg border border-stone-200 bg-white px-4 py-3">
+        <p className="text-[10px] font-medium text-stone-500 uppercase tracking-wider mb-1">GM% {year}</p>
+        <p className={`text-xl font-bold tabular-nums ${colorForGm(gm)}`}>
+          {fmtPct(gm)}
+        </p>
+      </div>
+      <div className="rounded-lg border border-stone-200 bg-white px-4 py-3">
+        <p className="text-[10px] font-medium text-stone-500 uppercase tracking-wider mb-1">Revenue {year}</p>
+        <p className="text-xl font-bold tabular-nums text-stone-800">
+          {totalRevenue > 0 ? fmtCurrency(totalRevenue) : '-'}
+        </p>
+      </div>
+      <div className="rounded-lg border border-stone-200 bg-white px-4 py-3">
+        <p className="text-[10px] font-medium text-stone-500 uppercase tracking-wider mb-1">FTEs {year}</p>
+        <p className="text-xl font-bold tabular-nums text-stone-800">
+          {fmtFte(totalFtes)}
+        </p>
+      </div>
+      <div className="rounded-lg border border-stone-200 bg-white px-4 py-3">
+        <p className="text-[10px] font-medium text-stone-500 uppercase tracking-wider mb-1">Blend Rate</p>
+        <p className="text-xl font-bold tabular-nums text-stone-800">
+          {blendRate != null ? fmtCurrency(blendRate) : '-'}
+        </p>
+      </div>
+      <div className="rounded-lg border border-stone-200 bg-white px-4 py-3">
+        <p className="text-[10px] font-medium text-stone-500 uppercase tracking-wider mb-1">Blend Cost</p>
+        <p className="text-xl font-bold tabular-nums text-stone-800">
+          {blendCost != null ? fmtCurrency(blendCost) : '-'}
+        </p>
+      </div>
     </div>
   );
 }
