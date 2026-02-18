@@ -281,23 +281,13 @@ function ClienteSection({
       {/* Subfilas de métricas (solo si expandido) */}
       {isExpanded && (
         <>
-          {/* Subfila: Revenue USD */}
+          {/* Subfila: Revenue (moneda según toggle) */}
           <MetricRow
-            label="Revenue USD"
+            label="Revenue"
             months={months}
             cliente={cliente}
             metricType="revenue"
-            displayMoneda="USD"
-            fxRates={fxRates}
-          />
-
-          {/* Subfila: Revenue ARS */}
-          <MetricRow
-            label="Revenue ARS"
-            months={months}
-            cliente={cliente}
-            metricType="revenue"
-            displayMoneda="ARS"
+            displayMoneda={moneda}
             fxRates={fxRates}
           />
 
@@ -407,7 +397,10 @@ function MetricRow({
         countMonths++;
         break;
       case 'gross':
-        value = monthData.gross;
+        // Recalcular Gross = revenue efectivo - costos efectivos
+        const revenueGross = monthData.revenueReal ?? monthData.revenueAsignado;
+        const costosGross = (monthData.recursosReales ?? 0) + (monthData.otrosReales ?? 0) || monthData.costosProyectados;
+        value = revenueGross - costosGross;
         if (displayMoneda === 'ARS') {
           value = convertToARS(value, m, fxRates);
         }
@@ -415,8 +408,13 @@ function MetricRow({
         countMonths++;
         break;
       case 'gmPct':
-        if (monthData.gmPct !== null) {
-          totalAnual += monthData.gmPct;
+        // Recalcular GM% = (Gross / Revenue) * 100
+        const revenueGm = monthData.revenueReal ?? monthData.revenueAsignado;
+        const costosGm = (monthData.recursosReales ?? 0) + (monthData.otrosReales ?? 0) || monthData.costosProyectados;
+        const grossGm = revenueGm - costosGm;
+        if (revenueGm > 0) {
+          const gmPctCalc = (grossGm / revenueGm) * 100;
+          totalAnual += gmPctCalc;
           countMonths++;
         }
         break;
@@ -468,16 +466,27 @@ function MetricRow({
             formattedValue = value > 0 ? fmtCurrency(value, displayMoneda) : '-';
             break;
           case 'gross':
-            value = monthData.gross;
-            if (displayMoneda === 'ARS') {
-              value = convertToARS(value, m, fxRates);
+            // Recalcular Gross = revenue efectivo - costos efectivos
+            {
+              const revenueGross = monthData.revenueReal ?? monthData.revenueAsignado;
+              const costosGross = (monthData.recursosReales ?? 0) + (monthData.otrosReales ?? 0) || monthData.costosProyectados;
+              value = revenueGross - costosGross;
+              if (displayMoneda === 'ARS') {
+                value = convertToARS(value, m, fxRates);
+              }
+              formattedValue = fmtCurrency(value, displayMoneda);
             }
-            formattedValue = fmtCurrency(value, displayMoneda);
             break;
           case 'gmPct':
-            if (monthData.gmPct !== null) {
-              value = monthData.gmPct;
-              formattedValue = fmtPct(value);
+            // Recalcular GM% = (Gross / Revenue) * 100
+            {
+              const revenueGm = monthData.revenueReal ?? monthData.revenueAsignado;
+              const costosGm = (monthData.recursosReales ?? 0) + (monthData.otrosReales ?? 0) || monthData.costosProyectados;
+              const grossGm = revenueGm - costosGm;
+              if (revenueGm > 0) {
+                value = (grossGm / revenueGm) * 100;
+                formattedValue = fmtPct(value);
+              }
             }
             break;
         }
@@ -542,9 +551,6 @@ function TotalesSection({
     let revMonth = 0;
     let ftesMonth = 0;
     let costosMonth = 0;
-    let grossMonth = 0;
-    let gmCount = 0;
-    let gmSum = 0;
 
     for (const cliente of clientes) {
       const monthData = cliente.meses[m];
@@ -554,20 +560,20 @@ function TotalesSection({
       ftesMonth += monthData.ftesReales ?? monthData.ftesAsignados;
       costosMonth +=
         (monthData.recursosReales ?? 0) + (monthData.otrosReales ?? 0) || monthData.costosProyectados;
-      grossMonth += monthData.gross;
-
-      if (monthData.gmPct !== null) {
-        gmSum += monthData.gmPct;
-        gmCount++;
-      }
     }
+
+    // Recalcular Gross = revenue total - costos total
+    const grossMonth = revMonth - costosMonth;
+
+    // Recalcular GM% = (Gross / Revenue) * 100
+    const gmPctMonth = revMonth > 0 ? (grossMonth / revMonth) * 100 : null;
 
     aggregates[m] = {
       revenue: revMonth,
       ftes: ftesMonth,
       costos: costosMonth,
       gross: grossMonth,
-      gmPct: gmCount > 0 ? gmSum / gmCount : null,
+      gmPct: gmPctMonth,
     };
   }
 
@@ -575,22 +581,18 @@ function TotalesSection({
   let revAnual = 0;
   let ftesAnual = 0;
   let costosAnual = 0;
-  let grossAnual = 0;
-  let gmAnualCount = 0;
-  let gmAnualSum = 0;
 
   for (let m = 1; m <= 12; m++) {
     revAnual += aggregates[m].revenue;
     ftesAnual += aggregates[m].ftes;
     costosAnual += aggregates[m].costos;
-    grossAnual += aggregates[m].gross;
-    if (aggregates[m].gmPct !== null) {
-      gmAnualSum += aggregates[m].gmPct!;
-      gmAnualCount++;
-    }
   }
 
-  const gmAnual = gmAnualCount > 0 ? gmAnualSum / gmAnualCount : null;
+  // Recalcular Gross anual = revenue anual - costos anual
+  const grossAnual = revAnual - costosAnual;
+
+  // Recalcular GM% anual = (Gross anual / Revenue anual) * 100
+  const gmAnual = revAnual > 0 ? (grossAnual / revAnual) * 100 : null;
 
   return (
     <>

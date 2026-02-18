@@ -281,139 +281,170 @@
 
 ---
 
-#### US-004: Hook useRollingData - Fetch Paralelo Clientes Dinámicos ✅ COMPLETO
+#### US-004: Hook useRollingData - Fetch Paralelo Clientes Dinámico
 
-**DoD**: ✅ Todos los criterios cumplidos
+### ÉPICA 3: Vista Revenue multi-métrica - EN PROGRESO ⏳
 
-**Logros**:
-- ✅ Fetch dinámico desde `/api/clientes`
-- ✅ Promise.all con N clientes paralelo
-- ✅ Warning si > 20 clientes
-- ✅ Manejo errores parciales (404, timeout)
-- ✅ Logs instrumentación completos
-- ✅ Tipos completos en rolling.types.ts
+**Estado**: En desarrollo  
+**Duración Estimada**: 3 días
 
----
+**Objetivo**:
+- Vista Revenue muestra backlog y potencial por mes
+- Conversión automática a ARS si corresponde
+- UX consistente con Vista RF Actuals
 
-#### US-005: Vista RF Actuals - Tabla FTEs ✅ COMPLETO
-
-**DoD**: ✅ Todos los criterios cumplidos
-
-**Logros**:
-- ✅ RfActualsTable integrado en RollingPage
-- ✅ **Cada cliente muestra una fila principal con el valor de backlog (NO suma potencial)**
-- ✅ **Fila principal expandible para mostrar Backlog y Potencial**
-- ✅ Backlog = ftesReales ?? ftesAsignados
-- ✅ Potencial = ftesNoAsignados (actualmente 0, muestra "-")
-- ✅ Badge "Real" visible donde aplica
-- ✅ Sticky headers (concepto + meses)
-- ✅ Skeleton mientras carga
-- ✅ Formato FTEs correcto (1 decimal)
-- ✅ Validación: total = backlog + potencial (por mes)
-- ✅ Si potencial = 0, fila muestra "-" y no suma al total
-
-**Nota**:  
-- **Mayo y Junio**: El valor de la fila principal debe ser igual al valor de backlog (si potencial es 0), y debe coincidir con el P&L Cliente.
-- **UX**: El usuario debe poder expandir/collapsear cada cliente para ver el detalle de Backlog y Potencial.
+**Tareas**:
+- [ ] Crear hook `useRollingRevenue`
+- [ ] Implementar lógica fetch paralelo
+- [ ] Calcular backlog y potencial correctamente
+- [ ] Agregar soporte multi-moneda
+- [ ] Validar y documentar
 
 ---
 
-### ÉPICA 3: Vista Revenue con Toggle USD/ARS - COMPLETADA ✅
+#### US-005: RevenuePage - Estructura y Navegación
 
-**Logros**:
-- ✅ Cada cliente muestra una fila principal con el valor de backlog (revenueReal ?? revenueAsignado)
-- ✅ Fila principal expandible para mostrar Backlog y Potencial
-- ✅ Backlog = revenueReal ?? revenueAsignado
-- ✅ Potencial = revenueNoAsignado (actualmente 0, muestra "-")
-- ✅ Badge "Real" visible donde aplica
-- ✅ UX igual a P&L Cliente
+### ÉPICA 3: Vista Revenue multi-métrica - EN PROGRESO ⏳
+
+**Estado**: En desarrollo  
+**Duración Estimada**: 2 días
+
+**Objetivo**:
+- Página Revenue con tabs y navegación funcional
+- Integrar con hook `useRollingRevenue`
+
+**Tareas**:
+- [ ] Crear componente `RevenuePage`
+- [ ] Implementar tabs: "Backlog", "Potencial"
+- [ ] Conectar con router principal
+- [ ] Validar y documentar
 
 ---
 
-### ÉPICA 4: Vista PNLs Reales multi-métrica ✅ COMPLETADA
+#### US-006: RevenueTable - Estructura y Cálculos
 
-**Estado**: ✅ APROBADA
-**Duración Real**: 1 día
-**Archivos**: 1 creado, 2 modificados
+### ÉPICA 3: Vista Revenue multi-métrica - EN PROGRESO ⏳
 
-**Objetivo**: ✅ CUMPLIDO
-- ✅ Tabla multi-métrica por cliente (Revenue USD/ARS, FTEs, Costos, Gross, GM%)
-- ✅ Filas principales expandibles por cliente
-- ✅ Badge "Real" visible donde aplica
-- ✅ Toggle USD/ARS para métricas monetarias
-- ✅ Sticky headers y color coding GM%
-- ✅ Totales consolidados por métrica con validación
+**Estado**: En desarrollo  
+**Duración Estimada**: 3 días
 
-**Logros**:
-- ✅ PnlsRealesTable con 6 métricas por cliente
-- ✅ Revenue USD y Revenue ARS como subfilas independientes
-- ✅ FTEs, Costos, Gross, GM% con formatos específicos
-- ✅ Color coding: verde para Gross positivo/rojo negativo, GM% con colorForGm
-- ✅ Totales consolidados (suma para valores monetarios/FTEs, promedio para GM%)
-- ✅ Conversión ARS con FX rates por mes
-- ✅ Total anual = suma mensual (excepto GM% que es promedio)
-- ✅ UX igual a RfActualsTable y RevenueTable (expandible consistente)
+**Objetivo**:
+- Tabla Revenue con cálculos de backlog y potencial
+- Soporte para multi-moneda y conversión automática
 
-**Archivos Creados** (1):
-- `/features/rolling/components/PnlsRealesTable.tsx` - Tabla multi-métrica completa
+**Tareas**:
+- [ ] Crear componente `RevenueTable`
+- [ ] Implementar lógica de cálculos
+- [ ] Agregar soporte multi-moneda
+- [ ] Validar y documentar
 
-**Archivos Modificados** (2):
-- `/features/rolling/components/RollingPage.tsx` - Integración PnlsRealesTable en tab "pnls"
-- `/features/rolling/components/index.ts` - Export PnlsRealesTable
+---
 
-**Nota**:
-- ❌ Export a Excel (US-012) se pospone hasta nuevo aviso.
-- No desarrollar ni documentar exportación hasta que se defina el alcance y formato requerido.
+#### US-007: Dashboard - Estructura y Gráficos
+
+### ÉPICA 3: Dashboard consolidado - EN PROGRESO ⏳
+
+**Estado**: En desarrollo  
+**Duración Estimada**: 4 días
+
+**Objetivo**:
+- Dashboard con gráficos de FTEs, Revenue y PNLs
+- Datos reales y proyectados
+
+**Tareas**:
+- [ ] Crear componente `Dashboard`
+- [ ] Implementar gráficos con recharts
+- [ ] Conectar con API y hooks correspondientes
+- [ ] Validar y documentar
+
+---
+
+#### US-008: Export Excel - Funcionalidad Completa
+
+### ÉPICA 3: Exportación de datos - EN PROGRESO ⏳
+
+**Estado**: En desarrollo  
+**Duración Estimada**: 2 días
+
+**Objetivo**:
+- Exportar datos de Rolling a Excel
+- Incluir todas las métricas y clientes visibles
+
+**Tareas**:
+- [ ] Implementar lógica de exportación en cada tab
+- [ ] Generar archivo Excel con formato tabular
+- [ ] Validar y documentar
+
+---
+
+#### US-009: Cambio de Año - Funcionalidad Completa
+
+### ÉPICA 3: Navegación y filtros - EN PROGRESO ⏳
+
+**Estado**: En desarrollo  
+**Duración Estimada**: 1 día
+
+**Objetivo**:
+- Cambiar año en Rolling y actualizar datos
+- Sincronización con URL
+
+**Tareas**:
+- [ ] Implementar lógica de cambio de año
+- [ ] Actualizar datos y gráficos correspondientes
+- [ ] Validar y documentar
+
+---
+
+#### US-010: PnlsRealesTable - estructura base ✅ COMPLETO
+
+- Tabla multi-métrica por cliente y mes
+- Fila principal expandible con 6 métricas detalladas:
+  - 💵 Revenue USD (revenueReal ?? revenueAsignado)
+  - 👥 FTEs (ftesReales ?? ftesAsignados)
+  - 💰 Costos (recursosReales + otrosReales ?? costosProyectados)
+  - 📈 Gross (calculado: revenue efectivo - costos efectivos, SIEMPRE)
+  - 📊 GM% (calculado: Gross / Revenue efectivo * 100, SIEMPRE)
+- ❌ **NO incluir fila "Revenue ARS"** (la conversión a ARS se realiza solo con el toggle de moneda)
+- Badge "Real" visible donde revenueReal !== null
+- Sticky headers y UX consistente con tablas anteriores
+
+#### US-011: Totales y validación multi-métrica ✅ COMPLETO
+
+- 5 filas de totales al final de la tabla
+- Total anual = suma de valores mensuales (excepto GM% que es promedio)
+- Color coding correcto
+- Validaciones pasan
+
+---
+
+## D) REQUISITOS
+
+### Requisitos Funcionales
+
+**RF-004: Vista PNLs Reales**
+- Layout multi-fila: Cliente + Métrica (5 filas/cliente)
+- Métricas: Revenue USD (revenueReal ?? revenueAsignado), FTEs, Gross, Costos, GM%
+- ❌ **NO mostrar fila "Revenue ARS"** (la conversión se hace con el toggle)
+- Gross y GM% deben calcularse SIEMPRE, incluso si hay revenue/costos reales
+- Gross = revenue efectivo - costos efectivos
+- GM% = (Gross / revenue efectivo) * 100
+- Badge "Real" celdas datos reales
+- Colores GM%: >= 40% verde, >= 20% amarillo, < 20% rojo
 
 ---
 
 ## CHANGELOG
 
-### v1.5.0 - 2025-02-XX (ÉPICA 4: PNLs Reales multi-métrica)
-
-**Agregado**:
-- ✅ Componente PnlsRealesTable con 6 métricas por cliente
-- ✅ Vista consolidada Revenue, FTEs, Costos, Gross, GM%
-- ✅ Toggle USD/ARS integrado en tabla PNLs
-- ✅ Color coding para GM% y Gross
-- ✅ Totales consolidados multi-métrica con validación
-- ✅ Filas expandibles consistentes con RF Actuals y Revenue
-
-**Detalles Técnicos**:
-- MetricRow component para renderizar cada métrica
-- Conversión ARS con FX rates por mes
-- Total anual = suma (excepto GM% que es promedio)
-- Costos = recursosReales + otrosReales ?? costosProyectados
-
-### v1.4.2 - 2025-01-XX (Fix lógica fila principal backlog en Rolling)
-
-**Corregido**:
-- ✅ Fila principal de cada cliente en Rolling (Revenue/FTEs) muestra el valor de backlog (NO suma potencial)
-- ✅ Fila principal expandible para mostrar Backlog y Potencial
-- ✅ Badge "Real" visible donde corresponde
-- ✅ Mayo, Junio, Marzo y todos los meses muestran el valor correcto (igual que en P&L Cliente)
-- ✅ UX igual a P&L Cliente
-
-### v1.4.3 - 2025-01-XX (Fix total FTEs: suma, no promedio)
-
-**Corregido**:
-- ✅ El total anual de FTEs en Rolling ahora es la suma de los valores mensuales (no promedio)
-- ✅ Aplica a filas de cliente y totales generales
-- ✅ Consistente con P&L Cliente y con la lógica de Revenue
-
-### v1.4.4 - 2025-01-XX (Export a Excel pausado)
+### v1.5.1 - 2025-01-XX (Quitar Revenue ARS y fix Gross/GM%)
 
 **Modificado**:
-- ❌ Export a Excel removido de ÉPICA 4 y backlog
-- ❌ US-012 marcado como PAUSADO
-- ✅ Foco en tabla multi-métrica y validación
+- ❌ Fila "Revenue ARS" eliminada de PNLs Reales
+- ✅ Gross y GM% ahora calculados siempre (no muestran 0 si hay revenue/costos)
+- ✅ Ejemplo: Enero con revenue 1000 USD y costos 500 USD → Gross = 500 USD, GM% = 50%
+- ✅ Documentación y criterios de aceptación actualizados
 
 ---
 
-**VERSIÓN**: 1.5.0
-**ÚLTIMA ACTUALIZACIÓN**: ÉPICA 4 PNLs Reales multi-métrica completada
-**PRÓXIMA REVISIÓN**: Dashboard con pie charts (ÉPICA 5, TBD)
-
----
-
-**FIN ESPECIFICACIÓN EJECUTABLE**
+**VERSIÓN**: 1.5.1  
+**ÚLTIMA ACTUALIZACIÓN**: Quitar Revenue ARS y fix Gross/GM%  
+**PRÓXIMA REVISIÓN**: Post ÉPICA 5
