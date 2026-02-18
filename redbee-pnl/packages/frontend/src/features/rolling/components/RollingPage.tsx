@@ -18,6 +18,7 @@ import { RevenueTable } from './RevenueTable';
 import { PnlsRealesTable } from './PnlsRealesTable';
 import { DashboardView } from './DashboardView';
 import { useRollingData } from '../hooks/useRollingData';
+import { logger } from '@/utils/logger';
 import type { ActiveTab, PaisCliente, TipoComercialCliente } from '../types/rolling.types';
 
 export function RollingPage() {
@@ -74,7 +75,7 @@ export function RollingPage() {
     const from = activeTab;
     const to = newTab as ActiveTab;
 
-    console.log('[Rolling] Tab changed', {
+    logger.debug('[Rolling]', 'Tab changed', {
       from,
       to,
       timestamp: Date.now(),
@@ -86,7 +87,7 @@ export function RollingPage() {
   const handleYearChange = (newYear: number) => {
     const from = year;
 
-    console.log('[Rolling] Year changed', {
+    logger.debug('[Rolling]', 'Year changed', {
       from,
       to: newYear,
       timestamp: Date.now(),
@@ -106,7 +107,7 @@ export function RollingPage() {
   };
 
   const handlePaisFilterChange = (newPais: PaisCliente | 'TODOS') => {
-    console.log('[Rolling] País filter changed', {
+    logger.debug('[Rolling]', 'País filter changed', {
       from: paisFilter,
       to: newPais,
       timestamp: Date.now(),
@@ -126,7 +127,7 @@ export function RollingPage() {
   };
 
   const handleTipoComercialFilterChange = (newTipo: TipoComercialCliente | 'TODOS') => {
-    console.log('[Rolling] Tipo Comercial filter changed', {
+    logger.debug('[Rolling]', 'Tipo Comercial filter changed', {
       from: tipoComercialFilter,
       to: newTipo,
       timestamp: Date.now(),

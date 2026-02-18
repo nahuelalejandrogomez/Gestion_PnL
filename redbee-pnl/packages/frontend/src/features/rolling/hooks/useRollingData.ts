@@ -6,6 +6,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { clientesApi } from '@/features/clientes/api/clientesApi';
 import { pnlApi } from '@/features/pnl/api/pnlApi';
+import { logger } from '@/utils/logger';
 import type { PnlYearResult } from '@/features/pnl/types/pnl.types';
 import type { Cliente as ClienteSystem } from '@/features/clientes/types/cliente.types';
 import type {
@@ -143,7 +144,7 @@ export function useRollingData(year: number) {
 
       // Warning si > 20 clientes
       if (clientesActivos.length > 20) {
-        console.warn('[Rolling] Performance degradation risk', {
+        logger.warn('[Rolling]', 'Performance degradation risk', {
           totalClientes: clientesActivos.length,
           recommendation: 'Consider pagination or filtering',
         });
@@ -164,7 +165,7 @@ export function useRollingData(year: number) {
               success: true,
             };
           } catch (error) {
-            console.warn(`[Rolling] Cliente ${cliente.nombre} sin datos para ${year}`, error);
+            logger.warn('[Rolling]', `Cliente ${cliente.nombre} sin datos para ${year}`, error);
             return {
               clienteSystem: cliente,
               pnlData: null,
@@ -188,7 +189,7 @@ export function useRollingData(year: number) {
       const duration = Math.round(performance.now() - startTime);
       const clientesFailed = clientesActivos.length - clientesData.length;
 
-      console.log('[Rolling] Fetch completed', {
+      logger.info('[Rolling]', 'Fetch completed', {
         year,
         duration: `${duration}ms`,
         totalClientes: clientesActivos.length,

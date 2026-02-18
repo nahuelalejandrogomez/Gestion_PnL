@@ -4,6 +4,7 @@
  */
 
 import { useMemo } from 'react';
+import { logger } from '@/utils/logger';
 import type { RollingData } from '../types/rolling.types';
 
 export interface RollingAggregate {
@@ -89,7 +90,7 @@ export function useRollingAggregates(data: RollingData | undefined): RollingAggr
 
       if (!isValid) {
         hasDiscrepancies = true;
-        console.error(`[Rolling] Discrepancia mes ${m}`, {
+        logger.error('[Rolling]', `Discrepancia FTEs mes ${m}`, {
           total: totalMonth,
           backlog: backlogMonth,
           potencial: potencialMonth,
@@ -160,7 +161,7 @@ export function useRollingAggregates(data: RollingData | undefined): RollingAggr
       const revIsValid = revDiscrepancy <= 0.01;
 
       if (!revIsValid) {
-        console.error(`[Rolling] Discrepancia Revenue mes ${m}`, {
+        logger.error('[Rolling]', `Discrepancia Revenue mes ${m}`, {
           total: revTotalMonth,
           backlog: revBacklogMonth,
           potencial: revPotencialMonth,
