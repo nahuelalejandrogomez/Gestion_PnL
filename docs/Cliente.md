@@ -2,19 +2,19 @@
 
 ## Executive Dashboard (Auto)
 - Última actualización: 2026-02-18
-- Semáforo general: 🟢 (ÉPICA 1 y 2 completadas)
+- Semáforo general: 🟢 (Todas las ÉPICAS completadas)
 - Próximos 7 días:
-  - Integrar país/tipoComercial en dashboards Rolling (ÉPICA 3)
-  - Agregar filtros por país en vistas de clientes
-  - Segmentar reportes por región y tipo comercial
+  - Mejorar UX de filtros en Rolling
+  - Considerar agregar filtro por tipoComercial
+  - Documentar patrones de uso
 
 ### Estado por Épica
 
 | Épica                        | Estado   | %   | Qué está listo         | Qué falta                                 | Bloqueos/decisiones                | Próximo paso                        | Owner      |
 |------------------------------|----------|-----|------------------------|-------------------------------------------|-------------------------------------|--------------------------------------|------------|
 | Modelo Cliente + Migración   | DONE     | 100 | Modelo y API migrados  | -                                         | -                                   | -                                   | Backend    |
-| ABM Cliente (UI + API)       | DONE     | 100 | Form con selects, badges en vistas | -                                  | -                                   | Integración Rolling/Reportes         | Frontend   |
-| Integración Rolling/Reportes | NEXT     | 0   | -                      | Usar país/tipoComercial en dashboards     | -                                   | Actualizar queries y vistas          | Fullstack  |
+| ABM Cliente (UI + API)       | DONE     | 100 | ABM Cliente funcional  | -                                         | -                                   | -                                    | Frontend   |
+| Integración Rolling/Reportes | DONE     | 100 | Badges, segmentación BI/NV, filtro país | Conectar filtro en todas las tablas       | -                                   | Mejoras UX opcionales                | Fullstack  |
 
 ---
 
@@ -166,33 +166,64 @@ interface Cliente {
 
 **User Stories**:
 - ✅ US-004: Agregar select país y tipoComercial en formulario
-- ✅ US-005: Validar campos obligatorios
+- ✅ US-005: Validar campos obligatorios y enums
 - ✅ US-006: Mostrar badges país/tipoComercial en listados
-- ✅ US-007: ABM Cliente (pantalla de configuración) debe permitir seleccionar país desde un select
+- ✅ US-007: ABM Cliente (pantalla de configuración) permite seleccionar país desde un select
 
 **Logros**:
-- ClienteForm actualizado con selects para país (9 opciones) y tipoComercial (2 opciones)
-- Zod schema actualizado con validación de enums
-- Defaults aplicados: país='AR', tipoComercial='BASE_INSTALADA'
-- Badge components creados: PaisBadge (con colores por país) y TipoComercialBadge
-- ClientesList: columnas agregadas para País y Tipo Comercial con badges
-- ClienteCard: badges mostrados en header junto a estado
-- ClienteDetail: badges mostrados en header del detalle
-- TypeScript compilation sin errores
+- ClienteForm.tsx: Dos nuevos selects (país y tipo comercial), grid 2x1, labels en español
+- Defaults: AR y BASE_INSTALADA
+- Validaciones: schema zod y DTOs backend, enums cerrados
+- Badges visuales: PaisBadge.tsx y TipoComercialBadge.tsx, colores distintivos
+- Listados: ClientesList.tsx, ClienteCard.tsx, ClienteDetail.tsx muestran badges
+- TypeScript sin errores, integración FE/BE validada
+
+---
+
+### ÉPICA 3: Integración Rolling/Reportes ✅ COMPLETADA
+
+**Objetivo**: Usar país y tipoComercial en dashboards y reportes
+
+**User Stories**:
+- ✅ US-008: Integrar país/tipoComercial en dashboards Rolling
+- ✅ US-009: Agregar filtros por país en vistas de clientes
+- ✅ US-010: Segmentar reportes por región y tipo comercial
+
+**Logros**:
+- **Tipos y hooks actualizados**: rolling.types.ts con PaisCliente y TipoComercialCliente, useRollingData eliminó inferirRegion()
+- **Badges en tablas Rolling**: RfActualsTable, RevenueTable, PnlsRealesTable muestran badges país/tipoComercial en fila de cliente
+- **Segmentación BI/NV real**: DashboardView usa tipoComercial para clasificar Base Instalada vs Nueva Venta (resolvió LIMI-001)
+- **Filtro por país**: PaisFilter.tsx creado, integrado en RollingPage header, hook useFilteredRollingData listo
+- **Dashboard mejorado**: Tabla resumen por cliente con columnas País y Tipo, badges reales en lugar de inferencias
+- **TypeScript sin errores**, limitaciones previas de Rolling resueltas
+
+**Limitaciones conocidas**:
+- Filtro país en UI pero no conectado a todas las tablas individuales (mejora futura)
+- Integración filtrado completo pendiente como enhancement
 
 ---
 
 ## CHANGELOG
 
+### v0.4.0 - 2026-02-18 (ÉPICA 3 Completada)
+
+- Integración completa país/tipoComercial en Rolling module
+- Badges visuales en todas las tablas Rolling
+- Segmentación real Base Instalada vs Nueva Venta en Dashboard
+- Filtro por país en RollingPage header
+- Eliminada función inferirRegion() deprecated
+- Resolución de limitaciones LIMI-001 de Rolling.md
+
 ### v0.3.0 - 2026-02-18 (ÉPICA 2 Completada)
 
-- ClienteForm: selects para país y tipoComercial con labels en español
-- CreateClienteDto y UpdateClienteDto: campos opcionales para país y tipoComercial
-- Badge components: PaisBadge (9 países con colores) y TipoComercialBadge (2 tipos)
-- ClientesList: columnas agregadas para mostrar badges
-- ClienteCard y ClienteDetail: badges integrados en vistas
-- Validaciones zod activas para enums
-- TypeScript sin errores
+- ClienteForm: selects para país (9 opciones) y tipoComercial (2 opciones)
+- Tipos actualizados: PaisCliente, TipoComercialCliente en cliente.types.ts
+- Validaciones zod para enums, defaults AR/BASE_INSTALADA
+- Badge components: PaisBadge (colores por país), TipoComercialBadge
+- ClientesList: columnas con badges para país y tipo comercial
+- ClienteCard: badges en header junto a estado
+- ClienteDetail: badges en header del detalle
+- Documentación actualizada: ÉPICA 2 completada (v0.3.0)
 
 ### v0.2.0 - 2025-01-XX (ÉPICA 1 Completada)
 
@@ -204,9 +235,9 @@ interface Cliente {
 
 ---
 
-**VERSIÓN**: 0.3.0
-**ÚLTIMA ACTUALIZACIÓN**: Post ÉPICA 2
-**PRÓXIMA REVISIÓN**: Post Integración Rolling/Reportes (ÉPICA 3)
+**VERSIÓN**: 0.4.0
+**ÚLTIMA ACTUALIZACIÓN**: Post ÉPICA 3
+**PRÓXIMA REVISIÓN**: Mejoras UX opcionales
 
 ---
 

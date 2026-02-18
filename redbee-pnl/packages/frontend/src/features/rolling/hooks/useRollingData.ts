@@ -12,7 +12,8 @@ import type {
   RollingData,
   ClienteRollingData,
   RollingMonthData,
-  Region,
+  PaisCliente,
+  TipoComercialCliente,
   Moneda,
 } from '../types/rolling.types';
 
@@ -64,34 +65,22 @@ function transformToRollingData(
     gmPct: totales.indicadores.gmPct,
   };
 
-  // Determinar región y moneda (desde nombre del proyecto o moneda tarifario)
-  // Por ahora, default a USD/US
-  const region: Region = inferirRegion(clienteSystem.nombre);
+  // Usar país y tipoComercial directamente desde el modelo Cliente
+  // Ahora estos campos están disponibles en la base de datos (ÉPICA 1 y 2 completadas)
+  const pais: PaisCliente = clienteSystem.pais;
+  const tipoComercial: TipoComercialCliente = clienteSystem.tipoComercial;
   const moneda: Moneda = pnlData.monedaTarifario === 'ARS' ? 'ARS' : 'USD';
 
   return {
     clienteId: clienteSystem.id,
     clienteNombre: clienteSystem.nombre,
-    region,
+    pais,
+    tipoComercial,
     moneda,
     meses,
     totalesAnuales,
     hasRealData: pnlData.hasRealData ?? false,
   };
-}
-
-/**
- * Inferir región desde nombre del cliente
- * FIXME: Idealmente esto debería venir desde la base de datos
- */
-function inferirRegion(nombre: string): Region {
-  const n = nombre.toLowerCase();
-  if (n.includes('link') || n.includes('prisma') || n.includes('valo') || n.includes('santander')) {
-    return 'AR';
-  }
-  if (n.includes('falabella')) return 'CL';
-  if (n.includes('ueno')) return 'US';
-  return 'US'; // default
 }
 
 /**

@@ -11,8 +11,14 @@ export type ActiveTab = 'rf-actuals' | 'revenue' | 'pnls' | 'dashboard';
 
 /**
  * Regiones geográficas de clientes
+ * Ahora importadas desde tipos de Cliente
  */
-export type Region = 'AR' | 'CL' | 'UY' | 'US';
+export type PaisCliente = 'AR' | 'UY' | 'CL' | 'MX' | 'US' | 'BR' | 'PE' | 'CO' | 'OTRO';
+
+/**
+ * Tipo comercial del cliente
+ */
+export type TipoComercialCliente = 'BASE_INSTALADA' | 'NUEVA_VENTA';
 
 /**
  * Moneda del cliente
@@ -21,12 +27,14 @@ export type Moneda = 'USD' | 'ARS';
 
 /**
  * Cliente del sistema (para fetch lista clientes)
+ * DEPRECATED: Usar ClienteSystem de @/features/clientes/types/cliente.types
  */
 export interface Cliente {
   id: string;
   nombre: string;
   activo: boolean;
-  region: Region;
+  pais: PaisCliente;
+  tipoComercial: TipoComercialCliente;
   moneda: Moneda;
 }
 
@@ -63,7 +71,8 @@ export interface RollingMonthData {
 export interface ClienteRollingData {
   clienteId: string;
   clienteNombre: string;
-  region: Region;
+  pais: PaisCliente;
+  tipoComercial: TipoComercialCliente;
   moneda: Moneda;
 
   // Datos mensuales (1-12)

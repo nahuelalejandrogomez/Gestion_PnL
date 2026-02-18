@@ -8,6 +8,8 @@ import { useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PaisBadge } from '@/features/clientes/components/PaisBadge';
+import { TipoComercialBadge } from '@/features/clientes/components/TipoComercialBadge';
 import { useRollingData } from '../hooks/useRollingData';
 import { fmtCurrency, fmtFte, fmtPct } from '@/features/pnl/utils/pnl.format';
 
@@ -73,15 +75,18 @@ export function DashboardView({ year }: DashboardViewProps) {
       byMoneda[cliente.moneda].revenue += clienteRevenue;
       byMoneda[cliente.moneda].ftes += clienteFtes;
 
-      // Agregar por región
-      byRegion[cliente.region].revenue += clienteRevenue;
-      byRegion[cliente.region].ftes += clienteFtes;
+      // Agregar por país (ahora usando campo real del modelo Cliente)
+      byRegion[cliente.pais as 'AR' | 'CL' | 'UY' | 'US'].revenue += clienteRevenue;
+      byRegion[cliente.pais as 'AR' | 'CL' | 'UY' | 'US'].ftes += clienteFtes;
 
-      // Base Instalada vs Nueva Venta
-      // TODO: Necesita campo en backend para identificar si es BI o NV
-      // Por ahora, todos se consideran Base Instalada
-      baseInstaladaRevenue += clienteRevenue;
-      baseInstaladaFtes += clienteFtes;
+      // Base Instalada vs Nueva Venta (ahora usando campo real del modelo Cliente)
+      if (cliente.tipoComercial === 'BASE_INSTALADA') {
+        baseInstaladaRevenue += clienteRevenue;
+        baseInstaladaFtes += clienteFtes;
+      } else if (cliente.tipoComercial === 'NUEVA_VENTA') {
+        nuevaVentaRevenue += clienteRevenue;
+        nuevaVentaFtes += clienteFtes;
+      }
     }
 
     // Formatear datos para pie charts
@@ -346,9 +351,6 @@ export function DashboardView({ year }: DashboardViewProps) {
           <CardTitle className="text-sm font-semibold text-stone-700">
             Base Instalada vs Nueva Venta
           </CardTitle>
-          <p className="text-xs text-amber-600 mt-1">
-            ⚠️ Clasificación BI/NV requiere campo en backend. Actualmente todos los clientes se consideran Base Instalada.
-          </p>
         </CardHeader>
         <CardContent>
           <div className="rounded-lg border border-stone-200 overflow-hidden">
@@ -436,7 +438,8 @@ export function DashboardView({ year }: DashboardViewProps) {
               <thead>
                 <tr className="bg-stone-50/80 border-b border-stone-200">
                   <th className="text-left py-2 px-3 font-semibold text-stone-600">Cliente</th>
-                  <th className="text-center py-2 px-3 font-semibold text-stone-600">Región</th>
+                  <th className="text-center py-2 px-3 font-semibold text-stone-600">País</th>
+                  <th className="text-center py-2 px-3 font-semibold text-stone-600">Tipo</th>
                   <th className="text-center py-2 px-3 font-semibold text-stone-600">Moneda</th>
                   <th className="text-right py-2 px-3 font-semibold text-stone-600">Revenue USD</th>
                   <th className="text-right py-2 px-3 font-semibold text-stone-600">FTEs</th>
@@ -468,9 +471,10 @@ export function DashboardView({ year }: DashboardViewProps) {
                     <tr key={cliente.clienteId} className="border-t border-stone-200 hover:bg-stone-50/40">
                       <td className="py-2 px-3 font-semibold text-stone-800">{cliente.clienteNombre}</td>
                       <td className="py-2 px-3 text-center">
-                        <span className="inline-block px-2 py-0.5 text-[10px] font-medium rounded bg-stone-100 text-stone-700">
-                          {cliente.region}
-                        </span>
+                        <PaisBadge pais={cliente.pais} size="sm" />
+                      </td>
+                      <td className="py-2 px-3 text-center">
+                        <TipoComercialBadge tipoComercial={cliente.tipoComercial} size="sm" />
                       </td>
                       <td className="py-2 px-3 text-center">
                         <span className="inline-block px-2 py-0.5 text-[10px] font-medium rounded bg-blue-50 text-blue-700">
@@ -495,7 +499,7 @@ export function DashboardView({ year }: DashboardViewProps) {
 
                 {/* Fila Total */}
                 <tr className="border-t-2 border-stone-400 bg-stone-100/80 font-bold">
-                  <td className="py-2 px-3 text-stone-900" colSpan={3}>TOTAL</td>
+                  <td className="py-2 px-3 text-stone-900" colSpan={4}>TOTAL</td>
                   <td className="py-2 px-3 text-right tabular-nums text-stone-900">
                     {fmtCurrency(dashboardData.totals.revenue, 'USD')}
                   </td>

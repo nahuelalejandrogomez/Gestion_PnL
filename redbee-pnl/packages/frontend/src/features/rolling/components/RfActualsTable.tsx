@@ -14,6 +14,8 @@ import { ChevronRight, ChevronDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { PaisBadge } from '@/features/clientes/components/PaisBadge';
+import { TipoComercialBadge } from '@/features/clientes/components/TipoComercialBadge';
 import { useRollingData } from '../hooks/useRollingData';
 import { useRollingAggregates } from '../hooks/useRollingAggregates';
 import { MONTH_LABELS, fmtFte } from '@/features/pnl/utils/pnl.format';
@@ -174,17 +176,23 @@ function ClienteSection({
       {/* Fila Principal (expandible) */}
       <tr className="border-t-2 border-stone-300 bg-stone-50/40 hover:bg-stone-100/60 transition-colors">
         <td className="py-2 px-3 sticky left-0 bg-stone-50/40 hover:bg-stone-100/60 z-10">
-          <button
-            onClick={onToggle}
-            className="flex items-center gap-1.5 font-bold text-stone-800 hover:text-stone-900 w-full text-left"
-          >
-            {isExpanded ? (
-              <ChevronDown className="h-3.5 w-3.5 text-stone-500" />
-            ) : (
-              <ChevronRight className="h-3.5 w-3.5 text-stone-500" />
-            )}
-            <span>{cliente.clienteNombre}</span>
-          </button>
+          <div className="flex flex-col gap-1">
+            <button
+              onClick={onToggle}
+              className="flex items-center gap-1.5 font-bold text-stone-800 hover:text-stone-900 w-full text-left"
+            >
+              {isExpanded ? (
+                <ChevronDown className="h-3.5 w-3.5 text-stone-500" />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5 text-stone-500" />
+              )}
+              <span>{cliente.clienteNombre}</span>
+            </button>
+            <div className="flex items-center gap-1 ml-5">
+              <PaisBadge pais={cliente.pais} size="sm" />
+              <TipoComercialBadge tipoComercial={cliente.tipoComercial} size="sm" />
+            </div>
+          </div>
         </td>
         {months.map((m) => {
           const monthData = cliente.meses[m];

@@ -11,11 +11,12 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { YearSelector } from './shared/YearSelector';
+import { PaisFilter } from './shared/PaisFilter';
 import { RfActualsTable } from './RfActualsTable';
 import { RevenueTable } from './RevenueTable';
 import { PnlsRealesTable } from './PnlsRealesTable';
 import { DashboardView } from './DashboardView';
-import type { ActiveTab } from '../types/rolling.types';
+import type { ActiveTab, PaisCliente } from '../types/rolling.types';
 
 export function RollingPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -33,6 +34,7 @@ export function RollingPage() {
 
   const [year, setYear] = useState(validYear);
   const [activeTab, setActiveTab] = useState<ActiveTab>('rf-actuals');
+  const [paisFilter, setPaisFilter] = useState<PaisCliente | 'TODOS'>('TODOS');
 
   const handleTabChange = (newTab: string) => {
     const from = activeTab;
@@ -60,6 +62,16 @@ export function RollingPage() {
     setSearchParams({ year: String(newYear) });
   };
 
+  const handlePaisFilterChange = (newPais: PaisCliente | 'TODOS') => {
+    console.log('[Rolling] País filter changed', {
+      from: paisFilter,
+      to: newPais,
+      timestamp: Date.now(),
+    });
+
+    setPaisFilter(newPais);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -69,7 +81,10 @@ export function RollingPage() {
             Consolidado P&L de todos los clientes
           </p>
         </div>
-        <YearSelector year={year} onChange={handleYearChange} />
+        <div className="flex items-center gap-3">
+          <PaisFilter value={paisFilter} onChange={handlePaisFilterChange} />
+          <YearSelector year={year} onChange={handleYearChange} />
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
