@@ -95,6 +95,26 @@ function inferirRegion(nombre: string): Region {
 }
 
 /**
+ * Ejecutar promesas con límite de concurrencia
+ * Procesa en batches para evitar saturar conexiones TCP
+ */
+async function promiseAllWithLimit<T>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<any>
+): Promise<any[]> {
+  const results: any[] = [];
+
+  for (let i = 0; i < items.length; i += limit) {
+    const batch = items.slice(i, i + limit);
+    const batchResults = await Promise.all(batch.map(fn));
+    results.push(...batchResults);
+  }
+
+  return results;
+}
+
+/**
  * Consolidar FX rates desde múltiples clientes
  * Toma el primer cliente que tenga FX rates completos
  */
@@ -140,26 +160,30 @@ export function useRollingData(year: number) {
         });
       }
 
-      // 2. Fetch P&L de cada cliente en paralelo
-      const fetchPromises = clientesActivos.map(async (cliente) => {
-        try {
-          const pnlData = await pnlApi.getByClienteYear(cliente.id, year);
-          return {
-            clienteSystem: cliente,
-            pnlData,
-            success: true,
-          };
-        } catch (error) {
-          console.warn(`[Rolling] Cliente ${cliente.nombre} sin datos para ${year}`, error);
-          return {
-            clienteSystem: cliente,
-            pnlData: null,
-            success: false,
-          };
-        }
-      });
+      // 2. Fetch P&L de cada cliente con concurrencia limitada (3 simultáneos)
+      const CONCURRENT_LIMIT = 3;
 
-      const results = await Promise.all(fetchPromises);
+      const results = await promiseAllWithLimit(
+        clientesActivos,
+        CONCURRENT_LIMIT,
+        async (cliente) => {
+          try {
+            const pnlData = await pnlApi.getByClienteYear(cliente.id, year);
+            return {
+              clienteSystem: cliente,
+              pnlData,
+              success: true,
+            };
+          } catch (error) {
+            console.warn(`[Rolling] Cliente ${cliente.nombre} sin datos para ${year}`, error);
+            return {
+              clienteSystem: cliente,
+              pnlData: null,
+              success: false,
+            };
+          }
+        }
+      );
 
       // 3. Filtrar exitosos y transformar
       const successfulResults = results.filter(r => r.success && r.pnlData);
