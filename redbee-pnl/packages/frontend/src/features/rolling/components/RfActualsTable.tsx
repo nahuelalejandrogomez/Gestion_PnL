@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { useRollingData } from '../hooks/useRollingData';
 import { useRollingAggregates } from '../hooks/useRollingAggregates';
 import { MONTH_LABELS, fmtFte } from '@/features/pnl/utils/pnl.format';
-import type { ClienteRollingData, RollingMonthData } from '../types/rolling.types';
+import type { ClienteRollingData } from '../types/rolling.types';
 
 interface RfActualsTableProps {
   year: number;

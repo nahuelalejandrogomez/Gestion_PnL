@@ -98,7 +98,7 @@ function inferirRegion(nombre: string): Region {
  * Consolidar FX rates desde múltiples clientes
  * Toma el primer cliente que tenga FX rates completos
  */
-function consolidateFxRates(clientesData: ClienteRollingData[], pnlResults: PnlYearResult[]): Record<number, number> {
+function consolidateFxRates(pnlResults: PnlYearResult[]): Record<number, number> {
   // Buscar el primer resultado con FX rates completos
   const fxRatesSource = pnlResults.find(pnl => pnl.fxRates && Object.keys(pnl.fxRates).length > 0);
 
@@ -169,7 +169,7 @@ export function useRollingData(year: number) {
 
       // 4. Consolidar FX rates
       const pnlResults = successfulResults.map(r => r.pnlData!);
-      const fxRates = consolidateFxRates(clientesData, pnlResults);
+      const fxRates = consolidateFxRates(pnlResults);
 
       // 5. Logs instrumentación
       const duration = Math.round(performance.now() - startTime);
