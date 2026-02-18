@@ -3,9 +3,14 @@
  * ÉPICA 3 US-007: Tabla consolidada Revenue por cliente
  * ÉPICA 3 US-008: Toggle USD/ARS y conversión moneda
  * ÉPICA 3 US-009: Totales Revenue y desvío Budget
+ *
+ * BUG FIX: Fila principal muestra SOLO backlog (igual que RfActualsTable)
+ * - Fila principal expandible por cliente
+ * - UX igual a P&L Cliente
  */
 
 import { useState } from 'react';
+import { ChevronRight, ChevronDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +28,19 @@ export function RevenueTable({ year }: RevenueTableProps) {
   const { data, isLoading, error } = useRollingData(year);
   const aggregates = useRollingAggregates(data);
   const [moneda, setMoneda] = useState<Moneda>('USD');
+  const [expandedClientes, setExpandedClientes] = useState<Set<string>>(new Set());
+
+  const toggleCliente = (clienteId: string) => {
+    setExpandedClientes((prev) => {
+      const next = new Set(prev);
+      if (next.has(clienteId)) {
+        next.delete(clienteId);
+      } else {
+        next.add(clienteId);
+      }
+      return next;
+    });
+  };
 
   if (isLoading) {
     return (
@@ -106,7 +124,7 @@ export function RevenueTable({ year }: RevenueTableProps) {
               </tr>
             </thead>
             <tbody>
-              {/* Renderizar cada cliente con 3 filas */}
+              {/* Renderizar cada cliente con fila principal expandible */}
               {data.clientes.map((cliente) => (
                 <ClienteSection
                   key={cliente.clienteId}
@@ -114,6 +132,8 @@ export function RevenueTable({ year }: RevenueTableProps) {
                   months={months}
                   moneda={moneda}
                   fxRates={data.fxRates}
+                  isExpanded={expandedClientes.has(cliente.clienteId)}
+                  onToggle={() => toggleCliente(cliente.clienteId)}
                 />
               ))}
 
@@ -160,25 +180,39 @@ function convertToARS(valueUSD: number, month: number, fxRates: Record<number, n
 }
 
 /**
- * Sección de 3 filas por cliente: Total, Backlog, Potencial
+ * Sección de cliente: fila principal expandible + subfilas Backlog/Potencial
  */
 function ClienteSection({
   cliente,
   months,
   moneda,
   fxRates,
+  isExpanded,
+  onToggle,
 }: {
   cliente: ClienteRollingData;
   months: number[];
   moneda: Moneda;
   fxRates: Record<number, number>;
+  isExpanded: boolean;
+  onToggle: () => void;
 }) {
   return (
     <>
-      {/* Fila Total */}
-      <tr className="border-t-2 border-stone-300 bg-stone-50/40">
-        <td className="py-2 px-3 font-bold text-stone-800 sticky left-0 bg-stone-50/40 z-10">
-          {cliente.clienteNombre}
+      {/* Fila Principal (expandible) */}
+      <tr className="border-t-2 border-stone-300 bg-stone-50/40 hover:bg-stone-100/60 transition-colors">
+        <td className="py-2 px-3 sticky left-0 bg-stone-50/40 hover:bg-stone-100/60 z-10">
+          <button
+            onClick={onToggle}
+            className="flex items-center gap-1.5 font-bold text-stone-800 hover:text-stone-900 w-full text-left"
+          >
+            {isExpanded ? (
+              <ChevronDown className="h-3.5 w-3.5 text-stone-500" />
+            ) : (
+              <ChevronRight className="h-3.5 w-3.5 text-stone-500" />
+            )}
+            <span>{cliente.clienteNombre}</span>
+          </button>
         </td>
         {months.map((m) => {
           const monthData = cliente.meses[m];
@@ -190,21 +224,20 @@ function ClienteSection({
             );
           }
 
-          // Total = revenueReal si existe, sino suma asignado + noAsignado
+          // Fila principal muestra SOLO backlog (lo que se va a facturar)
+          // NO suma potencial - esto hace que coincida con P&L Cliente
           const hasReal = monthData.revenueReal !== null;
-          let total = hasReal
-            ? monthData.revenueReal!
-            : monthData.revenueAsignado + monthData.revenueNoAsignado;
+          let backlog = monthData.revenueReal ?? monthData.revenueAsignado;
 
           // Convertir a ARS si aplica
           if (moneda === 'ARS') {
-            total = convertToARS(total, m, fxRates);
+            backlog = convertToARS(backlog, m, fxRates);
           }
 
           return (
             <td key={m} className="py-2 px-2 text-right tabular-nums font-semibold text-stone-800">
               <div className="flex items-center justify-end gap-1">
-                {total > 0 ? fmtCurrency(total, moneda) : <span className="text-stone-300">-</span>}
+                {backlog > 0 ? fmtCurrency(backlog, moneda) : <span className="text-stone-300">-</span>}
                 {hasReal && (
                   <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-blue-500 text-blue-600 bg-blue-50">
                     Real
@@ -216,19 +249,16 @@ function ClienteSection({
         })}
         <td className="py-2 px-3 text-right tabular-nums font-bold text-stone-900 bg-stone-100/60">
           {(() => {
-            let totalAnual = cliente.totalesAnuales.revenue;
-            if (moneda === 'ARS') {
-              // Convertir total anual: sumar cada mes convertido
-              totalAnual = 0;
-              for (let m = 1; m <= 12; m++) {
-                const monthData = cliente.meses[m];
-                if (monthData) {
-                  const hasReal = monthData.revenueReal !== null;
-                  const monthValue = hasReal
-                    ? monthData.revenueReal!
-                    : monthData.revenueAsignado + monthData.revenueNoAsignado;
-                  totalAnual += convertToARS(monthValue, m, fxRates);
+            // Total anual = suma de backlog mensual (NO incluye potencial)
+            let totalAnual = 0;
+            for (let m = 1; m <= 12; m++) {
+              const monthData = cliente.meses[m];
+              if (monthData) {
+                let monthBacklog = monthData.revenueReal ?? monthData.revenueAsignado;
+                if (moneda === 'ARS') {
+                  monthBacklog = convertToARS(monthBacklog, m, fxRates);
                 }
+                totalAnual += monthBacklog;
               }
             }
             return fmtCurrency(totalAnual, moneda);
@@ -236,72 +266,78 @@ function ClienteSection({
         </td>
       </tr>
 
-      {/* Fila Backlog */}
-      <tr className="border-t border-stone-100 hover:bg-stone-50/40 transition-colors">
-        <td className="py-1.5 px-3 pl-6 text-stone-600 sticky left-0 bg-white z-10">
-          Backlog
-        </td>
-        {months.map((m) => {
-          const monthData = cliente.meses[m];
-          if (!monthData) {
-            return (
-              <td key={m} className="py-1.5 px-2 text-right tabular-nums text-stone-400">
-                -
-              </td>
-            );
-          }
-
-          // Backlog = revenueReal si existe, sino revenueAsignado
-          let backlog = monthData.revenueReal ?? monthData.revenueAsignado;
-
-          // Convertir a ARS si aplica
-          if (moneda === 'ARS') {
-            backlog = convertToARS(backlog, m, fxRates);
-          }
-
-          return (
-            <td key={m} className="py-1.5 px-2 text-right tabular-nums text-stone-600">
-              {backlog > 0 ? fmtCurrency(backlog, moneda) : <span className="text-stone-300">-</span>}
+      {/* Subfilas (solo si expandido) */}
+      {isExpanded && (
+        <>
+          {/* Subfila: Backlog */}
+          <tr className="border-t border-stone-100 hover:bg-stone-50/40 transition-colors">
+            <td className="py-1.5 px-3 pl-8 text-stone-600 text-[11px] sticky left-0 bg-white z-10">
+              Backlog
             </td>
-          );
-        })}
-        <td className="py-1.5 px-3 text-right tabular-nums font-semibold bg-stone-50/60 text-stone-600">
-          -
-        </td>
-      </tr>
+            {months.map((m) => {
+              const monthData = cliente.meses[m];
+              if (!monthData) {
+                return (
+                  <td key={m} className="py-1.5 px-2 text-right tabular-nums text-stone-400">
+                    -
+                  </td>
+                );
+              }
 
-      {/* Fila Potencial */}
-      <tr className="border-t border-stone-100 hover:bg-stone-50/40 transition-colors">
-        <td className="py-1.5 px-3 pl-6 text-amber-600 sticky left-0 bg-white z-10">
-          Potencial
-        </td>
-        {months.map((m) => {
-          const monthData = cliente.meses[m];
-          if (!monthData) {
-            return (
-              <td key={m} className="py-1.5 px-2 text-right tabular-nums text-stone-400">
-                -
-              </td>
-            );
-          }
+              // Backlog = revenueReal ?? revenueAsignado
+              let backlog = monthData.revenueReal ?? monthData.revenueAsignado;
 
-          // Potencial forzado a 0 (funcionalidad no implementada aún)
-          // TODO: Descomentar cuando se implemente funcionalidad potencial
-          // let potencial = monthData.revenueNoAsignado;
-          // if (moneda === 'ARS') {
-          //   potencial = convertToARS(potencial, m, fxRates);
-          // }
+              // Convertir a ARS si aplica
+              if (moneda === 'ARS') {
+                backlog = convertToARS(backlog, m, fxRates);
+              }
 
-          return (
-            <td key={m} className="py-1.5 px-2 text-right tabular-nums text-amber-600">
-              <span className="text-stone-300">-</span>
+              return (
+                <td key={m} className="py-1.5 px-2 text-right tabular-nums text-stone-600">
+                  {backlog > 0 ? fmtCurrency(backlog, moneda) : <span className="text-stone-300">-</span>}
+                </td>
+              );
+            })}
+            <td className="py-1.5 px-3 text-right tabular-nums font-semibold bg-stone-50/60 text-stone-600">
+              -
             </td>
-          );
-        })}
-        <td className="py-1.5 px-3 text-right tabular-nums font-semibold bg-stone-50/60 text-amber-600">
-          -
-        </td>
-      </tr>
+          </tr>
+
+          {/* Subfila: Potencial */}
+          <tr className="border-t border-stone-100 hover:bg-stone-50/40 transition-colors">
+            <td className="py-1.5 px-3 pl-8 text-amber-600 text-[11px] sticky left-0 bg-white z-10">
+              Potencial
+            </td>
+            {months.map((m) => {
+              const monthData = cliente.meses[m];
+              if (!monthData) {
+                return (
+                  <td key={m} className="py-1.5 px-2 text-right tabular-nums text-stone-400">
+                    -
+                  </td>
+                );
+              }
+
+              // Potencial = revenueNoAsignado (actualmente 0, mostrar "-")
+              // TODO: Cuando se implemente funcionalidad potencial, descomentar:
+              // let potencial = monthData.revenueNoAsignado;
+              // if (moneda === 'ARS') {
+              //   potencial = convertToARS(potencial, m, fxRates);
+              // }
+              // return potencial > 0 ? fmtCurrency(potencial, moneda) : "-";
+
+              return (
+                <td key={m} className="py-1.5 px-2 text-right tabular-nums text-amber-600">
+                  <span className="text-stone-300">-</span>
+                </td>
+              );
+            })}
+            <td className="py-1.5 px-3 text-right tabular-nums font-semibold bg-stone-50/60 text-amber-600">
+              -
+            </td>
+          </tr>
+        </>
+      )}
     </>
   );
 }

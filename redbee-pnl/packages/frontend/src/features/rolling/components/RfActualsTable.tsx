@@ -196,17 +196,15 @@ function ClienteSection({
             );
           }
 
-          // Valor efectivo total = ftesReales ?? (ftesAsignados + ftesNoAsignados)
-          // Si potencial es 0, esto es igual a backlog
+          // Fila principal muestra SOLO backlog (lo que se va a facturar)
+          // NO suma potencial - esto hace que coincida con P&L Cliente
           const hasReal = monthData.ftesReales !== null;
-          const efectivoTotal = hasReal
-            ? monthData.ftesReales!
-            : monthData.ftesAsignados + monthData.ftesNoAsignados;
+          const backlog = monthData.ftesReales ?? monthData.ftesAsignados;
 
           return (
             <td key={m} className="py-2 px-2 text-right tabular-nums font-semibold text-stone-800">
               <div className="flex items-center justify-end gap-1">
-                {efectivoTotal > 0 ? fmtFte(efectivoTotal) : <span className="text-stone-300">-</span>}
+                {backlog > 0 ? fmtFte(backlog) : <span className="text-stone-300">-</span>}
                 {hasReal && (
                   <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-blue-500 text-blue-600 bg-blue-50">
                     Real
