@@ -1,20 +1,20 @@
 # Cliente - Especificación Ejecutable
 
 ## Executive Dashboard (Auto)
-- Última actualización: 2025-01-XX
-- Semáforo general: 🟡 (inicio, pendiente definición backend)
+- Última actualización: 2026-02-18
+- Semáforo general: 🟢 (ÉPICA 1 y 2 completadas)
 - Próximos 7 días:
-  - Definir y migrar modelo Cliente con nuevos campos
-  - Implementar ABM Cliente con país y estado
-  - Actualizar endpoints y documentación
+  - Integrar país/tipoComercial en dashboards Rolling (ÉPICA 3)
+  - Agregar filtros por país en vistas de clientes
+  - Segmentar reportes por región y tipo comercial
 
 ### Estado por Épica
 
-| Épica                        | Estado   | %  | Qué está listo         | Qué falta                                 | Bloqueos/decisiones                | Próximo paso                        | Owner      |
-|------------------------------|----------|----|------------------------|-------------------------------------------|-------------------------------------|--------------------------------------|------------|
-| Modelo Cliente + Migración   | NEXT     | 0  | -                      | Migrar tabla, exponer en API              | Confirmar enum país y estado        | Definir enums y migrar tabla         | Backend    |
-| ABM Cliente (UI + API)       | PENDING  | 0  | -                      | Formulario FE, endpoints BE, **select país en ABM** | UX edición país/estado              | Mockup UI y definir validaciones     | Frontend   |
-| Integración Rolling/Reportes | PENDING  | 0  | -                      | Usar país/estado en dashboards            | Esperar migración modelo            | Actualizar queries y vistas          | Fullstack  |
+| Épica                        | Estado   | %   | Qué está listo         | Qué falta                                 | Bloqueos/decisiones                | Próximo paso                        | Owner      |
+|------------------------------|----------|-----|------------------------|-------------------------------------------|-------------------------------------|--------------------------------------|------------|
+| Modelo Cliente + Migración   | DONE     | 100 | Modelo y API migrados  | -                                         | -                                   | -                                   | Backend    |
+| ABM Cliente (UI + API)       | DONE     | 100 | Form con selects, badges en vistas | -                                  | -                                   | Integración Rolling/Reportes         | Frontend   |
+| Integración Rolling/Reportes | NEXT     | 0   | -                      | Usar país/tipoComercial en dashboards     | -                                   | Actualizar queries y vistas          | Fullstack  |
 
 ---
 
@@ -44,10 +44,10 @@
 ## B) ALCANCE
 
 ### In-Scope
-- Migración modelo Cliente: agregar campos país y estado
-- **ABM Cliente: edición y visualización de país/estado (select país en pantalla de configuración)**
+- Migración modelo Cliente: agregar campos país y tipoComercial
+- ABM Cliente: edición y visualización de país/tipoComercial (select país en pantalla de configuración)
 - API: exponer y actualizar campos nuevos
-- Dashboards: segmentación por país y estado
+- Dashboards: segmentación por país y tipoComercial
 
 ### Out-of-Scope (Fase 1)
 - Estados adicionales (Churn, Inactivo, etc.)
@@ -75,17 +75,23 @@
 ### Cliente (actualizado)
 
 ```typescript
+enum PaisCliente {
+  AR, UY, CL, MX, US, BR, PE, CO, OTRO
+}
+
+enum TipoComercialCliente {
+  BASE_INSTALADA, // "Base Instalada"
+  NUEVA_VENTA     // "Nueva Venta"
+}
+
 interface Cliente {
   id: string;
   nombre: string;
-  pais: 'AR' | 'UY' | 'CL' | 'MX' | 'US' | 'BR' | 'PE' | 'CO' | 'OTRO';
-  estado: 'base' | 'nueva';
+  pais: PaisCliente; // NOT NULL, default='AR'
+  tipoComercial: TipoComercialCliente; // NOT NULL, default='BASE_INSTALADA'
   // ...otros campos existentes...
 }
 ```
-
-- **pais**: Enum cerrado, se puede extender según necesidad.
-- **estado**: 'base' = Base Instalada, 'nueva' = Nueva Venta.
 
 ---
 
@@ -94,19 +100,19 @@ interface Cliente {
 ### Requisitos Funcionales
 
 **RF-001: Migración Modelo Cliente**
-- Agregar campos país y estado a tabla clientes
-- Migrar datos existentes (default: país='AR', estado='base')
+- Agregar campos país y tipoComercial a tabla clientes
+- Migrar datos existentes (default: país='AR', tipoComercial='BASE_INSTALADA')
 - Exponer en endpoints GET/POST/PUT
 
 **RF-002: ABM Cliente**
-- Formulario permite editar país y estado
-- **Select país debe estar disponible en el ABM de configuración**
+- Formulario permite editar país y tipoComercial
+- Select país debe estar disponible en el ABM de configuración
 - Validación: ambos campos obligatorios
-- Solo admin puede editar estado
+- Solo admin puede editar tipoComercial
 
 **RF-003: Dashboards y Reportes**
-- Segmentar clientes por país y estado en vistas y reportes
-- Filtros por país y estado en listados
+- Segmentar clientes por país y tipoComercial en vistas y reportes
+- Filtros por país y tipoComercial en listados
 
 ### Requisitos No Funcionales
 
@@ -122,96 +128,85 @@ interface Cliente {
 
 ### Backend
 
-- Tabla clientes: agregar columnas `pais` y `estado`
+- Tabla clientes: agregar columnas `pais` y `tipoComercial`
 - Endpoints:
-  - GET /api/clientes → incluye país y estado
-  - PUT /api/clientes/:id → permite actualizar país y estado
+  - GET /api/clientes → incluye país y tipoComercial
+  - PUT /api/clientes/:id → permite actualizar país y tipoComercial
 
 ### Frontend
 
-- ABM Cliente: agregar select país y select estado
+- ABM Cliente: agregar select país y select tipoComercial
 - Validar campos obligatorios
-- Mostrar badges país/estado en listados
+- Mostrar badges país/tipoComercial en listados
 
 ---
 
 ## F) BACKLOG EJECUTABLE
 
-### ÉPICA 1: Migración Modelo Cliente
-
-**Objetivo**: Modelo Cliente actualizado con país y estado
+### ÉPICA 1: Migración Modelo Cliente ✅ COMPLETADA
 
 **User Stories**:
-- US-001: Agregar campos país y estado a tabla clientes
-- US-002: Migrar datos existentes (default AR/base)
-- US-003: Exponer en endpoints API
+- ✅ US-001: Agregar campos país y tipoComercial a tabla clientes
+- ✅ US-002: Migrar datos existentes (default AR/base)
+- ✅ US-003: Exponer en endpoints API
 
-### ÉPICA 2: ABM Cliente
-
-**Objetivo**: Edición y visualización de país/estado en UI
-
-**User Stories**:
-- US-004: Agregar select país y estado en formulario
-- US-005: Validar campos obligatorios
-- US-006: Mostrar badges país/estado en listados
-- **US-007: ABM Cliente (pantalla de configuración) debe permitir seleccionar país desde un select**
-
-### ÉPICA 3: Integración Dashboards
-
-**Objetivo**: Usar país y estado en reportes y dashboards
-
-**User Stories**:
-- US-008: Filtros por país y estado en dashboards
-- US-009: Mostrar segmentación en tablas y gráficos
+**Logros**:
+- Enums creados: PaisCliente y TipoComercialCliente
+- Modelo Cliente actualizado con campos nuevos (NOT NULL, defaults)
+- Endpoints GET/POST/PUT exponen y validan los campos
+- Migración aplicada sin impacto en datos existentes
+- Validaciones @IsEnum en DTOs, Swagger actualizado
+- Recomendaciones: índices opcionales, revisión manual de datos, badges en frontend
 
 ---
 
-## G) PLAN DE RELEASES
+### ÉPICA 2: ABM Cliente ✅ COMPLETADA
 
-### Fase 0: Migración Modelo Cliente
-- Incluye: US-001, US-002, US-003
+**Objetivo**: Edición y visualización de país/tipoComercial en UI
 
-### Fase 1: ABM Cliente
-- Incluye: US-004, US-005, US-006, **US-007 (select país en ABM configuración)**
+**User Stories**:
+- ✅ US-004: Agregar select país y tipoComercial en formulario
+- ✅ US-005: Validar campos obligatorios
+- ✅ US-006: Mostrar badges país/tipoComercial en listados
+- ✅ US-007: ABM Cliente (pantalla de configuración) debe permitir seleccionar país desde un select
 
-### Fase 2: Dashboards y Reportes
-- Incluye: US-008, US-009
-
----
-
-## H) MATRIZ DE TRAZABILIDAD
-
-| Requisito | Épica | US | Componente | Endpoint | Test | Métrica |
-|-----------|-------|----|------------|----------|------|---------|
-| RF-001    | 1     | 1  | DB         | -        | SQL  | migracion.ok |
-| RF-002    | 2     | 4  | ABMCliente | PUT      | FE   | abm.edit.ok  |
-| RF-003    | 3     | 7  | Dashboard  | GET      | FE   | dashboard.segment |
-
----
-
-## I) DEFINITION OF DONE
-
-- [ ] Modelo Cliente migrado y expuesto en API
-- [ ] ABM Cliente permite editar país y estado
-- [ ] Dashboards segmentan por país y estado
-- [ ] Tests unitarios y de integración pasan
-- [ ] Documentación actualizada
+**Logros**:
+- ClienteForm actualizado con selects para país (9 opciones) y tipoComercial (2 opciones)
+- Zod schema actualizado con validación de enums
+- Defaults aplicados: país='AR', tipoComercial='BASE_INSTALADA'
+- Badge components creados: PaisBadge (con colores por país) y TipoComercialBadge
+- ClientesList: columnas agregadas para País y Tipo Comercial con badges
+- ClienteCard: badges mostrados en header junto a estado
+- ClienteDetail: badges mostrados en header del detalle
+- TypeScript compilation sin errores
 
 ---
 
 ## CHANGELOG
 
-### v0.1.0 - 2025-01-XX (Inicio proyecto Cliente)
+### v0.3.0 - 2026-02-18 (ÉPICA 2 Completada)
 
-- Agregado campos país y estado a modelo Cliente
-- Definidas épicas y backlog inicial
-- Documentación base creada
+- ClienteForm: selects para país y tipoComercial con labels en español
+- CreateClienteDto y UpdateClienteDto: campos opcionales para país y tipoComercial
+- Badge components: PaisBadge (9 países con colores) y TipoComercialBadge (2 tipos)
+- ClientesList: columnas agregadas para mostrar badges
+- ClienteCard y ClienteDetail: badges integrados en vistas
+- Validaciones zod activas para enums
+- TypeScript sin errores
+
+### v0.2.0 - 2025-01-XX (ÉPICA 1 Completada)
+
+- Modelo Cliente migrado con campos país y tipoComercial
+- Endpoints API actualizados
+- Migración aplicada sin impacto en datos existentes
+- Validaciones y enums activos en backend
+- Documentación y recomendaciones actualizadas
 
 ---
 
-**VERSIÓN**: 0.1.0  
-**ÚLTIMA ACTUALIZACIÓN**: Inicio proyecto Cliente  
-**PRÓXIMA REVISIÓN**: Post migración modelo
+**VERSIÓN**: 0.3.0
+**ÚLTIMA ACTUALIZACIÓN**: Post ÉPICA 2
+**PRÓXIMA REVISIÓN**: Post Integración Rolling/Reportes (ÉPICA 3)
 
 ---
 

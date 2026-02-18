@@ -19,6 +19,8 @@ import {
 import { useCliente } from '../hooks/useCliente';
 import { useClienteMutations } from '../hooks/useClienteMutations';
 import { ClienteBadge } from './ClienteBadge';
+import { PaisBadge } from './PaisBadge';
+import { TipoComercialBadge } from './TipoComercialBadge';
 import { ClienteForm } from './ClienteForm';
 import { ContratosSection } from '@/features/contratos/components/ContratosSection';
 import { ProyectosTable, ProyectoForm, useProyectoMutations } from '@/features/proyectos';
@@ -124,9 +126,11 @@ export function ClienteDetail() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-2xl font-semibold text-stone-800">{cliente.nombre}</h1>
               <ClienteBadge estado={cliente.estado} />
+              <PaisBadge pais={cliente.pais} />
+              <TipoComercialBadge tipoComercial={cliente.tipoComercial} />
             </div>
             <p className="text-stone-500 mt-1">{cliente.razonSocial}</p>
           </div>

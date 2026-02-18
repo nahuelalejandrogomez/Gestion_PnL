@@ -15,6 +15,8 @@ import { useClientes } from '../hooks/useClientes';
 import { useClienteMutations } from '../hooks/useClienteMutations';
 import { useDebounce } from '@/hooks/useDebounce';
 import { ClienteBadge } from './ClienteBadge';
+import { PaisBadge } from './PaisBadge';
+import { TipoComercialBadge } from './TipoComercialBadge';
 import { ClienteForm } from './ClienteForm';
 import type { Cliente, CreateClienteDto, UpdateClienteDto, EstadoCliente } from '../types/cliente.types';
 
@@ -70,6 +72,16 @@ export function ClientesList() {
       header: 'Estado',
       accessorKey: 'estado' as keyof Cliente,
       cell: (cliente: Cliente) => <ClienteBadge estado={cliente.estado} />,
+    },
+    {
+      header: 'País',
+      accessorKey: 'pais' as keyof Cliente,
+      cell: (cliente: Cliente) => <PaisBadge pais={cliente.pais} />,
+    },
+    {
+      header: 'Tipo Comercial',
+      accessorKey: 'tipoComercial' as keyof Cliente,
+      cell: (cliente: Cliente) => <TipoComercialBadge tipoComercial={cliente.tipoComercial} />,
     },
     {
       header: 'Proyectos',

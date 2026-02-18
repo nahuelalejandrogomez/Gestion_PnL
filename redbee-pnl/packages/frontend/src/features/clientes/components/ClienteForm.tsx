@@ -27,13 +27,15 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
-import type { Cliente, CreateClienteDto, UpdateClienteDto, EstadoCliente } from '../types/cliente.types';
+import type { Cliente, CreateClienteDto, UpdateClienteDto, EstadoCliente, PaisCliente, TipoComercialCliente } from '../types/cliente.types';
 
 const clienteSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido'),
   razonSocial: z.string().min(1, 'La razón social es requerida'),
   cuilCuit: z.string().min(1, 'El CUIL/CUIT es requerido'),
   estado: z.enum(['ACTIVO', 'INACTIVO', 'POTENCIAL']).optional(),
+  pais: z.enum(['AR', 'UY', 'CL', 'MX', 'US', 'BR', 'PE', 'CO', 'OTRO']).optional(),
+  tipoComercial: z.enum(['BASE_INSTALADA', 'NUEVA_VENTA']).optional(),
   fechaInicio: z.string().optional(),
   notas: z.string().optional(),
 });
@@ -54,6 +56,23 @@ const estadoOptions: { value: EstadoCliente; label: string }[] = [
   { value: 'POTENCIAL', label: 'Potencial' },
 ];
 
+const paisOptions: { value: PaisCliente; label: string }[] = [
+  { value: 'AR', label: 'Argentina' },
+  { value: 'UY', label: 'Uruguay' },
+  { value: 'CL', label: 'Chile' },
+  { value: 'MX', label: 'México' },
+  { value: 'US', label: 'Estados Unidos' },
+  { value: 'BR', label: 'Brasil' },
+  { value: 'PE', label: 'Perú' },
+  { value: 'CO', label: 'Colombia' },
+  { value: 'OTRO', label: 'Otro' },
+];
+
+const tipoComercialOptions: { value: TipoComercialCliente; label: string }[] = [
+  { value: 'BASE_INSTALADA', label: 'Base Instalada' },
+  { value: 'NUEVA_VENTA', label: 'Nueva Venta' },
+];
+
 export function ClienteForm({
   open,
   onOpenChange,
@@ -70,6 +89,8 @@ export function ClienteForm({
       razonSocial: cliente?.razonSocial || '',
       cuilCuit: cliente?.cuilCuit || '',
       estado: cliente?.estado || 'ACTIVO',
+      pais: cliente?.pais || 'AR',
+      tipoComercial: cliente?.tipoComercial || 'BASE_INSTALADA',
       fechaInicio: cliente?.fechaInicio?.split('T')[0] || '',
       notas: cliente?.notas || '',
     },
@@ -196,12 +217,64 @@ export function ClienteForm({
                   <FormItem>
                     <FormLabel className="text-stone-700">Fecha de inicio</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="date" 
-                        className="h-10 bg-white border-stone-200 focus:border-stone-400 focus:ring-1 focus:ring-stone-300" 
-                        {...field} 
+                      <Input
+                        type="date"
+                        className="h-10 bg-white border-stone-200 focus:border-stone-400 focus:ring-1 focus:ring-stone-300"
+                        {...field}
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="pais"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-stone-700">País</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="h-10 bg-white border-stone-200 focus:ring-stone-300">
+                          <SelectValue placeholder="Seleccionar país" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {paisOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="tipoComercial"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-stone-700">Tipo Comercial</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="h-10 bg-white border-stone-200 focus:ring-stone-300">
+                          <SelectValue placeholder="Seleccionar tipo" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {tipoComercialOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}

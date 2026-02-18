@@ -1,6 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Building2, FileText, FolderKanban } from 'lucide-react';
 import { ClienteBadge } from './ClienteBadge';
+import { PaisBadge } from './PaisBadge';
+import { TipoComercialBadge } from './TipoComercialBadge';
 import type { Cliente } from '../types/cliente.types';
 
 interface ClienteCardProps {
@@ -21,7 +23,11 @@ export function ClienteCard({ cliente, onClick }: ClienteCardProps) {
           <CardTitle className="text-lg font-semibold text-slate-900 leading-tight">
             {cliente.nombre}
           </CardTitle>
-          <ClienteBadge estado={cliente.estado} size="sm" />
+          <div className="flex flex-wrap gap-1.5 justify-end">
+            <ClienteBadge estado={cliente.estado} size="sm" />
+            <PaisBadge pais={cliente.pais} size="sm" />
+            <TipoComercialBadge tipoComercial={cliente.tipoComercial} size="sm" />
+          </div>
         </div>
       </CardHeader>
       <CardContent className="pt-0">

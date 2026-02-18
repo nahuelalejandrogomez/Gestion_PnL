@@ -2,12 +2,18 @@
 
 export type EstadoCliente = 'ACTIVO' | 'INACTIVO' | 'POTENCIAL';
 
+export type PaisCliente = 'AR' | 'UY' | 'CL' | 'MX' | 'US' | 'BR' | 'PE' | 'CO' | 'OTRO';
+
+export type TipoComercialCliente = 'BASE_INSTALADA' | 'NUEVA_VENTA';
+
 export interface Cliente {
   id: string;
   nombre: string;
   razonSocial: string;
   cuilCuit: string;
   estado: EstadoCliente;
+  pais: PaisCliente;
+  tipoComercial: TipoComercialCliente;
   fechaInicio: string;
   fechaFin: string | null;
   notas: string | null;
@@ -49,6 +55,8 @@ export interface CreateClienteDto {
   razonSocial: string;
   cuilCuit: string;
   estado?: EstadoCliente;
+  pais?: PaisCliente;
+  tipoComercial?: TipoComercialCliente;
   fechaInicio?: string;
   notas?: string;
 }
@@ -58,6 +66,8 @@ export interface UpdateClienteDto {
   razonSocial?: string;
   cuilCuit?: string;
   estado?: EstadoCliente;
+  pais?: PaisCliente;
+  tipoComercial?: TipoComercialCliente;
   fechaInicio?: string;
   fechaFin?: string | null;
   notas?: string | null;
