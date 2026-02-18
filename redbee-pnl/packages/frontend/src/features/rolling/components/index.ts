@@ -7,4 +7,5 @@ export { YearSelector } from './shared/YearSelector';
 export { RfActualsTable } from './RfActualsTable';
 export { RevenueTable } from './RevenueTable';
 export { PnlsRealesTable } from './PnlsRealesTable';
+export { DashboardView } from './DashboardView';
 export { CurrencyToggle } from './shared/CurrencyToggle';

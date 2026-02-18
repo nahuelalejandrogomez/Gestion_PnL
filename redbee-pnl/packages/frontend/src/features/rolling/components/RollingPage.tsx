@@ -4,16 +4,17 @@
  * ÉPICA 2 US-005: Integración RfActualsTable
  * ÉPICA 3 US-007-009: Integración RevenueTable
  * ÉPICA 4 US-010-011: Integración PnlsRealesTable
+ * ÉPICA 5 US-013-014: Integración DashboardView
  */
 
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { YearSelector } from './shared/YearSelector';
 import { RfActualsTable } from './RfActualsTable';
 import { RevenueTable } from './RevenueTable';
 import { PnlsRealesTable } from './PnlsRealesTable';
+import { DashboardView } from './DashboardView';
 import type { ActiveTab } from '../types/rolling.types';
 
 export function RollingPage() {
@@ -92,16 +93,7 @@ export function RollingPage() {
         </TabsContent>
 
         <TabsContent value="dashboard" className="mt-6">
-          <Card className="border-stone-200 bg-white">
-            <CardHeader>
-              <CardTitle className="text-lg">Dashboard</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="py-12 text-center text-stone-500">
-                Dashboard - En desarrollo
-              </div>
-            </CardContent>
-          </Card>
+          <DashboardView year={year} />
         </TabsContent>
       </Tabs>
     </div>
