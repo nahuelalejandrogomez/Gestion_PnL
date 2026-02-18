@@ -99,6 +99,23 @@ enum EstadoRecurso {
   LICENCIA
 }
 
+enum PaisCliente {
+  AR
+  UY
+  CL
+  MX
+  US
+  BR
+  PE
+  CO
+  OTRO
+}
+
+enum TipoComercialCliente {
+  BASE_INSTALADA
+  NUEVA_VENTA
+}
+
 enum PeriodoTipo {
   MENSUAL
   ANUAL
@@ -134,16 +151,18 @@ enum NivelSkill {
 // ============================================
 
 model Cliente {
-  id                String        @id @default(uuid())
+  id                String                 @id @default(uuid())
   nombre            String
   razonSocial       String
-  cuilCuit          String        @unique
-  estado            EstadoCliente @default(ACTIVO)
-  fechaInicio       DateTime      @default(now())
+  cuilCuit          String                 @unique
+  estado            EstadoCliente          @default(ACTIVO)
+  pais              PaisCliente            @default(AR)
+  tipoComercial     TipoComercialCliente   @default(BASE_INSTALADA)
+  fechaInicio       DateTime               @default(now())
   fechaFin          DateTime?
-  monedaFacturacion Moneda        @default(USD)
-  horasBaseMes      Int           @default(160)
-  notas             String?       @db.Text
+  monedaFacturacion Moneda                 @default(USD)
+  horasBaseMes      Int                    @default(160)
+  notas             String?                @db.Text
 
   proyectos       Proyecto[]
   contratos       Contrato[]

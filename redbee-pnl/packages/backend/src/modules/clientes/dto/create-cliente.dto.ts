@@ -1,6 +1,6 @@
 import { IsString, IsEnum, IsOptional, IsDate } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
-import { EstadoCliente } from '@prisma/client';
+import { EstadoCliente, PaisCliente, TipoComercialCliente } from '@prisma/client';
 
 export class CreateClienteDto {
   @IsString()
@@ -15,6 +15,14 @@ export class CreateClienteDto {
   @IsEnum(EstadoCliente)
   @IsOptional()
   estado?: EstadoCliente;
+
+  @IsEnum(PaisCliente)
+  @IsOptional()
+  pais?: PaisCliente;
+
+  @IsEnum(TipoComercialCliente)
+  @IsOptional()
+  tipoComercial?: TipoComercialCliente;
 
   @IsOptional()
   @Transform(({ value }) => {

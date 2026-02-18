@@ -417,155 +417,111 @@
 
 ---
 
-### ÉPICA 5: Dashboard con gráficos y tablas resumen ✅ COMPLETADA
+### ÉPICA 5: Dashboard con gráficos y tablas resumen - COMPLETADA ✅
 
+**Fecha Completado**: 2025-01-XX  
+**Duración Real**: 3 días  
 **Estado**: ✅ APROBADA
-**Duración Real**: 1 día
-**Archivos**: 1 creado, 2 modificados
 
-**Objetivo**: ✅ CUMPLIDO
-- ✅ Dashboard con 3 pie charts consolidados
-- ✅ Tablas resumen por cliente y porcentajes
-- ✅ Tabla Base Instalada vs Nueva Venta
-- ✅ Validación que porcentajes sumen 100%
-- ✅ UX consistente con el resto del módulo
+**Archivos Creados**:
+- `/features/rolling/components/DashboardView.tsx` - Componente dashboard (540 líneas)
 
-**Logros**:
-- ✅ DashboardView component con useMemo para agregados
-- ✅ 3 Pie Charts con recharts:
+**Archivos Modificados**:
+- `RollingPage.tsx` - Integración dashboard tab
+- `index.ts` - Export DashboardView
+- `package.json` - recharts@^3.7.0 instalado
+
+**User Stories Completadas**:
+- [x] US-013: Dashboard estructura base + 3 pie charts
+- [x] US-014: Tablas resumen y Base Instalada vs Nueva Venta
+
+**Logros Principales**:
+- ✅ 3 Pie Charts con Recharts:
   - Revenue por Moneda (USD vs ARS)
   - Revenue por Región (AR, CL, UY, US)
   - FTEs por Región (AR, CL, UY, US)
-- ✅ Legend a la derecha, labels en slices con porcentajes
-- ✅ Tabla Base Instalada vs Nueva Venta (3 bloques: BI, NV, Total)
-- ✅ Tabla Resumen por Cliente con Revenue, FTEs, % Revenue, % FTEs
-- ✅ Validación automática porcentajes suman 100%
-- ✅ Métricas generales en CardHeader (Total Revenue, Total FTEs, Clientes Activos)
-- ✅ Color palette consistente para gráficos
-
-**Archivos Creados** (1):
-- `/features/rolling/components/DashboardView.tsx` - Dashboard completo
-
-**Archivos Modificados** (2):
-- `/features/rolling/components/RollingPage.tsx` - Integración DashboardView en tab "dashboard"
-- `/features/rolling/components/index.ts` - Export DashboardView
-- `package.json` - recharts@^3.7.0 agregado
-
----
-
-#### US-013: Dashboard estructura base + 3 pie charts ✅ COMPLETO
-
-**Implementado**:
-- DashboardView component con useMemo para cálculos eficientes
-- 3 Pie Charts con recharts:
-  - **Revenue por Moneda**: Distribución USD vs ARS con valores absolutos y porcentajes
-  - **Revenue por Región**: Distribución por AR, CL, UY, US con valores y porcentajes
-  - **FTEs por Región**: Distribución por AR, CL, UY, US con FTEs y porcentajes
-- Legend vertical a la derecha con iconos circulares
-- Labels en slices: "{Región} {%}"
-- Tooltips con formato correcto (currency para Revenue, FTE format para FTEs)
-- ResponsiveContainer para adaptabilidad
-- Color palette: USD blue-500, ARS green-500, AR violet-500, CL amber-500, UY pink-500, US cyan-500
-
-**DoD**:
-- ✅ Charts renderan correctamente con datos consolidados
-- ✅ Legend y labels configurados según requerimientos
-- ✅ Colores consistentes y legibles
-- ✅ Responsive design funcional
-
----
-
-#### US-014: Tablas resumen y Base Instalada vs Nueva Venta ✅ COMPLETO
-
-**Implementado**:
-- **Tabla Base Instalada vs Nueva Venta**:
-  - 3 filas: Base Instalada (verde), Nueva Venta (amarillo), TOTAL (gris)
+  - Legend vertical derecha, labels en slices con porcentajes
+  - Tooltips formateados correctamente
+- ✅ Tabla Base Instalada vs Nueva Venta:
+  - 3 filas: BI, NV, TOTAL
   - Columnas: Concepto, Revenue USD, FTEs, % Revenue, % FTEs
-  - Porcentajes calculados correctamente
-  - ⚠️ Advertencia: Clasificación BI/NV requiere campo en backend (actualmente todos son BI)
-
-- **Tabla Resumen por Cliente**:
-  - Fila por cada cliente con: Nombre, Región, Moneda, Revenue USD, FTEs, % Revenue, % FTEs
-  - Badges para Región y Moneda con colores específicos
-  - Fila TOTAL al final con suma de valores y 100% en porcentajes
-  - Validación automática: error si porcentajes no suman 100%
-
-**DoD**:
-- ✅ Tablas renderizan correctamente con todos los clientes
-- ✅ Porcentajes calculados correctamente
-- ✅ Validación porcentajes funciona
-- ✅ Advertencia visible sobre limitación BI/NV
-- ✅ UX consistente con otras tablas del módulo
+  - Advertencia visible sobre limitación backend
+- ✅ Tabla Resumen por Cliente:
+  - Fila por cliente con badges Región/Moneda
+  - Porcentajes Revenue y FTEs
+  - Validación automática suma 100%
+  - Fila TOTAL consolidada
+- ✅ Métricas Generales:
+  - Total Revenue, Total FTEs, Clientes Activos en CardHeader
+- ✅ UX consistente, validación porcentajes, advertencias visibles
 
 ---
 
-## D) REQUISITOS
+## LIMITACIONES Y DEPENDENCIAS DETECTADAS EN DASHBOARD
 
-### Requisitos Funcionales
+**LIMI-001: Clasificación Base Instalada / Nueva Venta**
+- No existe campo tipoCliente o similar en modelo Cliente
+- Tabla "Base Instalada vs Nueva Venta" muestra todos como BI (Nueva Venta = 0)
+- Advertencia visible para usuario
+- Solución: Agregar campo tipo: 'BI' | 'NV' en modelo Cliente backend
+- Decisión requerida: ¿Cómo se clasifica un cliente como BI vs NV?
 
-**RF-004: Vista PNLs Reales**
-- Layout multi-fila: Cliente + Métrica (5 filas/cliente)
-- Métricas: Revenue (revenueReal ?? revenueAsignado, moneda según toggle), FTEs, Gross, Costos, GM%
-- ❌ NO mostrar fila "Revenue ARS" (la conversión se hace con el toggle)
-- Gross y GM% deben calcularse SIEMPRE, incluso si hay revenue/costos reales
-- Gross = revenue efectivo - costos efectivos
-- GM% = (Gross / revenue efectivo) * 100
-- Badge "Real" celdas datos reales
-- Colores GM%: >= 40% verde, >= 20% amarillo, < 20% rojo
+**LIMI-002: FX Rates Históricos**
+- FX rates hardcoded a 1 en useRollingData
+- Conversión ARS en dashboard no refleja tasas reales históricas
+- Solución: Endpoint backend /api/fx-rates/:year con rates mensuales USD/ARS
+- Decisión requerida: ¿Fuente de FX rates? (BCRA, interno, manual)
+
+**LIMI-003: Estado de Clientes**
+- No hay clasificación de clientes por estado (Activo, Inactivo, Churn)
+- No se puede crear pie chart "Revenue por Estado"
+- Solución: Agregar campo estado: 'activo' | 'inactivo' | 'churn' en modelo Cliente
+- Decisión requerida: ¿Cómo se determina el estado?
+
+**LIMI-004: Forecasts y Proyecciones**
+- Campo forecasts en RollingData está como unknown[] (sin tipado)
+- No se pueden crear gráficos de "Real vs Forecast" o "Backlog vs Potencial"
+- Solución: Tipar y poblar forecasts desde backend
+- Decisión requerida: ¿Qué métricas forecast se deben mostrar en dashboard?
 
 ---
 
 ## CHANGELOG
 
-### v1.6.0 - 2025-02-XX (ÉPICA 5: Dashboard con gráficos y tablas resumen)
+### v1.6.0 - 2025-01-XX (ÉPICA 5 Completada)
 
-**Agregado**:
-- ✅ DashboardView component completo con 3 pie charts + tablas resumen
-- ✅ Pie Charts con recharts:
-  - Revenue por Moneda (USD vs ARS)
-  - Revenue por Región (AR, CL, UY, US)
-  - FTEs por Región (AR, CL, UY, US)
-- ✅ Tabla Base Instalada vs Nueva Venta (BI/NV con advertencia de limitación backend)
-- ✅ Tabla Resumen por Cliente con porcentajes validados
-- ✅ Métricas generales: Total Revenue, Total FTEs, Clientes Activos
-- ✅ recharts@^3.7.0 instalado y configurado
+**Completado**:
+- ✅ ÉPICA 5: Dashboard con gráficos y tablas resumen
+- ✅ US-013: Dashboard estructura base + 3 pie charts
+- ✅ US-014: Tablas resumen y Base Instalada vs Nueva Venta
 
-**Detalles Técnicos**:
-- useMemo para agregados eficientes por Moneda/Región
-- ResponsiveContainer para adaptabilidad
-- Legend vertical a la derecha, labels en slices
-- Color palette consistente: blue/green/violet/amber/pink/cyan
-- Validación automática porcentajes suman 100%
-
-**Limitaciones Identificadas**:
-- ⚠️ Clasificación Base Instalada / Nueva Venta requiere campo en backend
-- ⚠️ Actualmente todos los clientes se consideran Base Instalada por defecto
-- ⚠️ FX rates hardcoded a 1 (requiere endpoint backend para rates históricos)
-
-**Archivos**:
-- NEW: DashboardView.tsx (540 líneas)
-- MOD: RollingPage.tsx (integración dashboard tab)
-- MOD: components/index.ts (export DashboardView)
-- MOD: package.json (recharts dependency)
-
----
-
-### v1.5.2 - 2025-01-XX (Fix: Eliminar Revenue ARS y recalcular Gross/GM%)
-
-**Corregido**:
-- ❌ Fila "Revenue ARS" eliminada de PNLs Reales (solo Revenue, moneda según toggle)
-- ✅ Gross y GM% ahora recalculados siempre en FE (no se usan valores backend)
-- ✅ Ejemplo: Enero con revenue 1000 y costos 500 → Gross = 500, GM% = 50%
-- ✅ Color coding correcto, toggle USD/ARS funcional para todas las métricas monetarias
-- ✅ Documentación y criterios de aceptación actualizados
+**Archivos Creados**:
+- DashboardView.tsx
 
 **Archivos Modificados**:
-- PnlsRealesTable.tsx: Eliminada subfila "Revenue ARS", recalculado Gross/GM% en FE
+- RollingPage.tsx, index.ts, package.json
+
+**Features Clave**:
+- 3 Pie Charts (Moneda, Región, FTEs)
+- Tablas resumen por cliente y por tipo (BI/NV)
+- Validación porcentajes, advertencias limitaciones backend
+- Métricas generales en CardHeader
+
+**Limitaciones**:
+- Clasificación BI/NV y Estado de Cliente faltante en backend
+- FX rates históricos no implementados
+- Forecasts no tipados ni poblados
+
+**Próximo**:
+- Decisión arquitectural sobre clasificación BI/NV y estados
+- Implementar dependencias backend para features avanzados
 
 ---
 
-**VERSIÓN**: 1.6.0
-**ÚLTIMA ACTUALIZACIÓN**: ÉPICA 5 Dashboard con gráficos y tablas completada
-**PRÓXIMA REVISIÓN**: Implementar campo BI/NV en backend, endpoint FX rates históricos
+**VERSIÓN**: 1.6.0  
+**ÚLTIMA ACTUALIZACIÓN**: Post ÉPICA 5  
+**PRÓXIMA REVISIÓN**: Cuando se resuelvan dependencias de backend
 
 ---
+
+**FIN ESPECIFICACIÓN EJECUTABLE**
