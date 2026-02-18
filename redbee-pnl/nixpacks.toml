@@ -2,7 +2,7 @@
 # Este archivo asegura que pnpm esté disponible
 
 [phases.setup]
-nixPkgs = ["nodejs_20", "pnpm"]
+nixPkgs = ["nodejs_22", "pnpm"]
 
 [phases.install]
 cmds = ["pnpm install"]

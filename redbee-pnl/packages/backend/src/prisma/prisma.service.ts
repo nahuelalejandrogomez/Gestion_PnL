@@ -10,10 +10,23 @@ export class PrismaService
 
   constructor() {
     // Configurar pool de conexiones optimizado para Railway
+    // - connection_limit: máximo de conexiones simultáneas
+    // - pool_timeout: timeout para obtener conexión del pool
+    // - connect_timeout: timeout para establecer conexión TCP
+    // - pgbouncer: habilita modo PgBouncer (importante para Railway)
     const databaseUrl = process.env.DATABASE_URL || '';
+
+    const poolParams = [
+      'connection_limit=3',         // Reducido para evitar TCP_OVERWINDOW
+      'pool_timeout=5',             // Reducir timeout de pool
+      'connect_timeout=10',         // Timeout para establecer conexión
+      'statement_cache_size=0',     // Deshabilitar cache para evitar memory leaks
+      'pgbouncer=true',             // Habilitar modo PgBouncer
+    ].join('&');
+
     const urlWithPool = databaseUrl.includes('?')
-      ? `${databaseUrl}&connection_limit=5&pool_timeout=10`
-      : `${databaseUrl}?connection_limit=5&pool_timeout=10`;
+      ? `${databaseUrl}&${poolParams}`
+      : `${databaseUrl}?${poolParams}`;
 
     super({
       datasources: {
@@ -21,9 +34,12 @@ export class PrismaService
           url: urlWithPool,
         },
       },
+      log: process.env.NODE_ENV === 'production'
+        ? ['error', 'warn']
+        : ['query', 'error', 'warn'],
     });
 
-    this.logger.log('Prisma initialized with connection pool: limit=5, timeout=10s');
+    this.logger.log('Prisma initialized with optimized pool: limit=3, pgbouncer=true');
   }
 
   async onModuleInit() {

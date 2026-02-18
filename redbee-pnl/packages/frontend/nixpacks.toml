@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["nodejs_20", "pnpm"]
+nixPkgs = ["nodejs_22", "pnpm"]
 
 [phases.install]
 cmds = ["pnpm install"]
@@ -8,4 +8,4 @@ cmds = ["pnpm install"]
 cmds = ["pnpm build"]
 
 [start]
-cmd = "npx serve dist -l ${PORT:-4173}"
+cmd = "pnpm preview --host --port ${PORT:-8080}"

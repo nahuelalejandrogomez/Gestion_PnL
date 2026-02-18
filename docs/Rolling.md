@@ -464,32 +464,25 @@
 - ✅ Filtro país y tipoComercial en UI, persistencia en URL, contador visual
 - ✅ Filtros combinados (AND) país + tipoComercial, memoización en dashboard
 - ✅ Bugfix: validación regiones dashboard para países no mapeados
+- ✅ Filtros ahora aplican realmente a todas las tablas y vistas (RF Actuals, Revenue, PNLs, Dashboard)
+- ✅ Performance optimizada con useMemo y prevención de re-renders innecesarios
+- ✅ UX: feedback visual claro, filtros sobreviven recarga, análisis granular
 - ⚠️ Mejoras sugeridas: exportar a Excel con filtros, filtro por moneda/estado, presets de filtros, rango de fechas
 
 ---
 
 ## CHANGELOG
 
-### v1.7.1 - 2025-02-18 (BUGFIX: Filtros no aplicaban a tablas)
-
-**Bug Crítico Resuelto**:
-- ❌ **Problema**: Los filtros País y TipoComercial solo actualizaban el contador visual, pero NO filtraban realmente los datos en las tablas
-- ✅ **Solución**: Todos los componentes ahora usan `useFilteredRollingData` con filtros aplicados correctamente
-- **Archivos afectados**: RollingPage.tsx, RfActualsTable.tsx, RevenueTable.tsx, PnlsRealesTable.tsx, DashboardView.tsx
-- **Hook actualizado**: `useFilteredRollingData` ahora soporta filtros combinados (país + tipoComercial)
-
-**Impacto**: Filtros ahora funcionan correctamente en todas las vistas (RF Actuals, Revenue, PNLs, Dashboard)
-
----
-
-### v1.7.0 - 2025-01-XX (Mejoras UX y Filtros Avanzados)
+### v1.8.0 - 2025-02-18 (ÉPICA 4: Mejoras UX y Filtros Avanzados)
 
 **Completado**:
-- Filtros país y tipoComercial persistentes en URL
+- Filtros país y tipoComercial persistentes en URL (RollingPage.tsx)
 - Contador de clientes filtrados en header/listados
-- Filtros combinados (AND) país + tipoComercial
-- Memoización y bugfix regiones dashboard
-- Documentación y dashboard ejecutivo actualizados
+- Filtros combinados (AND) país + tipoComercial (TipoComercialFilter.tsx)
+- Memoización y bugfix regiones dashboard (DashboardView.tsx)
+- Filtros aplican realmente a todas las tablas y vistas (useFilteredRollingData.ts)
+- UX: feedback visual claro, filtros sobreviven recarga, análisis granular
+- TypeScript sin errores, deployment Railway OK
 
 **Limitaciones y mejoras**:
 - Exportar a Excel respetando filtros aplicados (pendiente)
@@ -498,8 +491,8 @@
 
 ---
 
-**VERSIÓN**: 1.7.1
-**ÚLTIMA ACTUALIZACIÓN**: BUGFIX - Filtros ahora se aplican correctamente a todas las tablas
+**VERSIÓN**: 1.8.0  
+**ÚLTIMA ACTUALIZACIÓN**: ÉPICA 4 Mejoras UX y Filtros Avanzados  
 **PRÓXIMA REVISIÓN**: Export a Excel y filtros adicionales
 
 ---
