@@ -409,8 +409,8 @@ function TotalesSection({
           Potencial Total
         </td>
         {months.map((m) => {
-          const revAgg = revenueAgg.byMonth[m];
           // Potencial = 0 (funcionalidad no implementada)
+          // TODO: Cuando se implemente, descomentar: const revAgg = revenueAgg.byMonth[m];
           return (
             <td key={m} className="py-1.5 px-2 text-right tabular-nums font-semibold text-amber-700">
               <span className="text-stone-300">-</span>
