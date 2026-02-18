@@ -10,11 +10,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PaisBadge } from '@/features/clientes/components/PaisBadge';
 import { TipoComercialBadge } from '@/features/clientes/components/TipoComercialBadge';
-import { useRollingData } from '../hooks/useRollingData';
+import { useFilteredRollingData } from '../hooks/useFilteredRollingData';
 import { fmtCurrency, fmtFte, fmtPct } from '@/features/pnl/utils/pnl.format';
+import type { PaisCliente, TipoComercialCliente } from '../types/rolling.types';
 
 interface DashboardViewProps {
   year: number;
+  paisFilter: PaisCliente | 'TODOS';
+  tipoComercialFilter: TipoComercialCliente | 'TODOS';
 }
 
 // Colores para los pie charts
@@ -29,8 +32,8 @@ const COLORS = {
   NV: '#eab308', // yellow-500
 };
 
-export function DashboardView({ year }: DashboardViewProps) {
-  const { data, isLoading, error } = useRollingData(year);
+export function DashboardView({ year, paisFilter, tipoComercialFilter }: DashboardViewProps) {
+  const { data, isLoading, error } = useFilteredRollingData(year, paisFilter, tipoComercialFilter);
 
   // Calcular agregados para los gráficos
   const dashboardData = useMemo(() => {

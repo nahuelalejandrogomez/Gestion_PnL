@@ -16,18 +16,20 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { PaisBadge } from '@/features/clientes/components/PaisBadge';
 import { TipoComercialBadge } from '@/features/clientes/components/TipoComercialBadge';
-import { useRollingData } from '../hooks/useRollingData';
+import { useFilteredRollingData } from '../hooks/useFilteredRollingData';
 import { useRollingAggregates, type RollingAggregates } from '../hooks/useRollingAggregates';
 import { MONTH_LABELS, fmtCurrency, colorForDiff, type Moneda } from '@/features/pnl/utils/pnl.format';
-import type { ClienteRollingData } from '../types/rolling.types';
+import type { ClienteRollingData, PaisCliente, TipoComercialCliente } from '../types/rolling.types';
 import { CurrencyToggle } from './shared/CurrencyToggle';
 
 interface RevenueTableProps {
   year: number;
+  paisFilter: PaisCliente | 'TODOS';
+  tipoComercialFilter: TipoComercialCliente | 'TODOS';
 }
 
-export function RevenueTable({ year }: RevenueTableProps) {
-  const { data, isLoading, error } = useRollingData(year);
+export function RevenueTable({ year, paisFilter, tipoComercialFilter }: RevenueTableProps) {
+  const { data, isLoading, error } = useFilteredRollingData(year, paisFilter, tipoComercialFilter);
   const aggregates = useRollingAggregates(data);
   const [moneda, setMoneda] = useState<Moneda>('USD');
   const [expandedClientes, setExpandedClientes] = useState<Set<string>>(new Set());

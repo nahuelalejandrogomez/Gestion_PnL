@@ -16,17 +16,19 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { PaisBadge } from '@/features/clientes/components/PaisBadge';
 import { TipoComercialBadge } from '@/features/clientes/components/TipoComercialBadge';
-import { useRollingData } from '../hooks/useRollingData';
+import { useFilteredRollingData } from '../hooks/useFilteredRollingData';
 import { useRollingAggregates } from '../hooks/useRollingAggregates';
 import { MONTH_LABELS, fmtFte } from '@/features/pnl/utils/pnl.format';
-import type { ClienteRollingData } from '../types/rolling.types';
+import type { ClienteRollingData, PaisCliente, TipoComercialCliente } from '../types/rolling.types';
 
 interface RfActualsTableProps {
   year: number;
+  paisFilter: PaisCliente | 'TODOS';
+  tipoComercialFilter: TipoComercialCliente | 'TODOS';
 }
 
-export function RfActualsTable({ year }: RfActualsTableProps) {
-  const { data, isLoading, error } = useRollingData(year);
+export function RfActualsTable({ year, paisFilter, tipoComercialFilter }: RfActualsTableProps) {
+  const { data, isLoading, error } = useFilteredRollingData(year, paisFilter, tipoComercialFilter);
   const aggregates = useRollingAggregates(data);
   const [expandedClientes, setExpandedClientes] = useState<Set<string>>(new Set());
 

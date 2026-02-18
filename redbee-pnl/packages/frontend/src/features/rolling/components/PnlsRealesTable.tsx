@@ -19,18 +19,20 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { PaisBadge } from '@/features/clientes/components/PaisBadge';
 import { TipoComercialBadge } from '@/features/clientes/components/TipoComercialBadge';
-import { useRollingData } from '../hooks/useRollingData';
+import { useFilteredRollingData } from '../hooks/useFilteredRollingData';
 import { MONTH_LABELS, fmtCurrency, fmtFte, fmtPct, colorForGm } from '@/features/pnl/utils/pnl.format';
-import type { ClienteRollingData } from '../types/rolling.types';
+import type { ClienteRollingData, PaisCliente, TipoComercialCliente } from '../types/rolling.types';
 
 interface PnlsRealesTableProps {
   year: number;
+  paisFilter: PaisCliente | 'TODOS';
+  tipoComercialFilter: TipoComercialCliente | 'TODOS';
 }
 
 type Moneda = 'USD' | 'ARS';
 
-export function PnlsRealesTable({ year }: PnlsRealesTableProps) {
-  const { data, isLoading, error } = useRollingData(year);
+export function PnlsRealesTable({ year, paisFilter, tipoComercialFilter }: PnlsRealesTableProps) {
+  const { data, isLoading, error } = useFilteredRollingData(year, paisFilter, tipoComercialFilter);
   const [expandedClientes, setExpandedClientes] = useState<Set<string>>(new Set());
   const [moneda, setMoneda] = useState<Moneda>('USD');
 

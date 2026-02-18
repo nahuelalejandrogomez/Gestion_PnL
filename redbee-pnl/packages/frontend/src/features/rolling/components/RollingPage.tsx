@@ -197,19 +197,19 @@ export function RollingPage() {
         </TabsList>
 
         <TabsContent value="rf-actuals" className="mt-6">
-          <RfActualsTable year={year} />
+          <RfActualsTable year={year} paisFilter={paisFilter} tipoComercialFilter={tipoComercialFilter} />
         </TabsContent>
 
         <TabsContent value="revenue" className="mt-6">
-          <RevenueTable year={year} />
+          <RevenueTable year={year} paisFilter={paisFilter} tipoComercialFilter={tipoComercialFilter} />
         </TabsContent>
 
         <TabsContent value="pnls" className="mt-6">
-          <PnlsRealesTable year={year} />
+          <PnlsRealesTable year={year} paisFilter={paisFilter} tipoComercialFilter={tipoComercialFilter} />
         </TabsContent>
 
         <TabsContent value="dashboard" className="mt-6">
-          <DashboardView year={year} />
+          <DashboardView year={year} paisFilter={paisFilter} tipoComercialFilter={tipoComercialFilter} />
         </TabsContent>
       </Tabs>
     </div>

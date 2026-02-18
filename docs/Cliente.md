@@ -1,11 +1,11 @@
 # Cliente - Especificación Ejecutable
 
 ## Executive Dashboard (Auto)
-- Última actualización: 2026-02-18
+- Última actualización: 2025-01-XX
 - Semáforo general: 🟢 (todas las épicas completadas)
 - Próximos pasos sugeridos:
-  - Dashboards adicionales por región/tipo
-  - Exportar filtros a Excel
+  - Exportar a Excel respetando filtros aplicados
+  - Agregar filtro por moneda, estado, y presets de filtros
   - Documentar patrones de uso para reportes ejecutivos
 
 ### Estado por Épica
@@ -14,8 +14,8 @@
 |------------------------------|----------|-----|------------------------|-------------------------------------------|-------------------------------------|--------------------------------------|------------|
 | Modelo Cliente + Migración   | DONE     | 100 | Modelo y API migrados  | -                                         | -                                   | -                                   | Backend    |
 | ABM Cliente (UI + API)       | DONE     | 100 | ABM Cliente funcional  | -                                         | -                                   | -                                   | Frontend   |
-| Integración Rolling/Reportes | DONE     | 100 | Badges, segmentación, filtro básico | -                                    | -                                   | -                                   | Fullstack  |
-| Mejoras UX y Filtros Avanzados | DONE   | 100 | Filtros combinados, persistencia URL, contador | -                                 | -                                   | Features adicionales opcionales      | Fullstack  |
+| Integración Rolling/Reportes | DONE     | 100 | Rolling y dashboards integrados con país y tipoComercial | - | - | - | Fullstack  |
+| Mejoras UX y Filtros Avanzados | DONE  | 100 | Filtros combinados, persistencia URL, contador, performance, bugfixes | Export a Excel, filtros adicionales | - | Mejoras futuras | Fullstack  |
 
 ---
 
@@ -205,82 +205,45 @@ interface Cliente {
 
 ### ÉPICA 4: Mejoras UX y Filtros Avanzados ✅ COMPLETADA
 
-**Objetivo**: Optimizar UX de filtros, persistencia en URL, combinación de filtros
-
 **User Stories**:
-- ✅ US-011: Persistir filtros país y tipoComercial en URL (search params)
-- ✅ US-012: Mostrar contador de clientes filtrados vs total
-- ✅ US-013: Permitir combinación de filtros país + tipoComercial
-- ✅ US-014: Optimizar performance con memoización
+- ✅ US-011: Persistir filtros en URL (pais y tipoComercial)
+- ✅ US-012: Contador de clientes filtrados vs total en header/listados
+- ✅ US-013: Filtros combinados país + tipoComercial (AND)
+- ✅ US-014: Optimización de performance (memoización, bugfix regiones dashboard)
 
 **Logros**:
-- **Persistencia URL**: RollingPage parsea `pais` y `tipo` desde URL, sincroniza bidireccionalmente
-- **Contador visual**: Badge en header muestra "N/Total clientes" con filtros activos
-- **TipoComercialFilter.tsx**: Componente filtro con 3 opciones (Todos, BI, NV)
-- **Filtros combinados**: Lógica de filtrado soporta país AND tipoComercial simultáneamente
-- **useFilteredRollingData optimizado**: useMemo para cálculos, soporta ambos filtros
-- **Bug fix DashboardView**: Validación de regiones para evitar runtime errors
-- **URL params**: `?year=2024&pais=AR&tipo=BASE_INSTALADA` funcionales
-- **TypeScript sin errores**, UX intuitiva y responsiva
+- RollingPage.tsx: Filtros país y tipoComercial sincronizados con URL, contador visual de clientes filtrados
+- TipoComercialFilter.tsx: Nuevo componente select para tipoComercial
+- PaisFilter.tsx: Select país, integración combinada
+- useFilteredRollingData.ts: useMemo para performance, soporte filtros combinados
+- DashboardView.tsx: Bugfix regiones, validación regiones válidas
+- UX: Filtros sobreviven recarga, feedback visual claro, análisis granular
+- Performance: Memoización, prevención de re-renders innecesarios
+- TypeScript sin errores, deployment Railway OK
 
-**Mejoras de UX logradas**:
-- Filtros persisten al recargar página (URL sync)
-- Contador muestra claramente cuántos clientes están filtrados
-- Combinación de filtros permite análisis más granular
-- Performance optimizada con memoización en cálculos
-- Feedback visual claro de filtros activos
-
-**Sugerencias adicionales** (futuro):
-- Export a Excel con filtros aplicados
-- Filtros por moneda (USD/ARS)
-- Guardar filtros favoritos (presets)
+**Limitaciones y mejoras sugeridas**:
+- Exportar a Excel respetando filtros aplicados
+- Filtro por moneda, estado, presets de filtros
+- Persistencia de filtros adicionales en URL
+- Rango de fechas y filtros avanzados
 
 ---
 
 ## CHANGELOG
 
-### v0.5.0 - 2026-02-18 (ÉPICA 4 Completada)
+### v0.5.0 - 2025-01-XX (ÉPICA 4 Completada)
 
-- Filtros país y tipoComercial con persistencia en URL
-- Contador visual de clientes filtrados vs total
-- TipoComercialFilter.tsx creado, filtros combinados funcionales
-- useFilteredRollingData optimizado con memoización
-- Bug fix: validación de regiones en DashboardView
-- UX mejorada: feedback claro, URL sync, performance optimizada
-
-### v0.4.0 - 2026-02-18 (ÉPICA 3 Completada)
-
-- Integración completa país/tipoComercial en Rolling module
-- Badges visuales en todas las tablas Rolling
-- Segmentación real Base Instalada vs Nueva Venta en Dashboard
-- Filtro por país en RollingPage header
-- Eliminada función inferirRegion() deprecated
-- Resolución de limitaciones LIMI-001 de Rolling.md
-
-### v0.3.0 - 2026-02-18 (ÉPICA 2 Completada)
-
-- ClienteForm: selects para país (9 opciones) y tipoComercial (2 opciones)
-- Tipos actualizados: PaisCliente, TipoComercialCliente en cliente.types.ts
-- Validaciones zod para enums, defaults AR/BASE_INSTALADA
-- Badge components: PaisBadge (colores por país), TipoComercialBadge
-- ClientesList: columnas con badges para país y tipo comercial
-- ClienteCard: badges en header junto a estado
-- ClienteDetail: badges en header del detalle
-- Documentación actualizada: ÉPICA 2 completada (v0.3.0)
-
-### v0.2.0 - 2025-01-XX (ÉPICA 1 Completada)
-
-- Modelo Cliente migrado con campos país y tipoComercial
-- Endpoints API actualizados
-- Migración aplicada sin impacto en datos existentes
-- Validaciones y enums activos en backend
-- Documentación y recomendaciones actualizadas
+- Filtros país y tipoComercial persistentes en URL
+- Contador de clientes filtrados en header/listados
+- Filtros combinados (AND) país + tipoComercial
+- Memoización y bugfix regiones dashboard
+- Documentación y dashboard ejecutivo actualizados
 
 ---
 
-**VERSIÓN**: 0.5.0
-**ÚLTIMA ACTUALIZACIÓN**: Post ÉPICA 4
-**PRÓXIMA REVISIÓN**: Features adicionales opcionales
+**VERSIÓN**: 0.5.0  
+**ÚLTIMA ACTUALIZACIÓN**: Post ÉPICA 4  
+**PRÓXIMA REVISIÓN**: Export a Excel y filtros adicionales
 
 ---
 

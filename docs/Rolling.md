@@ -461,35 +461,46 @@
 
 - ✅ LIMI-001: Clasificación BI/NV resuelta (tipoComercial real en modelo Cliente)
 - ✅ Dashboard y tablas usan país y tipoComercial reales (no inferidos)
-- ✅ Filtro país en UI (PaisFilter.tsx), hook useFilteredRollingData
-- ⚠️ Mejora pendiente: conectar filtro país a todas las tablas y persistir en URL
-- ⚠️ Mejora sugerida: agregar contador de clientes filtrados, filtro tipoComercial adicional, combinación de filtros
-- ⚠️ Memoización recomendada en dashboard si hay muchos clientes
+- ✅ Filtro país y tipoComercial en UI, persistencia en URL, contador visual
+- ✅ Filtros combinados (AND) país + tipoComercial, memoización en dashboard
+- ✅ Bugfix: validación regiones dashboard para países no mapeados
+- ⚠️ Mejoras sugeridas: exportar a Excel con filtros, filtro por moneda/estado, presets de filtros, rango de fechas
 
 ---
 
 ## CHANGELOG
 
-### v1.6.1 - 2025-01-XX (Integración país/tipoComercial en Rolling)
+### v1.7.1 - 2025-02-18 (BUGFIX: Filtros no aplicaban a tablas)
 
-**Completado**:
-- Integración completa de país y tipoComercial en dashboards Rolling
-- Badges visuales en filas principales de clientes (RfActualsTable, RevenueTable, PnlsRealesTable)
-- DashboardView segmenta por BI/NV real, tabla resumen con país/tipo
-- Filtro país en header (PaisFilter.tsx), hook useFilteredRollingData
-- rolling.types.ts: enums PaisCliente y TipoComercialCliente, deprecado Region
-- useRollingData.ts: usa país y tipoComercial reales
-- Limitación LIMI-001 resuelta
+**Bug Crítico Resuelto**:
+- ❌ **Problema**: Los filtros País y TipoComercial solo actualizaban el contador visual, pero NO filtraban realmente los datos en las tablas
+- ✅ **Solución**: Todos los componentes ahora usan `useFilteredRollingData` con filtros aplicados correctamente
+- **Archivos afectados**: RollingPage.tsx, RfActualsTable.tsx, RevenueTable.tsx, PnlsRealesTable.tsx, DashboardView.tsx
+- **Hook actualizado**: `useFilteredRollingData` ahora soporta filtros combinados (país + tipoComercial)
 
-**Limitaciones y mejoras**:
-- Filtro país en UI pero no conectado a todas las tablas (mejora futura)
-- Sugerencias: contador de clientes filtrados, persistencia filtro en URL, filtro tipoComercial adicional, combinación de filtros, memoización en dashboard
+**Impacto**: Filtros ahora funcionan correctamente en todas las vistas (RF Actuals, Revenue, PNLs, Dashboard)
 
 ---
 
-**VERSIÓN**: 1.6.1  
-**ÚLTIMA ACTUALIZACIÓN**: Integración país/tipoComercial en Rolling  
-**PRÓXIMA REVISIÓN**: Mejoras UX/UX opcionales
+### v1.7.0 - 2025-01-XX (Mejoras UX y Filtros Avanzados)
+
+**Completado**:
+- Filtros país y tipoComercial persistentes en URL
+- Contador de clientes filtrados en header/listados
+- Filtros combinados (AND) país + tipoComercial
+- Memoización y bugfix regiones dashboard
+- Documentación y dashboard ejecutivo actualizados
+
+**Limitaciones y mejoras**:
+- Exportar a Excel respetando filtros aplicados (pendiente)
+- Filtro por moneda, estado, presets de filtros (pendiente)
+- Rango de fechas y filtros avanzados (pendiente)
+
+---
+
+**VERSIÓN**: 1.7.1
+**ÚLTIMA ACTUALIZACIÓN**: BUGFIX - Filtros ahora se aplican correctamente a todas las tablas
+**PRÓXIMA REVISIÓN**: Export a Excel y filtros adicionales
 
 ---
 
