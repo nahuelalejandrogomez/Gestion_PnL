@@ -161,15 +161,13 @@ interface Cliente {
 
 ---
 
-### ÉPICA 2: ABM Cliente ✅ COMPLETADA
-
-**Objetivo**: Edición y visualización de país/tipoComercial en UI
+### ÉPICA 2: ABM Cliente (UI + API) ✅ COMPLETADA
 
 **User Stories**:
-- ✅ US-004: Agregar select país y tipoComercial en formulario
-- ✅ US-005: Validar campos obligatorios y enums
-- ✅ US-006: Mostrar badges país/tipoComercial en listados
-- ✅ US-007: ABM Cliente (pantalla de configuración) permite seleccionar país desde un select
+- ✅ US-004: Agregar select país y tipoComercial en formulario de ABM Cliente
+- ✅ US-005: Validar que ambos campos sean obligatorios y muestren los enums backend
+- ✅ US-006: Mostrar badges país/tipoComercial en el listado de clientes
+- ✅ US-007: ABM Cliente (pantalla de configuración) debe permitir seleccionar país desde un select
 
 **Logros**:
 - ClienteForm.tsx: Dos nuevos selects (país y tipo comercial), grid 2x1, labels en español
@@ -231,12 +229,13 @@ interface Cliente {
 
 ## CHANGELOG
 
-### v0.5.0 - 2025-01-XX (ÉPICA 4 Completada)
+### v0.5.0 - 2025-02-18 (ÉPICA 4 Completada)
 
 - Filtros país y tipoComercial persistentes en URL
 - Contador de clientes filtrados en header/listados
 - Filtros combinados (AND) país + tipoComercial
 - Memoización y bugfix regiones dashboard
+- Filtros aplican realmente a todas las tablas y vistas
 - Documentación y dashboard ejecutivo actualizados
 
 ---

@@ -467,7 +467,22 @@
 - ✅ Filtros ahora aplican realmente a todas las tablas y vistas (RF Actuals, Revenue, PNLs, Dashboard)
 - ✅ Performance optimizada con useMemo y prevención de re-renders innecesarios
 - ✅ UX: feedback visual claro, filtros sobreviven recarga, análisis granular
-- ⚠️ Mejoras sugeridas: exportar a Excel con filtros, filtro por moneda/estado, presets de filtros, rango de fechas
+- ⚠️ Mejoras sugeridas (funcionalidades faltantes o pausadas):
+  - Exportar a Excel respetando filtros aplicados (**pausado**)
+  - Filtro por moneda (USD/ARS) global en dashboards y tablas
+  - Filtro por estado de cliente (ACTIVO/INACTIVO/POTENCIAL)
+  - Presets de filtros (guardar combinaciones favoritas)
+  - Rango de fechas para filtrar clientes por período de inicio
+  - Drill-down desde dashboard a detalle cliente
+  - Comparación año vs año en dashboard y tablas
+  - Export multi-formato (CSV, PDF) [backlog]
+  - Forecasts editables y proyecciones avanzadas
+  - Alertas automáticas de desvíos y performance
+  - Integración con herramientas externas (Tableau, PowerBI)
+  - Visualización de cambios históricos (auditoría)
+  - Mejoras de performance para >20 clientes (virtualización, paginación)
+  - Accesibilidad y soporte mobile mejorado
+  - Documentación de API y contratos OpenAPI/Swagger
 
 ---
 
@@ -507,7 +522,7 @@
 - TypeScript sin errores, deployment Railway OK
 
 **Limitaciones y mejoras**:
-- Exportar a Excel respetando filtros aplicados (pendiente)
+- Exportar a Excel respetando filtros aplicados (**pausado**)
 - Filtro por moneda, estado, presets de filtros (pendiente)
 - Rango de fechas y filtros avanzados (pendiente)
 
@@ -515,7 +530,7 @@
 
 **VERSIÓN**: 1.8.1
 **ÚLTIMA ACTUALIZACIÓN**: BUGFIX - TCP_OVERWINDOW y actualización Node.js 22
-**PRÓXIMA REVISIÓN**: Export a Excel y filtros adicionales
+**PRÓXIMA REVISIÓN**: Filtros adicionales y mejoras UX
 
 ---
 
