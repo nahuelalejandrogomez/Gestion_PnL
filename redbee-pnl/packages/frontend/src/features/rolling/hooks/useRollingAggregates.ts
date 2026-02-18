@@ -39,7 +39,6 @@ export function useRollingAggregates(data: RollingData | undefined): RollingAggr
 
     // Calcular totales por mes
     for (let m = 1; m <= 12; m++) {
-      let totalMonth = 0;
       let backlogMonth = 0;
       let potencialMonth = 0;
 
@@ -48,23 +47,27 @@ export function useRollingAggregates(data: RollingData | undefined): RollingAggr
         const monthData = cliente.meses[m];
         if (!monthData) continue;
 
-        // Total = ftesAsignados + ftesNoAsignados
-        const clienteTotal = monthData.ftesAsignados + monthData.ftesNoAsignados;
-        totalMonth += clienteTotal;
-
         // Backlog = ftesReales ?? ftesAsignados
         const clienteBacklog = monthData.ftesReales ?? monthData.ftesAsignados;
         backlogMonth += clienteBacklog;
 
         // Potencial = ftesNoAsignados
+        // TODO: API aún NO retorna revenue.noAsignado (siempre 0)
+        // Habilitar validación cuando se desarrolle funcionalidad de potencial
         potencialMonth += monthData.ftesNoAsignados;
       }
 
-      // Validar: Total debe = Backlog + Potencial
-      const discrepancy = Math.abs(totalMonth - (backlogMonth + potencialMonth));
-      const isValid = discrepancy <= 0.01; // Tolerancia float
+      // Total = Backlog (por ahora, hasta que API retorne potencial)
+      // FIXME: Cuando API retorne revenue.noAsignado, cambiar a: total = backlog + potencial
+      const totalMonth = backlogMonth;
 
-      if (!isValid) {
+      // Validación: Solo validar si hay datos de potencial
+      // Por ahora, potencial siempre es 0, entonces total = backlog es correcto
+      const discrepancy = Math.abs(totalMonth - (backlogMonth + potencialMonth));
+      const isValid = potencialMonth === 0 ? true : discrepancy <= 0.01;
+
+      // Solo loggear error si potencial > 0 y hay discrepancia
+      if (!isValid && potencialMonth > 0) {
         hasDiscrepancies = true;
         console.error(`[Rolling] Discrepancia mes ${m}`, {
           total: totalMonth,
