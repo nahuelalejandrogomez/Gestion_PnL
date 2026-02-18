@@ -156,8 +156,11 @@ function ClienteSection({
             );
           }
 
-          const total = monthData.ftesAsignados + monthData.ftesNoAsignados;
+          // Total = ftesReales si existe, sino suma asignados + noAsignados
           const hasReal = monthData.ftesReales !== null;
+          const total = hasReal
+            ? monthData.ftesReales!
+            : monthData.ftesAsignados + monthData.ftesNoAsignados;
 
           return (
             <td key={m} className="py-2 px-2 text-right tabular-nums font-semibold text-stone-800">
