@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { YearSelector } from './shared/YearSelector';
 import { RfActualsTable } from './RfActualsTable';
+import { RevenueTable } from './RevenueTable';
 import type { ActiveTab } from '../types/rolling.types';
 
 export function RollingPage() {
@@ -80,16 +81,7 @@ export function RollingPage() {
         </TabsContent>
 
         <TabsContent value="revenue" className="mt-6">
-          <Card className="border-stone-200 bg-white">
-            <CardHeader>
-              <CardTitle className="text-lg">Revenue</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="py-12 text-center text-stone-500">
-                Revenue - En desarrollo
-              </div>
-            </CardContent>
-          </Card>
+          <RevenueTable year={year} />
         </TabsContent>
 
         <TabsContent value="pnls" className="mt-6">

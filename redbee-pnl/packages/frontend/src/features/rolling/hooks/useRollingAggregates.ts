@@ -15,6 +15,18 @@ export interface RollingAggregate {
   discrepancy: number; // total - (backlog + potencial)
 }
 
+export interface RevenueAggregate {
+  month: number;
+  total: number;
+  backlog: number;
+  potencial: number;
+  budget: number; // TBD: Presupuesto mensual (placeholder)
+  desvio: number; // total - budget
+  desvioPct: number | null; // (total - budget) / budget * 100
+  isValid: boolean; // total === backlog + potencial
+  discrepancy: number; // total - (backlog + potencial)
+}
+
 export interface RollingAggregates {
   byMonth: Record<number, RollingAggregate>; // 1-12
   annual: {
@@ -23,6 +35,18 @@ export interface RollingAggregates {
     potencial: number;
   };
   hasDiscrepancies: boolean;
+  // Revenue aggregates
+  revenue: {
+    byMonth: Record<number, RevenueAggregate>; // 1-12
+    annual: {
+      total: number;
+      backlog: number;
+      potencial: number;
+      budget: number;
+      desvio: number;
+      desvioPct: number | null;
+    };
+  };
 }
 
 /**
@@ -99,6 +123,80 @@ export function useRollingAggregates(data: RollingData | undefined): RollingAggr
     backlogAnual /= 12;
     potencialAnual /= 12;
 
+    // ===== CALCULAR REVENUE AGGREGATES =====
+    const revenueByMonth: Record<number, RevenueAggregate> = {};
+
+    for (let m = 1; m <= 12; m++) {
+      let revBacklogMonth = 0;
+      let revPotencialMonth = 0;
+
+      // Sumar todos los clientes
+      for (const cliente of data.clientes) {
+        const monthData = cliente.meses[m];
+        if (!monthData) continue;
+
+        // Backlog = revenueReal ?? revenueAsignado
+        const clienteBacklog = monthData.revenueReal ?? monthData.revenueAsignado;
+        revBacklogMonth += clienteBacklog;
+
+        // Potencial = 0 (funcionalidad no implementada aún)
+        // TODO: Implementar cálculo de potencial cuando se desarrolle la funcionalidad
+        // revPotencialMonth += monthData.revenueNoAsignado;
+      }
+
+      // Total = Backlog solamente (potencial = 0 por ahora)
+      const revTotalMonth = revBacklogMonth;
+
+      // Budget = 0 (placeholder hasta que se implemente funcionalidad)
+      // TODO: Implementar presupuestos mensuales cuando esté disponible
+      const revBudgetMonth = 0;
+
+      // Desvío vs Budget
+      const desvio = revTotalMonth - revBudgetMonth;
+      const desvioPct = revBudgetMonth > 0 ? (desvio / revBudgetMonth) * 100 : null;
+
+      // Validación: total debe = backlog (potencial siempre 0 por ahora)
+      const revDiscrepancy = Math.abs(revTotalMonth - revBacklogMonth);
+      const revIsValid = revDiscrepancy <= 0.01;
+
+      if (!revIsValid) {
+        console.error(`[Rolling] Discrepancia Revenue mes ${m}`, {
+          total: revTotalMonth,
+          backlog: revBacklogMonth,
+          potencial: revPotencialMonth,
+          discrepancy: revDiscrepancy,
+        });
+      }
+
+      revenueByMonth[m] = {
+        month: m,
+        total: revTotalMonth,
+        backlog: revBacklogMonth,
+        potencial: revPotencialMonth,
+        budget: revBudgetMonth,
+        desvio,
+        desvioPct,
+        isValid: revIsValid,
+        discrepancy: revDiscrepancy,
+      };
+    }
+
+    // Calcular totales anuales de revenue (suma, no promedio)
+    let revTotalAnual = 0;
+    let revBacklogAnual = 0;
+    let revPotencialAnual = 0;
+    let revBudgetAnual = 0;
+
+    for (let m = 1; m <= 12; m++) {
+      revTotalAnual += revenueByMonth[m].total;
+      revBacklogAnual += revenueByMonth[m].backlog;
+      revPotencialAnual += revenueByMonth[m].potencial;
+      revBudgetAnual += revenueByMonth[m].budget;
+    }
+
+    const revDesvioAnual = revTotalAnual - revBudgetAnual;
+    const revDesvioPctAnual = revBudgetAnual > 0 ? (revDesvioAnual / revBudgetAnual) * 100 : null;
+
     return {
       byMonth,
       annual: {
@@ -107,6 +205,17 @@ export function useRollingAggregates(data: RollingData | undefined): RollingAggr
         potencial: potencialAnual,
       },
       hasDiscrepancies,
+      revenue: {
+        byMonth: revenueByMonth,
+        annual: {
+          total: revTotalAnual,
+          backlog: revBacklogAnual,
+          potencial: revPotencialAnual,
+          budget: revBudgetAnual,
+          desvio: revDesvioAnual,
+          desvioPct: revDesvioPctAnual,
+        },
+      },
     };
   }, [data]);
 }
