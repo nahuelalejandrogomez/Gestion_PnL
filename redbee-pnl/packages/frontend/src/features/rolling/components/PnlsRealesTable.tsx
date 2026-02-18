@@ -19,7 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { useRollingData } from '../hooks/useRollingData';
 import { MONTH_LABELS, fmtCurrency, fmtFte, fmtPct, colorForGm } from '@/features/pnl/utils/pnl.format';
-import type { ClienteRollingData, RollingMonthData } from '../types/rolling.types';
+import type { ClienteRollingData } from '../types/rolling.types';
 
 interface PnlsRealesTableProps {
   year: number;
