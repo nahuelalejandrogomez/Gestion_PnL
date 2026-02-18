@@ -457,70 +457,39 @@
 
 ---
 
-## LIMITACIONES Y DEPENDENCIAS DETECTADAS EN DASHBOARD
+### LIMITACIONES Y MEJORAS DETECTADAS (POST ÉPICA 5 Y CLIENTE)
 
-**LIMI-001: Clasificación Base Instalada / Nueva Venta**
-- No existe campo tipoCliente o similar en modelo Cliente
-- Tabla "Base Instalada vs Nueva Venta" muestra todos como BI (Nueva Venta = 0)
-- Advertencia visible para usuario
-- Solución: Agregar campo tipo: 'BI' | 'NV' en modelo Cliente backend
-- Decisión requerida: ¿Cómo se clasifica un cliente como BI vs NV?
-
-**LIMI-002: FX Rates Históricos**
-- FX rates hardcoded a 1 en useRollingData
-- Conversión ARS en dashboard no refleja tasas reales históricas
-- Solución: Endpoint backend /api/fx-rates/:year con rates mensuales USD/ARS
-- Decisión requerida: ¿Fuente de FX rates? (BCRA, interno, manual)
-
-**LIMI-003: Estado de Clientes**
-- No hay clasificación de clientes por estado (Activo, Inactivo, Churn)
-- No se puede crear pie chart "Revenue por Estado"
-- Solución: Agregar campo estado: 'activo' | 'inactivo' | 'churn' en modelo Cliente
-- Decisión requerida: ¿Cómo se determina el estado?
-
-**LIMI-004: Forecasts y Proyecciones**
-- Campo forecasts en RollingData está como unknown[] (sin tipado)
-- No se pueden crear gráficos de "Real vs Forecast" o "Backlog vs Potencial"
-- Solución: Tipar y poblar forecasts desde backend
-- Decisión requerida: ¿Qué métricas forecast se deben mostrar en dashboard?
+- ✅ LIMI-001: Clasificación BI/NV resuelta (tipoComercial real en modelo Cliente)
+- ✅ Dashboard y tablas usan país y tipoComercial reales (no inferidos)
+- ✅ Filtro país en UI (PaisFilter.tsx), hook useFilteredRollingData
+- ⚠️ Mejora pendiente: conectar filtro país a todas las tablas y persistir en URL
+- ⚠️ Mejora sugerida: agregar contador de clientes filtrados, filtro tipoComercial adicional, combinación de filtros
+- ⚠️ Memoización recomendada en dashboard si hay muchos clientes
 
 ---
 
 ## CHANGELOG
 
-### v1.6.0 - 2025-01-XX (ÉPICA 5 Completada)
+### v1.6.1 - 2025-01-XX (Integración país/tipoComercial en Rolling)
 
 **Completado**:
-- ✅ ÉPICA 5: Dashboard con gráficos y tablas resumen
-- ✅ US-013: Dashboard estructura base + 3 pie charts
-- ✅ US-014: Tablas resumen y Base Instalada vs Nueva Venta
+- Integración completa de país y tipoComercial en dashboards Rolling
+- Badges visuales en filas principales de clientes (RfActualsTable, RevenueTable, PnlsRealesTable)
+- DashboardView segmenta por BI/NV real, tabla resumen con país/tipo
+- Filtro país en header (PaisFilter.tsx), hook useFilteredRollingData
+- rolling.types.ts: enums PaisCliente y TipoComercialCliente, deprecado Region
+- useRollingData.ts: usa país y tipoComercial reales
+- Limitación LIMI-001 resuelta
 
-**Archivos Creados**:
-- DashboardView.tsx
-
-**Archivos Modificados**:
-- RollingPage.tsx, index.ts, package.json
-
-**Features Clave**:
-- 3 Pie Charts (Moneda, Región, FTEs)
-- Tablas resumen por cliente y por tipo (BI/NV)
-- Validación porcentajes, advertencias limitaciones backend
-- Métricas generales en CardHeader
-
-**Limitaciones**:
-- Clasificación BI/NV y Estado de Cliente faltante en backend
-- FX rates históricos no implementados
-- Forecasts no tipados ni poblados
-
-**Próximo**:
-- Decisión arquitectural sobre clasificación BI/NV y estados
-- Implementar dependencias backend para features avanzados
+**Limitaciones y mejoras**:
+- Filtro país en UI pero no conectado a todas las tablas (mejora futura)
+- Sugerencias: contador de clientes filtrados, persistencia filtro en URL, filtro tipoComercial adicional, combinación de filtros, memoización en dashboard
 
 ---
 
-**VERSIÓN**: 1.6.0  
-**ÚLTIMA ACTUALIZACIÓN**: Post ÉPICA 5  
-**PRÓXIMA REVISIÓN**: Cuando se resuelvan dependencias de backend
+**VERSIÓN**: 1.6.1  
+**ÚLTIMA ACTUALIZACIÓN**: Integración país/tipoComercial en Rolling  
+**PRÓXIMA REVISIÓN**: Mejoras UX/UX opcionales
 
 ---
 

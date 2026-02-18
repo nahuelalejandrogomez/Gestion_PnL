@@ -2,19 +2,20 @@
 
 ## Executive Dashboard (Auto)
 - Última actualización: 2026-02-18
-- Semáforo general: 🟢 (Todas las ÉPICAS completadas)
-- Próximos 7 días:
-  - Mejorar UX de filtros en Rolling
-  - Considerar agregar filtro por tipoComercial
-  - Documentar patrones de uso
+- Semáforo general: 🟢 (todas las épicas completadas)
+- Próximos pasos sugeridos:
+  - Dashboards adicionales por región/tipo
+  - Exportar filtros a Excel
+  - Documentar patrones de uso para reportes ejecutivos
 
 ### Estado por Épica
 
 | Épica                        | Estado   | %   | Qué está listo         | Qué falta                                 | Bloqueos/decisiones                | Próximo paso                        | Owner      |
 |------------------------------|----------|-----|------------------------|-------------------------------------------|-------------------------------------|--------------------------------------|------------|
 | Modelo Cliente + Migración   | DONE     | 100 | Modelo y API migrados  | -                                         | -                                   | -                                   | Backend    |
-| ABM Cliente (UI + API)       | DONE     | 100 | ABM Cliente funcional  | -                                         | -                                   | -                                    | Frontend   |
-| Integración Rolling/Reportes | DONE     | 100 | Badges, segmentación BI/NV, filtro país | Conectar filtro en todas las tablas       | -                                   | Mejoras UX opcionales                | Fullstack  |
+| ABM Cliente (UI + API)       | DONE     | 100 | ABM Cliente funcional  | -                                         | -                                   | -                                   | Frontend   |
+| Integración Rolling/Reportes | DONE     | 100 | Badges, segmentación, filtro básico | -                                    | -                                   | -                                   | Fullstack  |
+| Mejoras UX y Filtros Avanzados | DONE   | 100 | Filtros combinados, persistencia URL, contador | -                                 | -                                   | Features adicionales opcionales      | Fullstack  |
 
 ---
 
@@ -182,28 +183,70 @@ interface Cliente {
 
 ### ÉPICA 3: Integración Rolling/Reportes ✅ COMPLETADA
 
-**Objetivo**: Usar país y tipoComercial en dashboards y reportes
-
 **User Stories**:
-- ✅ US-008: Integrar país/tipoComercial en dashboards Rolling
-- ✅ US-009: Agregar filtros por país en vistas de clientes
-- ✅ US-010: Segmentar reportes por región y tipo comercial
+- ✅ US-008: Integrar país y tipoComercial en dashboards Rolling (badges, segmentación real BI/NV)
+- ✅ US-009: Agregar filtros por país en vistas de clientes y dashboards (PaisFilter.tsx, useFilteredRollingData.ts)
+- ✅ US-010: Segmentar reportes por región y tipo comercial (DashboardView, tablas resumen)
 
 **Logros**:
-- **Tipos y hooks actualizados**: rolling.types.ts con PaisCliente y TipoComercialCliente, useRollingData eliminó inferirRegion()
-- **Badges en tablas Rolling**: RfActualsTable, RevenueTable, PnlsRealesTable muestran badges país/tipoComercial en fila de cliente
-- **Segmentación BI/NV real**: DashboardView usa tipoComercial para clasificar Base Instalada vs Nueva Venta (resolvió LIMI-001)
-- **Filtro por país**: PaisFilter.tsx creado, integrado en RollingPage header, hook useFilteredRollingData listo
-- **Dashboard mejorado**: Tabla resumen por cliente con columnas País y Tipo, badges reales en lugar de inferencias
-- **TypeScript sin errores**, limitaciones previas de Rolling resueltas
+- rolling.types.ts: enums PaisCliente y TipoComercialCliente, deprecado Region
+- useRollingData.ts: usa país y tipoComercial reales
+- RfActualsTable.tsx, RevenueTable.tsx, PnlsRealesTable.tsx: badges país/tipoComercial en fila principal
+- DashboardView.tsx: segmentación real BI/NV, tabla resumen con columnas país/tipo
+- PaisFilter.tsx: filtro país en header, hook useFilteredRollingData
+- RollingPage.tsx: filtro país integrado
+- TypeScript sin errores, integración FE/BE directa
+- Limitación LIMI-001 de Rolling.md resuelta
 
-**Limitaciones conocidas**:
-- Filtro país en UI pero no conectado a todas las tablas individuales (mejora futura)
-- Integración filtrado completo pendiente como enhancement
+**Limitaciones y mejoras detectadas**:
+- ✅ Resuelto en ÉPICA 4: persistencia URL, contador clientes, filtro tipoComercial, combinación de filtros
+
+---
+
+### ÉPICA 4: Mejoras UX y Filtros Avanzados ✅ COMPLETADA
+
+**Objetivo**: Optimizar UX de filtros, persistencia en URL, combinación de filtros
+
+**User Stories**:
+- ✅ US-011: Persistir filtros país y tipoComercial en URL (search params)
+- ✅ US-012: Mostrar contador de clientes filtrados vs total
+- ✅ US-013: Permitir combinación de filtros país + tipoComercial
+- ✅ US-014: Optimizar performance con memoización
+
+**Logros**:
+- **Persistencia URL**: RollingPage parsea `pais` y `tipo` desde URL, sincroniza bidireccionalmente
+- **Contador visual**: Badge en header muestra "N/Total clientes" con filtros activos
+- **TipoComercialFilter.tsx**: Componente filtro con 3 opciones (Todos, BI, NV)
+- **Filtros combinados**: Lógica de filtrado soporta país AND tipoComercial simultáneamente
+- **useFilteredRollingData optimizado**: useMemo para cálculos, soporta ambos filtros
+- **Bug fix DashboardView**: Validación de regiones para evitar runtime errors
+- **URL params**: `?year=2024&pais=AR&tipo=BASE_INSTALADA` funcionales
+- **TypeScript sin errores**, UX intuitiva y responsiva
+
+**Mejoras de UX logradas**:
+- Filtros persisten al recargar página (URL sync)
+- Contador muestra claramente cuántos clientes están filtrados
+- Combinación de filtros permite análisis más granular
+- Performance optimizada con memoización en cálculos
+- Feedback visual claro de filtros activos
+
+**Sugerencias adicionales** (futuro):
+- Export a Excel con filtros aplicados
+- Filtros por moneda (USD/ARS)
+- Guardar filtros favoritos (presets)
 
 ---
 
 ## CHANGELOG
+
+### v0.5.0 - 2026-02-18 (ÉPICA 4 Completada)
+
+- Filtros país y tipoComercial con persistencia en URL
+- Contador visual de clientes filtrados vs total
+- TipoComercialFilter.tsx creado, filtros combinados funcionales
+- useFilteredRollingData optimizado con memoización
+- Bug fix: validación de regiones en DashboardView
+- UX mejorada: feedback claro, URL sync, performance optimizada
 
 ### v0.4.0 - 2026-02-18 (ÉPICA 3 Completada)
 
@@ -235,9 +278,9 @@ interface Cliente {
 
 ---
 
-**VERSIÓN**: 0.4.0
-**ÚLTIMA ACTUALIZACIÓN**: Post ÉPICA 3
-**PRÓXIMA REVISIÓN**: Mejoras UX opcionales
+**VERSIÓN**: 0.5.0
+**ÚLTIMA ACTUALIZACIÓN**: Post ÉPICA 4
+**PRÓXIMA REVISIÓN**: Features adicionales opcionales
 
 ---
 

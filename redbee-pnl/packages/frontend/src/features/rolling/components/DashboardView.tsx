@@ -76,8 +76,13 @@ export function DashboardView({ year }: DashboardViewProps) {
       byMoneda[cliente.moneda].ftes += clienteFtes;
 
       // Agregar por país (ahora usando campo real del modelo Cliente)
-      byRegion[cliente.pais as 'AR' | 'CL' | 'UY' | 'US'].revenue += clienteRevenue;
-      byRegion[cliente.pais as 'AR' | 'CL' | 'UY' | 'US'].ftes += clienteFtes;
+      // Solo agregar si el país está en la lista de regiones del gráfico
+      const validRegions = ['AR', 'CL', 'UY', 'US'] as const;
+      if (validRegions.includes(cliente.pais as any)) {
+        const region = cliente.pais as 'AR' | 'CL' | 'UY' | 'US';
+        byRegion[region].revenue += clienteRevenue;
+        byRegion[region].ftes += clienteFtes;
+      }
 
       // Base Instalada vs Nueva Venta (ahora usando campo real del modelo Cliente)
       if (cliente.tipoComercial === 'BASE_INSTALADA') {
