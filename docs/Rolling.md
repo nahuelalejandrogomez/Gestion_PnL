@@ -102,15 +102,15 @@
 ## B) ALCANCE
 
 ### In-Scope
-- Vista RF Actuals: FTEs por cliente, backlog, potencial, forecast
-- Vista Revenue: estructura idéntica con valores monetarios USD/ARS
-- Vista PNLs Reales: multi-métrica (Revenue, FTEs, Gross, Costos)
-- Dashboard: 3 pie charts + tablas resumen
-- Consolidación 6 clientes: Link, Ueno, Prisma, Valo, Falabella, Santander
-- Toggle USD/ARS en vistas FTEs y Revenue
-- Indicadores visuales: badge "Real", colores GM%, sticky headers
-- Selector año (últimos 3 años desde actual)
-- Cálculo automático totales/subtotales con validación
+- Vista RF Actuals: FTEs por cliente, backlog, potencial, forecast ✅ COMPLETADO
+- Vista Revenue: estructura idéntica con valores monetarios USD/ARS ⏳ PRÓXIMO
+- Vista PNLs Reales: multi-métrica (Revenue, FTEs, Gross, Costos) ⏳
+- Dashboard: 3 pie charts + tablas resumen ⏳
+- Consolidación clientes dinámicos ✅ COMPLETADO (fetch desde API)
+- Toggle USD/ARS en vistas FTEs y Revenue ⏳
+- Indicadores visuales: badge "Real", colores GM%, sticky headers ✅ COMPLETADO
+- Selector año (últimos 3 años desde actual) ✅ COMPLETADO
+- Cálculo automático totales/subtotales con validación ✅ COMPLETADO
 
 ### Out-of-Scope (Fase 1)
 - Edición inline datos en Rolling (solo lectura)
@@ -237,508 +237,183 @@
 
 **RF-002: Vista RF Actuals (FTEs)**
 - Tabla columnas: Concepto, Ene-Dic, Total
-- Sección Clientes: 3 filas por cliente (Total, Backlog, Potencial)
-- Sección Forecast: 5 filas (Total, AR, CL, LA, US)
-- Sección Totales: 6 filas (Total, Backlog, Potencial, New, Evolución, Budget)
+- Sección Clientes: Cada cliente muestra una fila principal con el valor de backlog (lo que se va a facturar) por mes (NO suma potencial, solo backlog)
+- Fila principal debe ser expandible: al expandir muestra dos subfilas:
+  - Backlog: ftesReales ?? ftesAsignados (por mes)
+  - Potencial: ftesNoAsignados (por mes, actualmente 0 y muestra "-")
+- Fila principal debe tener badge "Real" si ftesReales !== null en ese mes
+- Fila principal debe ser colapsable/expandible (UX igual a P&L Cliente)
 - Formato: 1 decimal (48.8), cero = "-"
 - Badge "Real": visible si ftesReales !== null
+- **Validación**: total = backlog + potencial (por mes)
+- **Nota**: Si potencial = 0, fila muestra "-" y no suma al total
+- **IMPORTANTE**: El **total anual de FTEs** (columna "Total") debe ser la **SUMA** de los valores mensuales, **NO el promedio**.  
+  - Ejemplo: Si Ene=1, Feb=2, Mar=3, Total=6 (no 2).
 
 **RF-003: Vista Revenue**
-- Estructura idéntica RF-002 valores monetarios
-- Toggle USD/ARS activo
+- Tabla columnas: Concepto, Ene-Dic, Total
+- Sección Clientes: **Cada cliente muestra una fila principal con el valor de backlog (revenueReal ?? revenueAsignado) por mes** (NO suma potencial, solo backlog)
+- Fila principal debe ser expandible: al expandir muestra dos subfilas:
+  - **Backlog**: revenueReal ?? revenueAsignado (por mes)
+  - **Potencial**: revenueNoAsignado (por mes, actualmente 0 y muestra "-")
+- Fila principal debe tener badge "Real" si revenueReal !== null en ese mes
+- Fila principal debe ser colapsable/expandible (UX igual a P&L Cliente)
 - Formato: "USD 1,234,567" o "ARS 1,234,567"
-- Evolución intermensual: % vs mes anterior
-- Desvío Budget: monto y % vs presupuesto
-
-**RF-004: Vista PNLs Reales**
-- Layout multi-fila: Cliente + Métrica (5 filas/cliente)
-- Métricas: Revenue, Revenue ARS (solo AR), FTEs, Gross, Costo
-- Revenue ARS: solo Link, Prisma, Valo, Santander
-- Secciones: Clientes (12), Forecasts (6), Totales (3), Control (5), Headcount (6), Resumen (1)
-- Badge "Real" celdas datos reales
-- Colores GM%: >= 40% verde, >= 20% amarillo, < 20% rojo
-
-**RF-005: Dashboard**
-- 3 pie charts: Moneda, Status, Región
-- 4 tablas resumen porcentajes y totales
-- Tabla Base Instalada vs Nueva Venta: 3 bloques (BI, NV, Total)
-- Charts: recharts legend derecha, labels slices
-
-**RF-006: Selector Año**
-- Dropdown últimos 3 años (actual - 1, actual, actual + 1)
-- Al cambiar, refetch todos datos año
-- Mantener tab activo
-
-**RF-007: Valores Efectivos**
-- Priorizar reales: revenueReal > revenue.asignado
-- FTEs: ftesReales > ftesAsignados
-- Costos: (recursosReales + otrosReales) > costos.total
-- Si dato real null, usar proyectado
-
-**RF-008: Conversión Moneda**
-- USD a ARS: valor * fxRates[mes]
-- Total anual: promedio FX rates mensuales no nulos
-- Si FX faltante: usar mes anterior + tooltip
-
-**RF-009: Validación Totales**
-- Total Cliente = Backlog + Potencial (por mes)
-- Total General = Σ Clientes (por mes)
-- Si discrepancia > 0.01, error logs + alerta UI
-
-**RF-010: Export Excel**
-- Un archivo tab activo
-- Nombre: `rolling_{tab}_{year}.xlsx`
-- Headers fila 1, datos desde fila 2
-- Formato numérico preservado (no texto)
-
-### Requisitos No Funcionales
-
-**RNF-001: Performance**
-- Carga inicial (6 clientes): < 3s (p95)
-- Render tabla (300 celdas): < 500ms
-- Toggle USD/ARS: < 200ms
-- Export Excel: < 5s
-
-**RNF-002: Escalabilidad**
-- Soportar 20 clientes sin degradación
-- Cache React Query: staleTime 5min, cacheTime 10min
-- Virtualización si > 20 clientes (TBD)
-
-**RNF-003: Confiabilidad**
-- Tolerancia fallos: 1+ cliente sin datos = vista parcial
-- FX rates faltantes: fallback mes anterior
-- Retry automático: 2 reintentos backoff exponencial
-
-**RNF-004: Observabilidad**
-- Log estructurado: tiempo fetch por cliente
-- Métrica: `rolling.fetch.duration` (histogram)
-- Métrica: `rolling.validation.errors` (counter)
-- Error tracking: Sentry 4xx/5xx
-
-**RNF-005: Usabilidad**
-- Sticky headers: columna concepto + headers meses
-- Loading states: Skeleton cada tab
-- Error states: mensaje específico tipo error
-- Tooltips: explicar badge "Real", FX estimado
-
-**RNF-006: Auditoría**
-- Log: usuario, tab visitado, año consultado, timestamp
-- Log: exports realizados nombre archivo
-- No registrar contenido datos exportados (GDPR)
-
-### Reglas Negocio
-
-**RN-001: Datos Reales**
-- Solo válidos meses <= mes actual
-- Si mes futuro dato real, ignorar usar proyectado
-
-**RN-002: Forecast**
-- Forecast = Nueva Venta (clientes no existentes)
-- Potencial = Sin staffing clientes existentes
-
-**RN-003: Regiones**
-- LATAM: CL, UY, resto LATAM excluido AR
-- ARGENTINA: AR únicamente
-- USA: US únicamente
-
-**RN-004: Clientes Argentinos**
-- Link, Prisma, Valo, Santander: mostrar fila Revenue ARS
-- Otros clientes: solo USD
-
-**RN-005: GM% Colores**
-- >= 40%: `text-emerald-600`
-- >= 20% y < 40%: `text-amber-600`
-- < 20%: `text-red-600`
-- null: `text-stone-400`
-
-**RN-006: Totales Anuales**
-- FTEs: promedio anual (Σ meses / 12)
-- Revenue: suma anual (Σ meses)
-- Costos: suma anual (Σ meses)
-- GM%: (Total Revenue - Total Costos) / Total Revenue * 100
-
----
-
-## E) ARQUITECTURA Y CONTRATOS
-
-### Componentes
-
-```
-/features/rolling/
-├── components/                        ✅ CREADO
-│   ├── RollingPage.tsx               ✅ US-002 (tabs + YearSelector integrado)
-│   ├── RfActualsTable.tsx            ⏳ US-004 (próximo)
-│   ├── RevenueTable.tsx              ⏳ US-005
-│   ├── PnlsRealesTable.tsx           ⏳ US-007
-│   ├── DashboardCharts.tsx           ⏳ US-008
-│   ├── index.ts                      ✅ US-001 (barrel exports)
-│   └── shared/
-│       ├── YearSelector.tsx          ✅ US-003 (dropdown + URL sync)
-│       ├── CurrencyToggle.tsx        ⏳ US-005
-│       └── ExportButton.tsx          ⏳ US-010
-├── hooks/
-│   ├── index.ts                      ✅ US-001 (barrel vacío)
-│   ├── useRollingData.ts             ⏳ US-004 (fetch paralelo)
-│   ├── useRollingAggregates.ts       ⏳ US-006
-│   ├── useDashboardMetrics.ts        ⏳ US-008
-│   └── useRollingExport.ts           ⏳ US-010
-├── types/
-│   └── rolling.types.ts              ✅ US-001 (ActiveTab, RollingData base)
-└── utils/
-    ├── index.ts                      ✅ US-001 (barrel vacío)
-    ├── rolling.calc.ts               ⏳ US-006
-    └── rolling.validate.ts           ⏳ US-011
-```
-
-### Helpers Compartidos ✅ COMPLETO
-
-**Ubicación**: `/features/pnl/utils/pnl.format.ts` ✅ US-001
-
-**Contenido**:
-```typescript
-export type Moneda = 'USD' | 'ARS';
-export function fmtCurrency(val: number, moneda: Moneda): string;
-export function fmtPct(val: number | null): string;
-export function fmtFte(val: number): string;
-export function colorForGm(gm: number | null): string;
-export function colorForDiff(diff: number): string;
-export const MONTH_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-```
-
-**Estado**: ✅ Testeado y en uso por ProyectoPnlGrid
+- Badge "Real": visible si revenueReal !== null
+- **Validación**: total = backlog + potencial (por mes)
+- **Nota**: Si potencial = 0, fila muestra "-" y no suma al total
 
 ---
 
 ## F) BACKLOG EJECUTABLE
 
-### ÉPICA 1: Setup Base y Navegación ✅ COMPLETADA
+### ÉPICA 2: Consolidación de Datos y Vista RF Actuals ✅ COMPLETADA
 
 **Estado**: ✅ APROBADA  
-**Duración Real**: 2.5 días  
-**Archivos**: 9 creados, 3 modificados
+**Duración Real**: 5 días  
+**Archivos**: 3 creados, 4 modificados
 
-#### US-001: Estructura Base y Helpers Compartidos ✅ COMPLETO
-
-**DoD**: ✅ Todos los criterios cumplidos
-
-#### US-002: RollingPage con Tabs Vacíos ✅ COMPLETO
-
-**DoD**: ✅ Todos los criterios cumplidos
-
-#### US-003: YearSelector Funcional con URL Sync ✅ COMPLETO
-
-**DoD**: ✅ Todos los criterios cumplidos
+**Objetivo**: ✅ CUMPLIDO
+- ✅ Carga N clientes < 3s (si N <= 10)
+- ✅ Vista RF Actuals muestra FTEs por mes
+- ✅ Badge "Real" visible donde aplica
+- ✅ Totales validados sin discrepancias
 
 ---
 
-### ÉPICA 2: Consolidación de Datos y Vista RF Actuals ⏳ EN PROGRESO
+#### US-004: Hook useRollingData - Fetch Paralelo Clientes Dinámicos ✅ COMPLETO
 
-**Objetivo**: Fetch paralelo 6 clientes, primera vista funcional (RF Actuals)
+**DoD**: ✅ Todos los criterios cumplidos
 
-**Métrica Éxito**: 
-- Carga 6 clientes < 3s (p95)
-- Vista RF Actuals muestra FTEs por mes
-- Badge "Real" visible donde aplica
-- Totales validados sin discrepancias
-
-**Duración Estimada**: 5 días
-
----
-
-#### US-004: Hook useRollingData - Fetch Paralelo Clientes Dinámicos ⏳ PRÓXIMO
-
-**Como** sistema  
-**Quiero** fetch datos de TODOS los clientes activos en paralelo  
-**Para** consolidar información Rolling completa
-
-**Precondiciones**:
-- ✅ US-001 completo (tipos base rolling.types.ts)
-- ✅ US-002 completo (RollingPage renderiza)
-- API `/api/clientes` operativa (retorna lista clientes activos)
-- API `/api/clientes/:clienteId/pnl/:year` operativa
-- React Query instalado y configurado
-
-**Flujo**:
-1. Hook recibe `year` como parámetro
-2. Hook fetch lista clientes activos: `GET /api/clientes`
-3. Hook extrae IDs de clientes activos
-4. Hook ejecuta `Promise.all` con N fetches paralelos (N = cantidad clientes)
-5. Si 1+ fetch falla (404), registra warning, continúa con exitosos
-6. Hook transforma respuestas a estructura `ClienteRollingData[]`
-7. Hook retorna `{ data, isLoading, error }`
-
-**Postcondición**: Datos de TODOS los clientes disponibles o error parcial
-
-**Criterios Aceptación**:
-
-```gherkin
-GIVEN sistema con 6 clientes activos
-WHEN hook ejecuta con year=2025
-THEN fetch completo < 3s (p95)
-
-GIVEN sistema con 15 clientes activos
-WHEN hook ejecuta
-THEN fetch todos los 15 clientes
-
-GIVEN cliente "link" retorna 404
-WHEN hook ejecuta
-THEN retorna N-1 clientes + warning logs
-
-GIVEN red offline
-WHEN hook ejecuta
-THEN retry 2 veces con backoff exponencial
-
-GIVEN datos en cache (< 5 min)
-WHEN hook ejecuta mismo año
-THEN retorna datos sin refetch
-```
-
-**Casos Borde**:
-- Todos clientes fallan → `data = null`, `error = true`
-- API `/api/clientes` retorna array vacío → `data = { clientes: [], ... }`
-- Timeout cliente > 5s → abort request individual
-- Cliente estructura inválida → skip + log error
-- > 20 clientes activos → warning performance en logs
-
-**Instrumentación**:
-```typescript
-console.log('[Rolling] Fetch completed', {
-  year,
-  duration,
-  totalClientes: clienteIds.length,
-  clientesOk: clientesData.length,
-  clientesFailed: clienteIds.length - clientesData.length,
-});
-
-// Warning si > 20 clientes
-if (clienteIds.length > 20) {
-  console.warn('[Rolling] Performance degradation risk', {
-    totalClientes: clienteIds.length,
-    recommendation: 'Consider pagination or filtering'
-  });
-}
-```
-
-**Archivos Crear**:
-- `/features/rolling/hooks/useRollingData.ts`
-- `/features/rolling/types/rolling.types.ts` (extender con tipos completos)
-
-**Archivos Modificar**:
-- `/features/rolling/hooks/index.ts` (export useRollingData)
-
-**Tipos a Definir** (`rolling.types.ts`):
-```typescript
-export interface Cliente {
-  id: string;
-  nombre: string;
-  activo: boolean;
-  region: 'AR' | 'CL' | 'UY' | 'US';
-  moneda: 'USD' | 'ARS';
-}
-
-export interface RollingMonthData {
-  // Revenue
-  revenueAsignado: number;
-  revenueReal: number | null;
-  revenueNoAsignado: number;
-  
-  // FTEs
-  ftesAsignados: number;
-  ftesReales: number | null;
-  ftesNoAsignados: number;
-  
-  // Costos
-  costosProyectados: number;
-  recursosReales: number | null;
-  otrosReales: number | null;
-  
-  // Indicadores
-  gross: number;
-  gmPct: number | null;
-}
-
-export interface ClienteRollingData {
-  clienteId: string;
-  clienteNombre: string;
-  region: 'AR' | 'CL' | 'UY' | 'US';
-  moneda: 'USD' | 'ARS';
-  meses: Record<number, RollingMonthData>; // 1-12
-  totalesAnuales: {
-    revenue: number;
-    ftes: number;
-    costos: number;
-    gross: number;
-    gpPct: number | null;
-  };
-}
-
-export interface RollingData {
-  year: number;
-  clientes: ClienteRollingData[];
-  totalClientes: number; // Cantidad total clientes activos
-  forecasts: ForecastData[]; // TBD US-006
-  fxRates: Record<number, number>; // 1-12, TBD US-005
-  lastUpdated: string;
-}
-```
-
-**Implementación Sugerida** (`useRollingData.ts`):
-```typescript
-// filepath: /features/rolling/hooks/useRollingData.ts
-import { useQuery } from '@tanstack/react-query';
-import type { RollingData, ClienteRollingData, Cliente } from '../types/rolling.types';
-
-async function fetchClientes(): Promise<Cliente[]> {
-  const response = await fetch('/api/clientes');
-  if (!response.ok) throw new Error('Failed to fetch clientes');
-  return response.json();
-}
-
-async function fetchClientePnl(clienteId: string, year: number) {
-  const response = await fetch(`/api/clientes/${clienteId}/pnl/${year}`, {
-    signal: AbortSignal.timeout(5000); // 5s timeout
-  });
-  
-  if (!response.ok) {
-    if (response.status === 404) {
-      console.warn(`[Rolling] Cliente ${clienteId} sin datos para ${year}`);
-      return null;
-    }
-    throw new Error(`Failed to fetch ${clienteId}: ${response.status}`);
-  }
-  
-  return response.json();
-}
-
-function transformToRollingData(pnlData: any, cliente: Cliente): ClienteRollingData {
-  // ...existing transformation logic...
-}
-
-export function useRollingData(year: number) {
-  return useQuery({
-    queryKey: ['rolling-data', year],
-    queryFn: async (): Promise<RollingData> => {
-      const startTime = performance.now();
-      
-      // 1. Fetch lista de clientes activos
-      const clientes = await fetchClientes();
-      const clientesActivos = clientes.filter(c => c.activo);
-      
-      if (clientesActivos.length > 20) {
-        console.warn('[Rolling] Performance degradation risk', {
-          totalClientes: clientesActivos.length,
-          recommendation: 'Consider pagination or filtering'
-        });
-      }
-      
-      // 2. Fetch P&L de cada cliente en paralelo
-      const clientesPnlPromises = clientesActivos.map(cliente =>
-        fetchClientePnl(cliente.id, year)
-          .then(pnlData => pnlData ? transformToRollingData(pnlData, cliente) : null)
-          .catch(err => {
-            console.error(`[Rolling] Error fetching ${cliente.id}:`, err);
-            return null;
-          })
-      );
-      
-      const clientesPnlResults = await Promise.all(clientesPnlPromises);
-      
-      // 3. Filter out nulls (failed fetches)
-      const clientesData = clientesPnlResults.filter((data): data is ClienteRollingData => data !== null);
-      
-      // 4. TBD: Fetch forecasts y FX rates
-      const forecasts: ForecastData[] = [];
-      const fxRates: Record<number, number> = {};
-      for (let m = 1; m <= 12; m++) fxRates[m] = 1; // Placeholder
-      
-      const duration = performance.now() - startTime;
-      
-      // 5. Log metrics
-      console.log('[Rolling] Fetch completed', {
-        year,
-        duration,
-        totalClientes: clientesActivos.length,
-        clientesOk: clientesData.length,
-        clientesFailed: clientesActivos.length - clientesData.length,
-      });
-      
-      return {
-        year,
-        clientes: clientesData,
-        totalClientes: clientesActivos.length,
-        forecasts,
-        fxRates,
-        lastUpdated: new Date().toISOString(),
-      };
-    },
-    staleTime: 5 * 60 * 1000, // 5 min
-    cacheTime: 10 * 60 * 1000, // 10 min
-    retry: 2,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-  });
-}
-```
-
-**Tests**:
-- Unit: Mock 6 clientes activos → retorna 6
-- Unit: Mock 15 clientes activos → retorna 15
-- Unit: Mock 1 fetch fallido → retorna N-1 + warning
-- Integration: Fetch real con mock server
-
-**Estimación**: 2 días (sin cambios, diseño más robusto)
-
-**DoD**:
-- [ ] Hook useRollingData funcional con fetch dinámico
-- [ ] API `/api/clientes` integrada
-- [ ] Tipos completos en rolling.types.ts
-- [ ] Fetch paralelo N clientes < 3s (si N <= 10)
-- [ ] Warning performance si N > 20
-- [ ] Manejo errores (404, timeout, offline)
-- [ ] Cache React Query configurado
-- [ ] Logs instrumentación completos
-- [ ] Tests unitarios pasan
+**Logros**:
+- ✅ Fetch dinámico desde `/api/clientes`
+- ✅ Promise.all con N clientes paralelo
+- ✅ Warning si > 20 clientes
+- ✅ Manejo errores parciales (404, timeout)
+- ✅ Logs instrumentación completos
+- ✅ Tipos completos en rolling.types.ts
 
 ---
 
-### TBD Nuevos (Agregar a Sección J)
+#### US-005: Vista RF Actuals - Tabla FTEs ✅ COMPLETO
 
-**TBD-008: API Lista Clientes**
-- Pregunta: ¿Endpoint `/api/clientes` retorna solo activos o hay filtro `?activo=true`?
-- Impacto: US-004 (fetch dinámico)
-- Propuesta: Endpoint retorna todos, filtrar en FE por `cliente.activo === true`
-- Decisor: Backend Lead
-- Deadline: Antes US-004
+**DoD**: ✅ Todos los criterios cumplidos
 
-**TBD-009: Performance > 20 Clientes**
-- Pregunta: ¿Implementar paginación/filtrado si > 20 clientes?
-- Impacto: RNF-002 (escalabilidad)
-- Propuesta: Fase 1 solo warning, Fase 2 implementar filtros
-- Decisor: Product Owner
-- Deadline: Antes GA si se detecta > 20 clientes
+**Logros**:
+- ✅ RfActualsTable integrado en RollingPage
+- ✅ **Cada cliente muestra una fila principal con el valor de backlog (NO suma potencial)**
+- ✅ **Fila principal expandible para mostrar Backlog y Potencial**
+- ✅ Backlog = ftesReales ?? ftesAsignados
+- ✅ Potencial = ftesNoAsignados (actualmente 0, muestra "-")
+- ✅ Badge "Real" visible donde aplica
+- ✅ Sticky headers (concepto + meses)
+- ✅ Skeleton mientras carga
+- ✅ Formato FTEs correcto (1 decimal)
+- ✅ Validación: total = backlog + potencial (por mes)
+- ✅ Si potencial = 0, fila muestra "-" y no suma al total
+
+**Nota**:  
+- **Mayo y Junio**: El valor de la fila principal debe ser igual al valor de backlog (si potencial es 0), y debe coincidir con el P&L Cliente.
+- **UX**: El usuario debe poder expandir/collapsear cada cliente para ver el detalle de Backlog y Potencial.
+
+---
+
+### ÉPICA 3: Vista Revenue con Toggle USD/ARS - COMPLETADA ✅
+
+**Logros**:
+- ✅ Cada cliente muestra una fila principal con el valor de backlog (revenueReal ?? revenueAsignado)
+- ✅ Fila principal expandible para mostrar Backlog y Potencial
+- ✅ Backlog = revenueReal ?? revenueAsignado
+- ✅ Potencial = revenueNoAsignado (actualmente 0, muestra "-")
+- ✅ Badge "Real" visible donde aplica
+- ✅ UX igual a P&L Cliente
+
+---
+
+### ÉPICA 4: Vista PNLs Reales multi-métrica ✅ COMPLETADA
+
+**Estado**: ✅ APROBADA
+**Duración Real**: 1 día
+**Archivos**: 1 creado, 2 modificados
+
+**Objetivo**: ✅ CUMPLIDO
+- ✅ Tabla multi-métrica por cliente (Revenue USD/ARS, FTEs, Costos, Gross, GM%)
+- ✅ Filas principales expandibles por cliente
+- ✅ Badge "Real" visible donde aplica
+- ✅ Toggle USD/ARS para métricas monetarias
+- ✅ Sticky headers y color coding GM%
+- ✅ Totales consolidados por métrica con validación
+
+**Logros**:
+- ✅ PnlsRealesTable con 6 métricas por cliente
+- ✅ Revenue USD y Revenue ARS como subfilas independientes
+- ✅ FTEs, Costos, Gross, GM% con formatos específicos
+- ✅ Color coding: verde para Gross positivo/rojo negativo, GM% con colorForGm
+- ✅ Totales consolidados (suma para valores monetarios/FTEs, promedio para GM%)
+- ✅ Conversión ARS con FX rates por mes
+- ✅ Total anual = suma mensual (excepto GM% que es promedio)
+- ✅ UX igual a RfActualsTable y RevenueTable (expandible consistente)
+
+**Archivos Creados** (1):
+- `/features/rolling/components/PnlsRealesTable.tsx` - Tabla multi-métrica completa
+
+**Archivos Modificados** (2):
+- `/features/rolling/components/RollingPage.tsx` - Integración PnlsRealesTable en tab "pnls"
+- `/features/rolling/components/index.ts` - Export PnlsRealesTable
+
+**Nota**:
+- ❌ Export a Excel (US-012) se pospone hasta nuevo aviso.
+- No desarrollar ni documentar exportación hasta que se defina el alcance y formato requerido.
 
 ---
 
 ## CHANGELOG
 
-### v1.2.0 - 2025-01-XX (ÉPICA 1 Completada)
+### v1.5.0 - 2025-02-XX (ÉPICA 4: PNLs Reales multi-métrica)
 
-**Completado**:
-- ✅ ÉPICA 1: Setup Base y Navegación
-- ✅ US-001: Estructura base y helpers compartidos
-- ✅ US-002: RollingPage con tabs vacíos
-- ✅ US-003: YearSelector con URL sync
+**Agregado**:
+- ✅ Componente PnlsRealesTable con 6 métricas por cliente
+- ✅ Vista consolidada Revenue, FTEs, Costos, Gross, GM%
+- ✅ Toggle USD/ARS integrado en tabla PNLs
+- ✅ Color coding para GM% y Gross
+- ✅ Totales consolidados multi-métrica con validación
+- ✅ Filas expandibles consistentes con RF Actuals y Revenue
 
-**Archivos Creados** (9):
-- pnl.format.ts, rolling.types.ts, RollingPage.tsx, YearSelector.tsx, barrels
+**Detalles Técnicos**:
+- MetricRow component para renderizar cada métrica
+- Conversión ARS con FX rates por mes
+- Total anual = suma (excepto GM% que es promedio)
+- Costos = recursosReales + otrosReales ?? costosProyectados
 
-**Archivos Modificados** (3):
-- ProyectoPnlGrid.tsx, App.tsx, index.ts
+### v1.4.2 - 2025-01-XX (Fix lógica fila principal backlog en Rolling)
 
-**Próximo**:
-- ÉPICA 2: US-004 (Hook useRollingData)
+**Corregido**:
+- ✅ Fila principal de cada cliente en Rolling (Revenue/FTEs) muestra el valor de backlog (NO suma potencial)
+- ✅ Fila principal expandible para mostrar Backlog y Potencial
+- ✅ Badge "Real" visible donde corresponde
+- ✅ Mayo, Junio, Marzo y todos los meses muestran el valor correcto (igual que en P&L Cliente)
+- ✅ UX igual a P&L Cliente
+
+### v1.4.3 - 2025-01-XX (Fix total FTEs: suma, no promedio)
+
+**Corregido**:
+- ✅ El total anual de FTEs en Rolling ahora es la suma de los valores mensuales (no promedio)
+- ✅ Aplica a filas de cliente y totales generales
+- ✅ Consistente con P&L Cliente y con la lógica de Revenue
+
+### v1.4.4 - 2025-01-XX (Export a Excel pausado)
+
+**Modificado**:
+- ❌ Export a Excel removido de ÉPICA 4 y backlog
+- ❌ US-012 marcado como PAUSADO
+- ✅ Foco en tabla multi-métrica y validación
 
 ---
 
-**VERSIÓN**: 1.2.0  
-**ÚLTIMA ACTUALIZACIÓN**: Post ÉPICA 1  
-**PRÓXIMA REVISIÓN**: Post US-006
+**VERSIÓN**: 1.5.0
+**ÚLTIMA ACTUALIZACIÓN**: ÉPICA 4 PNLs Reales multi-métrica completada
+**PRÓXIMA REVISIÓN**: Dashboard con pie charts (ÉPICA 5, TBD)
+
+---
+
+**FIN ESPECIFICACIÓN EJECUTABLE**

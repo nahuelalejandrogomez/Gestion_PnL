@@ -2,6 +2,8 @@
  * RollingPage - Dashboard consolidado P&L todos clientes
  * ÉPICA 1 US-003: Selector año con URL sync
  * ÉPICA 2 US-005: Integración RfActualsTable
+ * ÉPICA 3 US-007-009: Integración RevenueTable
+ * ÉPICA 4 US-010-011: Integración PnlsRealesTable
  */
 
 import { useState } from 'react';
@@ -11,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { YearSelector } from './shared/YearSelector';
 import { RfActualsTable } from './RfActualsTable';
 import { RevenueTable } from './RevenueTable';
+import { PnlsRealesTable } from './PnlsRealesTable';
 import type { ActiveTab } from '../types/rolling.types';
 
 export function RollingPage() {
@@ -85,16 +88,7 @@ export function RollingPage() {
         </TabsContent>
 
         <TabsContent value="pnls" className="mt-6">
-          <Card className="border-stone-200 bg-white">
-            <CardHeader>
-              <CardTitle className="text-lg">PNLs Reales</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="py-12 text-center text-stone-500">
-                PNLs Reales - En desarrollo
-              </div>
-            </CardContent>
-          </Card>
+          <PnlsRealesTable year={year} />
         </TabsContent>
 
         <TabsContent value="dashboard" className="mt-6">
