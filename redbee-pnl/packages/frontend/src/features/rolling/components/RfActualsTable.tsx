@@ -2,8 +2,15 @@
  * RfActualsTable - Vista RF Actuals (FTEs)
  * ÉPICA 2 US-005: Tabla consolidada FTEs por cliente
  * ÉPICA 2 US-006: Totales y validación
+ *
+ * BUG FIX: Fila principal expandible por cliente
+ * - Fila principal muestra valor total efectivo (ftesReales ?? ftesAsignados)
+ * - Expandible para mostrar Backlog y Potencial
+ * - UX igual a P&L Cliente
  */
 
+import { useState } from 'react';
+import { ChevronRight, ChevronDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +26,19 @@ interface RfActualsTableProps {
 export function RfActualsTable({ year }: RfActualsTableProps) {
   const { data, isLoading, error } = useRollingData(year);
   const aggregates = useRollingAggregates(data);
+  const [expandedClientes, setExpandedClientes] = useState<Set<string>>(new Set());
+
+  const toggleCliente = (clienteId: string) => {
+    setExpandedClientes((prev) => {
+      const next = new Set(prev);
+      if (next.has(clienteId)) {
+        next.delete(clienteId);
+      } else {
+        next.add(clienteId);
+      }
+      return next;
+    });
+  };
 
   if (isLoading) {
     return (
@@ -99,9 +119,15 @@ export function RfActualsTable({ year }: RfActualsTableProps) {
               </tr>
             </thead>
             <tbody>
-              {/* Renderizar cada cliente con 3 filas */}
+              {/* Renderizar cada cliente con fila principal expandible */}
               {data.clientes.map((cliente) => (
-                <ClienteSection key={cliente.clienteId} cliente={cliente} months={months} />
+                <ClienteSection
+                  key={cliente.clienteId}
+                  cliente={cliente}
+                  months={months}
+                  isExpanded={expandedClientes.has(cliente.clienteId)}
+                  onToggle={() => toggleCliente(cliente.clienteId)}
+                />
               ))}
 
               {/* Totales consolidados */}
@@ -130,21 +156,35 @@ export function RfActualsTable({ year }: RfActualsTableProps) {
 }
 
 /**
- * Sección de 3 filas por cliente: Total, Backlog, Potencial
+ * Sección de cliente: fila principal expandible + subfilas Backlog/Potencial
  */
 function ClienteSection({
   cliente,
   months,
+  isExpanded,
+  onToggle,
 }: {
   cliente: ClienteRollingData;
   months: number[];
+  isExpanded: boolean;
+  onToggle: () => void;
 }) {
   return (
     <>
-      {/* Fila Total */}
-      <tr className="border-t-2 border-stone-300 bg-stone-50/40">
-        <td className="py-2 px-3 font-bold text-stone-800 sticky left-0 bg-stone-50/40 z-10">
-          {cliente.clienteNombre}
+      {/* Fila Principal (expandible) */}
+      <tr className="border-t-2 border-stone-300 bg-stone-50/40 hover:bg-stone-100/60 transition-colors">
+        <td className="py-2 px-3 sticky left-0 bg-stone-50/40 hover:bg-stone-100/60 z-10">
+          <button
+            onClick={onToggle}
+            className="flex items-center gap-1.5 font-bold text-stone-800 hover:text-stone-900 w-full text-left"
+          >
+            {isExpanded ? (
+              <ChevronDown className="h-3.5 w-3.5 text-stone-500" />
+            ) : (
+              <ChevronRight className="h-3.5 w-3.5 text-stone-500" />
+            )}
+            <span>{cliente.clienteNombre}</span>
+          </button>
         </td>
         {months.map((m) => {
           const monthData = cliente.meses[m];
@@ -156,16 +196,17 @@ function ClienteSection({
             );
           }
 
-          // Total = ftesReales si existe, sino suma asignados + noAsignados
+          // Valor efectivo total = ftesReales ?? (ftesAsignados + ftesNoAsignados)
+          // Si potencial es 0, esto es igual a backlog
           const hasReal = monthData.ftesReales !== null;
-          const total = hasReal
+          const efectivoTotal = hasReal
             ? monthData.ftesReales!
             : monthData.ftesAsignados + monthData.ftesNoAsignados;
 
           return (
             <td key={m} className="py-2 px-2 text-right tabular-nums font-semibold text-stone-800">
               <div className="flex items-center justify-end gap-1">
-                {total > 0 ? fmtFte(total) : <span className="text-stone-300">-</span>}
+                {efectivoTotal > 0 ? fmtFte(efectivoTotal) : <span className="text-stone-300">-</span>}
                 {hasReal && (
                   <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-blue-500 text-blue-600 bg-blue-50">
                     Real
@@ -180,61 +221,70 @@ function ClienteSection({
         </td>
       </tr>
 
-      {/* Fila Backlog */}
-      <tr className="border-t border-stone-100 hover:bg-stone-50/40 transition-colors">
-        <td className="py-1.5 px-3 pl-6 text-stone-600 sticky left-0 bg-white z-10">
-          Backlog
-        </td>
-        {months.map((m) => {
-          const monthData = cliente.meses[m];
-          if (!monthData) {
-            return (
-              <td key={m} className="py-1.5 px-2 text-right tabular-nums text-stone-400">
-                -
-              </td>
-            );
-          }
-
-          // Backlog = ftesReales si existe, sino ftesAsignados
-          const backlog = monthData.ftesReales ?? monthData.ftesAsignados;
-
-          return (
-            <td key={m} className="py-1.5 px-2 text-right tabular-nums text-stone-600">
-              {backlog > 0 ? fmtFte(backlog) : <span className="text-stone-300">-</span>}
+      {/* Subfilas (solo si expandido) */}
+      {isExpanded && (
+        <>
+          {/* Subfila: Backlog */}
+          <tr className="border-t border-stone-100 hover:bg-stone-50/40 transition-colors">
+            <td className="py-1.5 px-3 pl-8 text-stone-600 text-[11px] sticky left-0 bg-white z-10">
+              Backlog
             </td>
-          );
-        })}
-        <td className="py-1.5 px-3 text-right tabular-nums font-semibold bg-stone-50/60 text-stone-600">
-          -
-        </td>
-      </tr>
+            {months.map((m) => {
+              const monthData = cliente.meses[m];
+              if (!monthData) {
+                return (
+                  <td key={m} className="py-1.5 px-2 text-right tabular-nums text-stone-400">
+                    -
+                  </td>
+                );
+              }
 
-      {/* Fila Potencial */}
-      <tr className="border-t border-stone-100 hover:bg-stone-50/40 transition-colors">
-        <td className="py-1.5 px-3 pl-6 text-amber-600 sticky left-0 bg-white z-10">
-          Potencial
-        </td>
-        {months.map((m) => {
-          const monthData = cliente.meses[m];
-          if (!monthData) {
-            return (
-              <td key={m} className="py-1.5 px-2 text-right tabular-nums text-stone-400">
-                -
-              </td>
-            );
-          }
+              // Backlog = ftesReales ?? ftesAsignados
+              const backlog = monthData.ftesReales ?? monthData.ftesAsignados;
 
-          // Potencial forzado a 0 (funcionalidad no implementada aún)
-          return (
-            <td key={m} className="py-1.5 px-2 text-right tabular-nums text-amber-600">
-              <span className="text-stone-300">-</span>
+              return (
+                <td key={m} className="py-1.5 px-2 text-right tabular-nums text-stone-600">
+                  {backlog > 0 ? fmtFte(backlog) : <span className="text-stone-300">-</span>}
+                </td>
+              );
+            })}
+            <td className="py-1.5 px-3 text-right tabular-nums font-semibold bg-stone-50/60 text-stone-600">
+              -
             </td>
-          );
-        })}
-        <td className="py-1.5 px-3 text-right tabular-nums font-semibold bg-stone-50/60 text-amber-600">
-          -
-        </td>
-      </tr>
+          </tr>
+
+          {/* Subfila: Potencial */}
+          <tr className="border-t border-stone-100 hover:bg-stone-50/40 transition-colors">
+            <td className="py-1.5 px-3 pl-8 text-amber-600 text-[11px] sticky left-0 bg-white z-10">
+              Potencial
+            </td>
+            {months.map((m) => {
+              const monthData = cliente.meses[m];
+              if (!monthData) {
+                return (
+                  <td key={m} className="py-1.5 px-2 text-right tabular-nums text-stone-400">
+                    -
+                  </td>
+                );
+              }
+
+              // Potencial = ftesNoAsignados (actualmente 0, mostrar "-")
+              // TODO: Cuando se implemente funcionalidad potencial, descomentar:
+              // const potencial = monthData.ftesNoAsignados;
+              // return potencial > 0 ? fmtFte(potencial) : "-";
+
+              return (
+                <td key={m} className="py-1.5 px-2 text-right tabular-nums text-amber-600">
+                  <span className="text-stone-300">-</span>
+                </td>
+              );
+            })}
+            <td className="py-1.5 px-3 text-right tabular-nums font-semibold bg-stone-50/60 text-amber-600">
+              -
+            </td>
+          </tr>
+        </>
+      )}
     </>
   );
 }
