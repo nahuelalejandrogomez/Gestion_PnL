@@ -6,6 +6,7 @@ import { ClientesList, ClienteDetail } from './features/clientes';
 import { ProyectosList, ProyectoDetail } from './features/proyectos';
 import { TarifariosPage, TarifarioDetail } from './features/tarifarios';
 import { ConfiguracionPage } from './features/config';
+import { RollingPage } from './features/rolling/components';
 
 function DashboardPage() {
   return (
@@ -49,10 +50,7 @@ export function App() {
               element={<PlaceholderPage title="Contratos" />}
             />
             <Route path="/pnl" element={<PlaceholderPage title="P&L" />} />
-            <Route
-              path="/rolling"
-              element={<PlaceholderPage title="Rolling" />}
-            />
+            <Route path="/rolling" element={<RollingPage />} />
             <Route path="/configuracion" element={<ConfiguracionPage />} />
           </Route>
         </Routes>

@@ -8,44 +8,19 @@ import { Badge } from '@/components/ui/badge';
 import { useProyectoPnlYear, useClientePnlYear } from '../hooks/useProyectoPnl';
 import { usePnlRealData } from '../hooks/usePnlRealData';
 import { EditablePnlCell } from './EditablePnlCell';
-
-const MONTH_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+import {
+  type Moneda,
+  MONTH_LABELS,
+  fmtCurrency,
+  fmtPct,
+  fmtFte,
+  colorForGm,
+  colorForDiff,
+} from '../utils/pnl.format';
 
 interface Props {
   proyectoId?: string;
   clienteId?: string;
-}
-
-type Moneda = 'USD' | 'ARS';
-
-// Formato de moneda sin abreviaciones (números completos)
-function fmtCurrency(val: number, moneda: Moneda): string {
-  const symbol = moneda === 'USD' ? 'USD' : 'ARS';
-  const formatted = Math.round(val).toLocaleString('en-US');
-  return `${symbol} ${formatted}`;
-}
-
-function fmtPct(val: number | null): string {
-  if (val === null) return '-';
-  return `${val.toFixed(1)}%`;
-}
-
-function fmtFte(val: number): string {
-  if (val === 0) return '-';
-  return val.toFixed(1);
-}
-
-function colorForGm(gm: number | null): string {
-  if (gm === null) return 'text-stone-400';
-  if (gm >= 40) return 'text-emerald-600';
-  if (gm >= 20) return 'text-amber-600';
-  return 'text-red-600';
-}
-
-function colorForDiff(diff: number): string {
-  if (diff > 0) return 'text-emerald-600';
-  if (diff < 0) return 'text-red-600';
-  return 'text-stone-500';
 }
 
 export function ProyectoPnlGrid({ proyectoId, clienteId }: Props) {
