@@ -8,6 +8,24 @@ export class PrismaService
 {
   private readonly logger = new Logger(PrismaService.name);
 
+  constructor() {
+    // Configurar pool de conexiones optimizado para Railway
+    const databaseUrl = process.env.DATABASE_URL || '';
+    const urlWithPool = databaseUrl.includes('?')
+      ? `${databaseUrl}&connection_limit=5&pool_timeout=10`
+      : `${databaseUrl}?connection_limit=5&pool_timeout=10`;
+
+    super({
+      datasources: {
+        db: {
+          url: urlWithPool,
+        },
+      },
+    });
+
+    this.logger.log('Prisma initialized with connection pool: limit=5, timeout=10s');
+  }
+
   async onModuleInit() {
     try {
       await this.$connect();
