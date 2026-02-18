@@ -473,6 +473,28 @@
 
 ## CHANGELOG
 
+### v1.8.1 - 2025-02-18 (BUGFIX INFRA: TCP_OVERWINDOW y Node.js)
+
+**Problemas de Infraestructura Resueltos**:
+- ❌ **TCP_OVERWINDOW**: Múltiples warnings en Railway logs
+  - **Causa**: Pool de conexiones saturado (5 conexiones), falta de PgBouncer
+  - ✅ **Solución**:
+    - Reducir pool a 3 conexiones
+    - Habilitar `pgbouncer=true`
+    - Reducir timeouts (pool_timeout=5s, connect_timeout=10s)
+    - Deshabilitar statement cache
+- ❌ **Node.js 20.18.1**: Vite requiere 20.19+ o 22.12+
+  - ✅ **Solución**: Actualizar nixpacks.toml a `nodejs_22`
+
+**Archivos modificados**:
+- `prisma.service.ts`: Pool optimizado con parámetros PgBouncer
+- `*/nixpacks.toml`: Node.js 22 en todos los servicios
+- `frontend/nixpacks.toml`: Comando `pnpm preview` en lugar de `npx serve`
+
+**Impacto**: Reducción significativa de warnings TCP, mejor estabilidad de conexiones, cumplimiento de requisitos de Vite
+
+---
+
 ### v1.8.0 - 2025-02-18 (ÉPICA 4: Mejoras UX y Filtros Avanzados)
 
 **Completado**:
@@ -491,8 +513,8 @@
 
 ---
 
-**VERSIÓN**: 1.8.0  
-**ÚLTIMA ACTUALIZACIÓN**: ÉPICA 4 Mejoras UX y Filtros Avanzados  
+**VERSIÓN**: 1.8.1
+**ÚLTIMA ACTUALIZACIÓN**: BUGFIX - TCP_OVERWINDOW y actualización Node.js 22
 **PRÓXIMA REVISIÓN**: Export a Excel y filtros adicionales
 
 ---
