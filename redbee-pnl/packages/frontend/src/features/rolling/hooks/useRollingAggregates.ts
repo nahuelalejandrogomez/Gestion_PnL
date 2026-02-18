@@ -51,18 +51,17 @@ export function useRollingAggregates(data: RollingData | undefined): RollingAggr
         const clienteBacklog = monthData.ftesReales ?? monthData.ftesAsignados;
         backlogMonth += clienteBacklog;
 
-        // Potencial = ftesNoAsignados
-        // TODO: API aún NO retorna revenue.noAsignado (siempre 0)
-        // Habilitar validación cuando se desarrolle funcionalidad de potencial
-        potencialMonth += monthData.ftesNoAsignados;
+        // Potencial = 0 (funcionalidad no implementada aún)
+        // TODO: Implementar cálculo de potencial cuando se desarrolle la funcionalidad
+        // potencialMonth += monthData.ftesNoAsignados;
       }
 
-      // Total = Backlog + Potencial
-      const totalMonth = backlogMonth + potencialMonth;
+      // Total = Backlog solamente (potencial = 0 por ahora)
+      const totalMonth = backlogMonth;
 
-      // Validación: total debe = backlog + potencial
-      const discrepancy = Math.abs(totalMonth - (backlogMonth + potencialMonth));
-      const isValid = discrepancy <= 0.01; // Tolerancia para errores de float
+      // Validación: total debe = backlog (potencial siempre 0 por ahora)
+      const discrepancy = Math.abs(totalMonth - backlogMonth);
+      const isValid = discrepancy <= 0.01;
 
       if (!isValid) {
         hasDiscrepancies = true;

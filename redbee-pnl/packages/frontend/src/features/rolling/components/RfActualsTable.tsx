@@ -224,11 +224,10 @@ function ClienteSection({
             );
           }
 
-          const potencial = monthData.ftesNoAsignados;
-
+          // Potencial forzado a 0 (funcionalidad no implementada aún)
           return (
             <td key={m} className="py-1.5 px-2 text-right tabular-nums text-amber-600">
-              {potencial > 0 ? fmtFte(potencial) : <span className="text-stone-300">-</span>}
+              <span className="text-stone-300">-</span>
             </td>
           );
         })}
