@@ -215,7 +215,18 @@ function ClienteSection({
           );
         })}
         <td className="py-2 px-3 text-right tabular-nums font-bold text-stone-900 bg-stone-100/60">
-          {fmtFte(cliente.totalesAnuales.ftes)}
+          {(() => {
+            // Total anual = suma de backlog mensual (NO promedio, NO incluye potencial)
+            let totalAnual = 0;
+            for (let m = 1; m <= 12; m++) {
+              const monthData = cliente.meses[m];
+              if (monthData) {
+                const monthBacklog = monthData.ftesReales ?? monthData.ftesAsignados;
+                totalAnual += monthBacklog;
+              }
+            }
+            return fmtFte(totalAnual);
+          })()}
         </td>
       </tr>
 
@@ -320,7 +331,14 @@ function TotalesSection({
           );
         })}
         <td className="py-2 px-3 text-right tabular-nums font-bold text-stone-900 bg-stone-200/60">
-          {fmtFte(aggregates.annual.total)}
+          {(() => {
+            // Total anual = suma de totales mensuales (NO promedio)
+            let totalAnual = 0;
+            for (let m = 1; m <= 12; m++) {
+              totalAnual += aggregates.byMonth[m].total;
+            }
+            return fmtFte(totalAnual);
+          })()}
         </td>
       </tr>
 
@@ -338,7 +356,14 @@ function TotalesSection({
           );
         })}
         <td className="py-1.5 px-3 text-right tabular-nums font-semibold bg-stone-50/60 text-stone-700">
-          {fmtFte(aggregates.annual.backlog)}
+          {(() => {
+            // Total anual = suma de backlog mensuales (NO promedio)
+            let backlogAnual = 0;
+            for (let m = 1; m <= 12; m++) {
+              backlogAnual += aggregates.byMonth[m].backlog;
+            }
+            return fmtFte(backlogAnual);
+          })()}
         </td>
       </tr>
 
@@ -356,7 +381,14 @@ function TotalesSection({
           );
         })}
         <td className="py-1.5 px-3 text-right tabular-nums font-semibold bg-stone-50/60 text-amber-700">
-          {fmtFte(aggregates.annual.potencial)}
+          {(() => {
+            // Total anual = suma de potenciales mensuales (NO promedio)
+            let potencialAnual = 0;
+            for (let m = 1; m <= 12; m++) {
+              potencialAnual += aggregates.byMonth[m].potencial;
+            }
+            return fmtFte(potencialAnual);
+          })()}
         </td>
       </tr>
     </>
