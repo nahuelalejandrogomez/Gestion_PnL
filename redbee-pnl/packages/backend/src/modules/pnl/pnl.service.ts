@@ -160,7 +160,11 @@ export class PnlService {
 
       this.prisma.asignacionRecurso.findMany({
         where: { proyectoId },
-        include: {
+        select: {
+          id: true,
+          porcentajeAsignacion: true,
+          fechaDesde: true,
+          fechaHasta: true,
           recurso: {
             select: {
               id: true,
@@ -250,19 +254,40 @@ export class PnlService {
     for (const asig of asignaciones) {
       const baseCosto = Number(asig.recurso.costoMensual);
       const recursoId = asig.recurso.id;
+      const basePct = Number(asig.porcentajeAsignacion);
 
-      for (const mes of asig.meses) {
-        const pct = Number(mes.porcentajeAsignacion);
+      // Construir mapa de meses con datos reales del planner
+      const mesPlannerMap = new Map(asig.meses.map((m) => [m.month, m]));
+
+      for (let m = 1; m <= 12; m++) {
+        let pct: number;
+
+        if (mesPlannerMap.has(m)) {
+          // Caso 1: Hay datos en el Allocation Planner → usar el % mensual
+          pct = Number(mesPlannerMap.get(m)!.porcentajeAsignacion);
+        } else {
+          // Caso 2: Sin datos en planner → fallback al % base de la asignación
+          // Solo si el mes cae dentro del rango fechaDesde-fechaHasta
+          const fechaDelMes = new Date(year, m - 1, 1); // Primer día del mes
+          const finDelMes = new Date(year, m, 0);        // Último día del mes
+          const desde = new Date(asig.fechaDesde);
+          const hasta = asig.fechaHasta ? new Date(asig.fechaHasta) : null;
+
+          const mesActivo =
+            desde <= finDelMes && (hasta === null || hasta >= fechaDelMes);
+
+          pct = mesActivo ? basePct : 0;
+        }
+
         if (pct === 0) continue;
         const fte = pct / 100;
 
         // Sumar FTE asignado (ANY, sin importar perfil)
-        assignedByMonth[mes.month] += fte;
+        assignedByMonth[m] += fte;
 
         // Sumar costo
-        const costForMonth =
-          salaryOverrides[recursoId]?.[mes.month] ?? baseCosto;
-        costByMonthARS[mes.month] += costForMonth * (pct / 100);
+        const costForMonth = salaryOverrides[recursoId]?.[m] ?? baseCosto;
+        costByMonthARS[m] += costForMonth * (pct / 100);
       }
     }
 
