@@ -253,6 +253,7 @@ export class PnlService {
 
     for (const asig of asignaciones) {
       const baseCosto = Number(asig.recurso.costoMensual);
+      const monedaCosto = asig.recurso.monedaCosto; // 'ARS' | 'USD'
       const recursoId = asig.recurso.id;
       const basePct = Number(asig.porcentajeAsignacion);
 
@@ -280,14 +281,27 @@ export class PnlService {
         }
 
         if (pct === 0) continue;
-        const fte = pct / 100;
 
         // Sumar FTE asignado (ANY, sin importar perfil)
-        assignedByMonth[m] += fte;
+        assignedByMonth[m] += pct / 100;
 
-        // Sumar costo
-        const costForMonth = salaryOverrides[recursoId]?.[m] ?? baseCosto;
-        costByMonthARS[m] += costForMonth * (pct / 100);
+        // Costo nativo del recurso (en su moneda original: ARS o USD)
+        const costNative = salaryOverrides[recursoId]?.[m] ?? baseCosto;
+
+        // Convertir a ARS (igual que el Planner: si USD → multiply by FX)
+        let costArs: number;
+        if (monedaCosto === 'USD') {
+          const fx = fxMap[m];
+          costArs = fx && fx > 0 ? costNative * fx : 0;
+        } else {
+          costArs = costNative;
+        }
+
+        // Aplicar overhead de empresa (igual que el Planner: costoBase * (1 + pct/100))
+        const costWithOverhead = costArs * (1 + costoEmpresaPct / 100);
+
+        // Acumular en ARS (se convierte a USD más adelante con /fx)
+        costByMonthARS[m] += costWithOverhead * (pct / 100);
       }
     }
 
@@ -375,12 +389,6 @@ export class PnlService {
 
       const diffAmount = assignedRevenue - costTotal;
 
-      // Indicadores de negocio
-      const margenReal = assignedRevenue - costTotal;
-      const margenPotencial = forecastRevenue - costTotal;
-      const coberturaRatio = fteForecast > 0 ? fteAssigned / fteForecast : 0;
-      const coberturaRatioPct = coberturaRatio > 0 ? coberturaRatio * 100 : null;
-
       meses[m] = {
         revenue: {
           forecast: round2(forecastRevenue),
@@ -464,11 +472,6 @@ export class PnlService {
     const gmPctAnual = acc.revAsignado > 0
       ? ((acc.revAsignado - acc.costTotal) / acc.revAsignado) * 100
       : null;
-
-    // Nuevos indicadores anuales
-    const margenRealAnual = acc.revAsignado - acc.costTotal;
-    const margenPotencialAnual = acc.revForecast - acc.costTotal;
-    const coberturaAnual = acc.ftesForecast > 0 ? (acc.ftesAsignados / acc.ftesForecast) * 100 : null;
 
     const totalesAnuales: PnlMonthData = {
       revenue: {
