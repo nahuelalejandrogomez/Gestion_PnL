@@ -449,19 +449,23 @@ export function AsignacionesPlanner({ proyectoId }: Props) {
   // Revenue plan data for vacancy computation
   const { data: planData } = usePlanLineas(proyectoId, year);
 
-  // Compute vacancies from revenue plan
+  // Compute vacancies from revenue plan (profile-agnostic: any assigned resource fills any vacancy)
   const vacancies = useMemo(() => {
     if (!planData?.lineas || planData.lineas.length === 0) return [];
 
     const result: { perfilNombre: string; perfilNivel: string | null; needed: number; filled: number }[] = [];
+
+    // Total assigned resources (any profile can fill any vacancy)
+    let remainingAssigned = rows.length;
 
     for (const linea of planData.lineas) {
       const maxFte = Math.max(...Object.values(linea.meses), 0);
       const neededSlots = Math.ceil(maxFte);
       if (neededSlots <= 0) continue;
 
-      // Count existing assignments matching this perfil by name
-      const filledSlots = rows.filter((r) => r.perfilNombre === linea.perfilNombre).length;
+      // Fill slots greedily with any assigned resource, regardless of profile
+      const filledSlots = Math.min(neededSlots, remainingAssigned);
+      remainingAssigned -= filledSlots;
 
       if (neededSlots > filledSlots) {
         result.push({
