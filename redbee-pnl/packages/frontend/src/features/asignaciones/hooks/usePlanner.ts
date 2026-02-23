@@ -9,6 +9,7 @@ import type { UpsertMesBatchDto, UpsertCostosManualesDto } from '../types/asigna
 
 export const PLANNER_QUERY_KEY = 'planner';
 export const COSTOS_MANUALES_QUERY_KEY = 'costos-manuales';
+const ROLLING_QUERY_KEY = 'rolling-data';
 
 export function usePlannerData(proyectoId: string, year: number) {
   return useQuery({
@@ -28,6 +29,7 @@ export function usePlannerSave(proyectoId: string) {
       queryClient.invalidateQueries({ queryKey: [PLANNER_QUERY_KEY, proyectoId] });
       queryClient.invalidateQueries({ queryKey: [PNL_QUERY_KEY, proyectoId] });
       queryClient.invalidateQueries({ queryKey: [ASIGNACIONES_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [ROLLING_QUERY_KEY] });
       toast.success(`${result.updated} celdas guardadas`);
     },
     onError: (error: Error & { response?: { data?: { message?: string | string[] } } }) => {
@@ -76,6 +78,8 @@ export function usePlannerDeleteAsignacion() {
       queryClient.invalidateQueries({ queryKey: [PLANNER_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [ASIGNACIONES_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [PROYECTOS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [PNL_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [ROLLING_QUERY_KEY] });
       toast.success('Recurso removido del proyecto');
     },
     onError: (error: Error & { response?: { data?: { message?: string } } }) => {
@@ -111,9 +115,10 @@ export function useUpsertRecursoCosto(proyectoId: string, year: number) {
     mutationFn: ({ recursoId, month, costoMensual }: { recursoId: string; month: number; costoMensual: number }) =>
       asignacionesApi.upsertRecursoCosto(recursoId, year, [{ month, costoMensual }]),
     onSuccess: () => {
-      // Invalidate recursos costos and planner to recalculate costs
       queryClient.invalidateQueries({ queryKey: [RECURSOS_COSTOS_QUERY_KEY, proyectoId, year] });
       queryClient.invalidateQueries({ queryKey: [PLANNER_QUERY_KEY, proyectoId, year] });
+      queryClient.invalidateQueries({ queryKey: [PNL_QUERY_KEY, proyectoId] });
+      queryClient.invalidateQueries({ queryKey: [ROLLING_QUERY_KEY] });
       toast.success('Sueldo actualizado');
     },
     onError: (error: Error & { response?: { data?: { message?: string } } }) => {
@@ -135,6 +140,8 @@ export function useDeleteRecursoCosto(proyectoId: string, year: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [RECURSOS_COSTOS_QUERY_KEY, proyectoId, year] });
       queryClient.invalidateQueries({ queryKey: [PLANNER_QUERY_KEY, proyectoId, year] });
+      queryClient.invalidateQueries({ queryKey: [PNL_QUERY_KEY, proyectoId] });
+      queryClient.invalidateQueries({ queryKey: [ROLLING_QUERY_KEY] });
       toast.success('Override eliminado - usando sueldo base');
     },
     onError: (error: Error & { response?: { data?: { message?: string } } }) => {
@@ -165,6 +172,7 @@ export function useSaveCostosManuales(proyectoId: string, year: number) {
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: [COSTOS_MANUALES_QUERY_KEY, proyectoId, year] });
       queryClient.invalidateQueries({ queryKey: [PNL_QUERY_KEY, proyectoId] });
+      queryClient.invalidateQueries({ queryKey: [ROLLING_QUERY_KEY] });
       toast.success(`${result.updated} meses de costos manuales guardados`);
     },
     onError: (error: Error & { response?: { data?: { message?: string } } }) => {
