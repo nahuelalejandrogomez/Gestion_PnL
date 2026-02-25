@@ -146,6 +146,12 @@ enum NivelSkill {
   EXPERTO
 }
 
+enum EstadoPotencial {
+  ACTIVO
+  GANADO
+  PERDIDO
+}
+
 // ============================================
 // ENTIDADES PRINCIPALES
 // ============================================
@@ -170,6 +176,7 @@ model Cliente {
   tarifarios      Tarifario[]
   presupuestos    ClientePresupuesto[]
   pnlMesesReales  ClientePnlMesReal[]
+  potenciales     ClientePotencial[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -205,6 +212,7 @@ model Proyecto {
   presupuestos         ProyectoPresupuesto[]
   tarifarioPlans       ProyectoTarifarioPlan[]
   costosManuales       ProyectoCostoManualesMes[]
+  potencialesConvertidos ClientePotencial[]       // Potenciales que dieron origen a este proyecto
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -295,9 +303,10 @@ model Perfil {
   estado      EstadoPerfil @default(ACTIVO)
   descripcion String?      @db.Text
 
-  lineasTarifario LineaTarifario[]
-  recursos        Recurso[]
-  planLineas      ProyectoPlanLinea[]
+  lineasTarifario    LineaTarifario[]
+  recursos           Recurso[]
+  planLineas         ProyectoPlanLinea[]
+  potencialLineas    ClientePotencialLinea[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -840,6 +849,73 @@ model ClientePnlMesReal {
   @@unique([clienteId, year, month])
   @@index([clienteId, year])
   @@map("cliente_pnl_mes_real")
+}
+
+// ============================================
+// ÉPICA POTENCIAL
+// ============================================
+
+// Oportunidad comercial a nivel cliente (no es un Proyecto).
+// probabilidadCierre es requerida para poder ponderar el bloque Potencial en el P&L.
+// Al ganar: se crea un Proyecto nuevo y se registra la FK en proyectoId (trazabilidad).
+model ClientePotencial {
+  id                   String           @id @default(uuid())
+  clienteId            String
+  nombre               String
+  descripcion          String?          @db.Text
+  probabilidadCierre   Decimal          @db.Decimal(5, 2) // 0..100 — REQUERIDO
+  estado               EstadoPotencial  @default(ACTIVO)
+  fechaEstimadaCierre  DateTime?
+  moneda               Moneda           @default(USD)
+  notas                String?          @db.Text
+  proyectoId           String?          // FK→Proyecto; se setea al convertir a GANADO
+
+  cliente   Cliente                @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  proyecto  Proyecto?              @relation(fields: [proyectoId], references: [id])
+  lineas    ClientePotencialLinea[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([clienteId, estado])
+  @@map("cliente_potenciales")
+}
+
+// Línea de un potencial: perfil anónimo + meses con FTEs y revenue estimado.
+model ClientePotencialLinea {
+  id          String @id @default(uuid())
+  potencialId String
+  perfilId    String
+  nombreLinea String? // ej: "Dev SR #1"
+
+  potencial ClientePotencial          @relation(fields: [potencialId], references: [id], onDelete: Cascade)
+  perfil    Perfil                    @relation(fields: [perfilId], references: [id])
+  meses     ClientePotencialLineaMes[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("cliente_potencial_lineas")
+}
+
+// Valores mensuales de una línea de potencial.
+model ClientePotencialLineaMes {
+  id               String  @id @default(uuid())
+  lineaId          String
+  year             Int
+  month            Int     // 1..12
+  ftes             Decimal @default(0) @db.Decimal(6, 2)
+  revenueEstimado  Decimal @default(0) @db.Decimal(15, 2)
+
+  linea ClientePotencialLinea @relation(fields: [lineaId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([lineaId, year, month])
+  @@map("cliente_potencial_lineas_mes")
 }
 
 // ============================================

@@ -15,6 +15,7 @@ import { PlanLineasModule } from './modules/plan-lineas/plan-lineas.module';
 import { PresupuestoModule } from './modules/presupuesto/presupuesto.module';
 import { ClientePresupuestosModule } from './modules/cliente-presupuestos/cliente-presupuestos.module';
 import { ProyectoTarifarioPlanModule } from './modules/proyecto-tarifario-plan/proyecto-tarifario-plan.module';
+import { ClientePotencialesModule } from './modules/cliente-potenciales/cliente-potenciales.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { ProyectoTarifarioPlanModule } from './modules/proyecto-tarifario-plan/p
     PresupuestoModule,
     ClientePresupuestosModule,
     ProyectoTarifarioPlanModule,
+    ClientePotencialesModule,
   ],
   controllers: [AppController],
 })

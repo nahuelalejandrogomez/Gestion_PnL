@@ -76,6 +76,15 @@ export interface AnalisisBrechaAnual {
   coberturaActual: number | null; // % cobertura
 }
 
+// Bloque Potencial: separado del bloque confirmado, nunca se suma a meses/totalesAnuales.
+// Solo se calcula en P&L de cliente (no de proyecto individual).
+// Fuente exclusiva: ClientePotencial con estado=ACTIVO ponderados por probabilidadCierre.
+export interface PotencialMes {
+  ftePotencial: number;     // sum(linea.ftes[mes] × prob/100)
+  fcstRevPot: number;       // sum(linea.revenueEstimado[mes] × prob/100)
+  forecastCostPot: number;  // siempre 0: sin costo de nómina asociado al potencial
+}
+
 export interface PnlYearResult {
   proyectoId: string;
   proyectoNombre: string;
@@ -86,10 +95,25 @@ export interface PnlYearResult {
   meses: Record<number, PnlMonthData>;
   totalesAnuales: PnlMonthData;
   indicadoresNegocio: IndicadoresNegocio; // 16 indicadores de negocio
+  // Bloque Potencial — separado del confirmado (REGLA: nunca mezclar con meses/totalesAnuales)
+  potencial: {
+    meses: Record<number, PotencialMes>;
+    anual: PotencialMes;
+  };
 }
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+function emptyPotencialMes(): PotencialMes {
+  return { ftePotencial: 0, fcstRevPot: 0, forecastCostPot: 0 };
+}
+
+function buildEmptyPotencialBlock(): PnlYearResult['potencial'] {
+  const meses: Record<number, PotencialMes> = {};
+  for (let m = 1; m <= 12; m++) meses[m] = emptyPotencialMes();
+  return { meses, anual: emptyPotencialMes() };
 }
 
 @Injectable()
@@ -551,6 +575,8 @@ export class PnlService {
       meses,
       totalesAnuales,
       indicadoresNegocio,
+      // Potencial siempre vacío a nivel proyecto; se calcula en calculateClientePnlYear
+      potencial: buildEmptyPotencialBlock(),
     };
   }
 
@@ -609,31 +635,115 @@ export class PnlService {
       );
     }
 
-    // 2. Obtener todos los proyectos activos del cliente
+    // 2. Obtener proyectos confirmados del cliente (excluye CERRADO, POTENCIAL, TENTATIVO)
     const proyectos = await this.prisma.proyecto.findMany({
       where: {
         clienteId,
         deletedAt: null,
-        estado: { not: 'CERRADO' },
+        estado: { notIn: ['CERRADO', 'POTENCIAL', 'TENTATIVO'] },
       },
       select: { id: true, nombre: true },
     });
 
-    // Si no hay proyectos, retornar P&L vacío
-    if (proyectos.length === 0) {
-      return this.createEmptyPnlYear(clienteId, cliente.nombre, year);
+    // 3. Calcular bloque Potencial y P&L de proyectos en paralelo
+    const [pnlProyectos, potencialBlock] = await Promise.all([
+      proyectos.length > 0
+        ? Promise.all(proyectos.map((p) => this.calculatePnlYear(p.id, year)))
+        : Promise.resolve([]),
+      this.calculatePotencialBlock(clienteId, year),
+    ]);
+
+    // Si no hay proyectos, retornar P&L vacío con el bloque Potencial calculado
+    if (pnlProyectos.length === 0) {
+      const emptyResult = this.createEmptyPnlYear(clienteId, cliente.nombre, year);
+      emptyResult.potencial = potencialBlock;
+      this.injectPotencialIntoIndicadores(emptyResult, potencialBlock);
+      return emptyResult;
     }
 
-    // 3. Obtener P&L de cada proyecto
-    const pnlProyectos = await Promise.all(
-      proyectos.map((p) => this.calculatePnlYear(p.id, year)),
-    );
-
-    // 4. Consolidar (sumar) todos los P&L
+    // 4. Consolidar (sumar) todos los P&L de proyectos confirmados
     const pnlConsolidado = this.consolidatePnls(pnlProyectos, clienteId, cliente.nombre, year);
 
     // 5. Mezclar datos reales ingresados manualmente
-    return this.mixRealDataIntoMonths(pnlConsolidado, clienteId, year);
+    const resultado = await this.mixRealDataIntoMonths(pnlConsolidado, clienteId, year);
+
+    // 6. Inyectar bloque Potencial (separado — no altera meses ni totalesAnuales del confirmado)
+    resultado.potencial = potencialBlock;
+    this.injectPotencialIntoIndicadores(resultado, potencialBlock);
+
+    return resultado;
+  }
+
+  /**
+   * Calcula el bloque Potencial de un cliente para un año dado.
+   * Fuente exclusiva: ClientePotencial con estado=ACTIVO.
+   * Los valores NO se suman a revenue, costos ni totalesAnuales del bloque confirmado.
+   */
+  private async calculatePotencialBlock(
+    clienteId: string,
+    year: number,
+  ): Promise<PnlYearResult['potencial']> {
+    const potenciales = await this.prisma.clientePotencial.findMany({
+      where: { clienteId, estado: 'ACTIVO', deletedAt: null },
+      select: {
+        probabilidadCierre: true,
+        lineas: {
+          where: { deletedAt: null },
+          select: {
+            meses: {
+              where: { year },
+              select: { month: true, ftes: true, revenueEstimado: true },
+            },
+          },
+        },
+      },
+    });
+
+    const meses: Record<number, PotencialMes> = {};
+    for (let m = 1; m <= 12; m++) meses[m] = emptyPotencialMes();
+
+    for (const potencial of potenciales) {
+      const prob = Number(potencial.probabilidadCierre) / 100;
+      for (const linea of potencial.lineas) {
+        for (const mes of linea.meses) {
+          meses[mes.month].ftePotencial += Number(mes.ftes) * prob;
+          meses[mes.month].fcstRevPot += Number(mes.revenueEstimado) * prob;
+        }
+      }
+    }
+
+    // Redondear y calcular totales anuales
+    let ftePotencialAnual = 0;
+    let fcstRevPotAnual = 0;
+    for (let m = 1; m <= 12; m++) {
+      meses[m].ftePotencial = round2(meses[m].ftePotencial);
+      meses[m].fcstRevPot = round2(meses[m].fcstRevPot);
+      ftePotencialAnual += meses[m].ftePotencial;
+      fcstRevPotAnual += meses[m].fcstRevPot;
+    }
+
+    return {
+      meses,
+      anual: {
+        ftePotencial: round2(ftePotencialAnual),
+        fcstRevPot: round2(fcstRevPotAnual),
+        forecastCostPot: 0, // Por decisión: potencial no tiene costo de nómina
+      },
+    };
+  }
+
+  /**
+   * Propaga los totales anuales del bloque Potencial a indicadoresNegocio.
+   * Los campos ftePotencial y fcstRevPot en indicadoresNegocio ya estaban presentes
+   * como placeholders — ahora se populan con valores reales de ClientePotencial.
+   */
+  private injectPotencialIntoIndicadores(
+    result: PnlYearResult,
+    potencial: PnlYearResult['potencial'],
+  ): void {
+    result.indicadoresNegocio.ftePotencial = potencial.anual.ftePotencial;
+    result.indicadoresNegocio.fcstRevPot = potencial.anual.fcstRevPot;
+    result.indicadoresNegocio.forecastCostPot = 0; // Por decisión
   }
 
   /**
@@ -693,6 +803,7 @@ export class PnlService {
       meses,
       totalesAnuales: { ...emptyMonth },
       indicadoresNegocio: emptyIndicadores,
+      potencial: buildEmptyPotencialBlock(),
     };
   }
 
@@ -883,6 +994,8 @@ export class PnlService {
       meses,
       totalesAnuales,
       indicadoresNegocio,
+      // Potencial vacío aquí — calculateClientePnlYear lo reemplaza con valores reales
+      potencial: buildEmptyPotencialBlock(),
     };
   }
 
