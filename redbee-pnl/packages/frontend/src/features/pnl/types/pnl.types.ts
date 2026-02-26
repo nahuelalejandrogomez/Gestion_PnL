@@ -22,8 +22,8 @@ export interface PnlMonthIndicadores {
   blendCost: number | null;
 }
 
-// Bloque Potencial — fuente exclusiva: ClientePotencial con estado=ACTIVO
-// REGLA (potencial.md): nunca mezclar con meses/totalesAnuales del bloque confirmado
+// Bloque Potencial — fuente: ClientePotencial ACTIVO ponderado por probabilidadCierre.
+// Meses sin real: potencial SE SUMA al total. Meses con real: real sobrescribe.
 export interface PotencialMes {
   ftePotencial: number;    // sum(linea.ftes × prob/100) por mes
   fcstRevPot: number;      // sum(linea.revenueEstimado × prob/100) por mes
@@ -59,11 +59,14 @@ export interface PnlMonthData {
   revenue: PnlMonthRevenue;
   costos: PnlMonthCostos;
   indicadores: PnlMonthIndicadores;
-  // Datos reales ingresados manualmente (solo para Cliente P&L)
+  // Datos reales ingresados manualmente (solo Cliente P&L)
   revenueReal?: number | null;
   recursosReales?: number | null;
   otrosReales?: number | null;
   ftesReales?: number | null;
+  // Fuente del valor efectivo del mes (solo Cliente P&L)
+  // REAL: tiene ClientePnlMesReal | POTENCIAL: sin real, tiene ClientePotencial | ASIGNADO: solo asignaciones
+  fuente?: 'REAL' | 'POTENCIAL' | 'ASIGNADO';
 }
 
 // Estados posibles del proyecto (según modelo de negocio)

@@ -59,6 +59,13 @@ export interface PnlMonthData {
   revenue: PnlMonthRevenue;
   costos: PnlMonthCostos;
   indicadores: PnlMonthIndicadores;
+  // Datos reales ingresados manualmente (solo Cliente P&L)
+  revenueReal?: number | null;
+  recursosReales?: number | null;
+  otrosReales?: number | null;
+  ftesReales?: number | null;
+  // Fuente del valor efectivo del mes (solo Cliente P&L)
+  fuente?: 'REAL' | 'POTENCIAL' | 'ASIGNADO';
 }
 
 // Estados posibles del proyecto (según modelo de negocio)
@@ -76,9 +83,10 @@ export interface AnalisisBrechaAnual {
   coberturaActual: number | null; // % cobertura
 }
 
-// Bloque Potencial: separado del bloque confirmado, nunca se suma a meses/totalesAnuales.
-// Solo se calcula en P&L de cliente (no de proyecto individual).
-// Fuente exclusiva: ClientePotencial con estado=ACTIVO ponderados por probabilidadCierre.
+// Bloque Potencial: fuente exclusiva ClientePotencial con estado=ACTIVO, ponderado por probabilidadCierre.
+// Para meses sin real: potencial SE SUMA al total (asignado + potencial).
+// Para meses con real: el real sobrescribe al potencial.
+// El campo fuente en PnlMonthData indica el origen efectivo de cada mes.
 export interface PotencialMes {
   ftePotencial: number;     // sum(linea.ftes[mes] × prob/100)
   fcstRevPot: number;       // sum(linea.revenueEstimado[mes] × prob/100)
@@ -658,6 +666,7 @@ export class PnlService {
       const emptyResult = this.createEmptyPnlYear(clienteId, cliente.nombre, year);
       emptyResult.potencial = potencialBlock;
       this.injectPotencialIntoIndicadores(emptyResult, potencialBlock);
+      this.injectFuenteIntoMonths(emptyResult, potencialBlock);
       return emptyResult;
     }
 
@@ -667,9 +676,10 @@ export class PnlService {
     // 5. Mezclar datos reales ingresados manualmente
     const resultado = await this.mixRealDataIntoMonths(pnlConsolidado, clienteId, year);
 
-    // 6. Inyectar bloque Potencial (separado — no altera meses ni totalesAnuales del confirmado)
+    // 6. Inyectar bloque Potencial y fuente por mes
     resultado.potencial = potencialBlock;
     this.injectPotencialIntoIndicadores(resultado, potencialBlock);
+    this.injectFuenteIntoMonths(resultado, potencialBlock);
 
     return resultado;
   }
@@ -744,6 +754,27 @@ export class PnlService {
     result.indicadoresNegocio.ftePotencial = potencial.anual.ftePotencial;
     result.indicadoresNegocio.fcstRevPot = potencial.anual.fcstRevPot;
     result.indicadoresNegocio.forecastCostPot = 0; // Por decisión
+  }
+
+  /**
+   * Determina la fuente efectiva de cada mes y la inyecta en result.meses[m].fuente:
+   *   REAL      → mes tiene ClientePnlMesReal (revenueReal != null)
+   *   POTENCIAL → sin real pero tiene datos de ClientePotencial ACTIVO
+   *   ASIGNADO  → solo datos de asignaciones confirmadas
+   */
+  private injectFuenteIntoMonths(
+    result: PnlYearResult,
+    potencial: PnlYearResult['potencial'],
+  ): void {
+    for (let m = 1; m <= 12; m++) {
+      const month = result.meses[m] as any;
+      if (!month) continue;
+      const hasMesReal = month.revenueReal != null;
+      const hasPotencial =
+        (potencial?.meses[m]?.ftePotencial ?? 0) > 0 ||
+        (potencial?.meses[m]?.fcstRevPot ?? 0) > 0;
+      month.fuente = hasMesReal ? 'REAL' : hasPotencial ? 'POTENCIAL' : 'ASIGNADO';
+    }
   }
 
   /**

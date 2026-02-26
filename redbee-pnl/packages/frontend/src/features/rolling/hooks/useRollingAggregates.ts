@@ -64,6 +64,7 @@ export function useRollingAggregates(data: RollingData | undefined): RollingAggr
 
     // Calcular totales por mes
     for (let m = 1; m <= 12; m++) {
+      let totalMonth = 0;  // efectivo = real ?? (asignado + potencial)
       let backlogMonth = 0;
       let potencialMonth = 0;
 
@@ -72,19 +73,18 @@ export function useRollingAggregates(data: RollingData | undefined): RollingAggr
         const monthData = cliente.meses[m];
         if (!monthData) continue;
 
-        // Backlog = ftesReales ?? ftesAsignados
-        const clienteBacklog = monthData.ftesReales ?? monthData.ftesAsignados;
-        backlogMonth += clienteBacklog;
+        // Total efectivo: real si existe, sino asignado + potencial
+        totalMonth += monthData.ftesEfectivos;
 
-        // Potencial (B-26) — fuente: ClientePotencial ACTIVO ponderado
-        potencialMonth += monthData.ftePotencial;
+        // Backlog (confirmado) = ftesReales ?? ftesAsignados
+        backlogMonth += monthData.ftesReales ?? monthData.ftesAsignados;
+
+        // Potencial: solo contribuye en meses donde fuente === POTENCIAL
+        potencialMonth += monthData.fuente === 'POTENCIAL' ? monthData.ftePotencial : 0;
       }
 
-      // Total = Backlog solamente — REGLA (potencial.md): potencial NO suma al total confirmado
-      const totalMonth = backlogMonth;
-
-      // Validación: total debe = backlog (potencial se muestra separado)
-      const discrepancy = Math.abs(totalMonth - backlogMonth);
+      // Validación: total debe = backlog + potencial (invariante con nueva semántica)
+      const discrepancy = Math.abs(totalMonth - (backlogMonth + potencialMonth));
       const isValid = discrepancy <= 0.01;
 
       if (!isValid) {
@@ -93,6 +93,7 @@ export function useRollingAggregates(data: RollingData | undefined): RollingAggr
           total: totalMonth,
           backlog: backlogMonth,
           potencial: potencialMonth,
+          expected: backlogMonth + potencialMonth,
           discrepancy,
         });
       }
@@ -127,6 +128,7 @@ export function useRollingAggregates(data: RollingData | undefined): RollingAggr
     const revenueByMonth: Record<number, RevenueAggregate> = {};
 
     for (let m = 1; m <= 12; m++) {
+      let revTotalMonth = 0;
       let revBacklogMonth = 0;
       let revPotencialMonth = 0;
 
@@ -135,16 +137,15 @@ export function useRollingAggregates(data: RollingData | undefined): RollingAggr
         const monthData = cliente.meses[m];
         if (!monthData) continue;
 
-        // Backlog = revenueReal ?? revenueAsignado
-        const clienteBacklog = monthData.revenueReal ?? monthData.revenueAsignado;
-        revBacklogMonth += clienteBacklog;
+        // Total efectivo: real si existe, sino asignado + potencial
+        revTotalMonth += monthData.revenueEfectivo;
 
-        // Potencial (B-26) — fuente: ClientePotencial ACTIVO ponderado
-        revPotencialMonth += monthData.revenuePotencial;
+        // Backlog (confirmado) = revenueReal ?? revenueAsignado
+        revBacklogMonth += monthData.revenueReal ?? monthData.revenueAsignado;
+
+        // Potencial: solo contribuye en meses donde fuente === POTENCIAL
+        revPotencialMonth += monthData.fuente === 'POTENCIAL' ? monthData.revenuePotencial : 0;
       }
-
-      // Total = Backlog solamente — REGLA (potencial.md): potencial NO suma al total confirmado
-      const revTotalMonth = revBacklogMonth;
 
       // Budget = 0 (placeholder — B-18 presupuestos)
       const revBudgetMonth = 0;
@@ -153,8 +154,8 @@ export function useRollingAggregates(data: RollingData | undefined): RollingAggr
       const desvio = revTotalMonth - revBudgetMonth;
       const desvioPct = revBudgetMonth > 0 ? (desvio / revBudgetMonth) * 100 : null;
 
-      // Validación: total debe = backlog (potencial se muestra separado)
-      const revDiscrepancy = Math.abs(revTotalMonth - revBacklogMonth);
+      // Validación: total debe = backlog + potencial
+      const revDiscrepancy = Math.abs(revTotalMonth - (revBacklogMonth + revPotencialMonth));
       const revIsValid = revDiscrepancy <= 0.01;
 
       if (!revIsValid) {

@@ -64,10 +64,15 @@ export interface RollingMonthData {
   gross: number; // revenue - costos
   gmPct: number | null; // gross margin %
 
-  // Bloque Potencial (B-26) — fuente: ClientePotencial ACTIVO ponderado
-  // REGLA (potencial.md): NUNCA suma al total confirmado ni a gross/gmPct
-  ftePotencial: number;      // sum(linea.ftes × prob/100)
-  revenuePotencial: number;  // sum(linea.revenueEstimado × prob/100)
+  // Bloque Potencial — fuente: ClientePotencial ACTIVO ponderado por probabilidadCierre
+  // Meses sin real: potencial SE SUMA al efectivo. Meses con real: real sobrescribe.
+  ftePotencial: number;      // contribución potencial (para subfila desglose)
+  revenuePotencial: number;  // contribución potencial (para subfila desglose)
+
+  // Valores efectivos por mes: real si existe, sino asignado + potencial
+  revenueEfectivo: number;
+  ftesEfectivos: number;
+  fuente: 'REAL' | 'POTENCIAL' | 'ASIGNADO';
 }
 
 /**

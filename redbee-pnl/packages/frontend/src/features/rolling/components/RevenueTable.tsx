@@ -4,9 +4,10 @@
  * ÉPICA 3 US-008: Toggle USD/ARS y conversión moneda
  * ÉPICA 3 US-009: Totales Revenue y desvío Budget
  *
- * BUG FIX: Fila principal muestra SOLO backlog (igual que RfActualsTable)
- * - Fila principal expandible por cliente
- * - UX igual a P&L Cliente
+ * Semántica efectiva:
+ * - Fila principal muestra revenueEfectivo: real si existe, asignado+potencial si no
+ * - Badge "Real" (azul) si fuente=REAL, "Pot.*" (amber) si fuente=POTENCIAL
+ * - Expandible: subfila "Confirmado" + subfila "Potencial*"
  */
 
 import { useState } from 'react';
@@ -167,7 +168,7 @@ export function RevenueTable({ year, paisFilter, tipoComercialFilter }: RevenueT
           </p>
         )}
         <p className="text-xs text-stone-400 mt-2">
-          * Potencial ponderado por probabilidadCierre. No suma al total confirmado.
+          * Meses sin real = asignado + potencial ponderado por probabilidadCierre.
         </p>
       </CardContent>
     </Card>
@@ -237,23 +238,27 @@ function ClienteSection({
             );
           }
 
-          // Fila principal muestra SOLO backlog (lo que se va a facturar)
-          // NO suma potencial - esto hace que coincida con P&L Cliente
-          const hasReal = monthData.revenueReal !== null;
-          let backlog = monthData.revenueReal ?? monthData.revenueAsignado;
+          // Fila principal muestra revenueEfectivo: real si hay real, asignado+potencial si no
+          const fuente = monthData.fuente;
+          let efectivo = monthData.revenueEfectivo;
 
           // Convertir a ARS si aplica
           if (moneda === 'ARS') {
-            backlog = convertToARS(backlog, m, fxRates);
+            efectivo = convertToARS(efectivo, m, fxRates);
           }
 
           return (
             <td key={m} className="py-2 px-2 text-right tabular-nums font-semibold text-stone-800">
               <div className="flex items-center justify-end gap-1">
-                {backlog > 0 ? fmtCurrency(backlog, moneda) : <span className="text-stone-300">-</span>}
-                {hasReal && (
+                {efectivo > 0 ? fmtCurrency(efectivo, moneda) : <span className="text-stone-300">-</span>}
+                {fuente === 'REAL' && (
                   <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-blue-500 text-blue-600 bg-blue-50">
                     Real
+                  </Badge>
+                )}
+                {fuente === 'POTENCIAL' && (
+                  <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-amber-500 text-amber-600 bg-amber-50">
+                    Pot.*
                   </Badge>
                 )}
               </div>
@@ -262,16 +267,16 @@ function ClienteSection({
         })}
         <td className="py-2 px-3 text-right tabular-nums font-bold text-stone-900 bg-stone-100/60">
           {(() => {
-            // Total anual = suma de backlog mensual (NO incluye potencial)
+            // Total anual = suma de revenueEfectivo mensual
             let totalAnual = 0;
             for (let m = 1; m <= 12; m++) {
               const monthData = cliente.meses[m];
               if (monthData) {
-                let monthBacklog = monthData.revenueReal ?? monthData.revenueAsignado;
+                let monthEfectivo = monthData.revenueEfectivo;
                 if (moneda === 'ARS') {
-                  monthBacklog = convertToARS(monthBacklog, m, fxRates);
+                  monthEfectivo = convertToARS(monthEfectivo, m, fxRates);
                 }
-                totalAnual += monthBacklog;
+                totalAnual += monthEfectivo;
               }
             }
             return fmtCurrency(totalAnual, moneda);
@@ -282,10 +287,10 @@ function ClienteSection({
       {/* Subfilas (solo si expandido) */}
       {isExpanded && (
         <>
-          {/* Subfila: Backlog */}
+          {/* Subfila: Confirmado */}
           <tr className="border-t border-stone-100 hover:bg-stone-50/40 transition-colors">
             <td className="py-1.5 px-3 pl-8 text-stone-600 text-[11px] sticky left-0 bg-white z-10">
-              Backlog
+              Confirmado
             </td>
             {months.map((m) => {
               const monthData = cliente.meses[m];
@@ -424,10 +429,10 @@ function TotalesSection({
         </td>
       </tr>
 
-      {/* Fila Backlog TOTAL */}
+      {/* Fila Confirmado TOTAL */}
       <tr className="border-t border-stone-200 hover:bg-stone-50/40 transition-colors">
         <td className="py-1.5 px-3 pl-6 text-stone-700 font-semibold sticky left-0 bg-white z-10">
-          Backlog Total
+          Confirmado Total
         </td>
         {months.map((m) => {
           const revAgg = revenueAgg.byMonth[m];

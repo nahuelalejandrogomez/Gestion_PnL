@@ -35,8 +35,8 @@ export function ProyectoPnlGrid({ proyectoId, clienteId }: Props) {
     fte: false,
   });
 
-  // Toggle Potencial: mostrar/ocultar línea Potencial (solo Cliente view, default: visible)
-  // REGLA (potencial.md): la sección potencial nunca se suma a los totales confirmados
+  // Toggle Potencial: incluir/excluir potencial en el efectivo (solo Cliente view, default: visible)
+  // Nueva semántica: meses sin real → efectivo = asignado + potencial cuando showPotencial=true
   const [showPotencial, setShowPotencial] = useState(true);
 
   // Usar el hook correcto dependiendo de si es proyecto o cliente
@@ -105,6 +105,11 @@ export function ProyectoPnlGrid({ proyectoId, clienteId }: Props) {
       return revenueReal;
     }
 
+    // Si showPotencial y el mes es fuente POTENCIAL: efectivo = asignado + potencial
+    if (showPotencial && monthData.fuente === 'POTENCIAL') {
+      return monthData.revenue.asignado + (data.potencial?.meses[m]?.fcstRevPot ?? 0);
+    }
+
     return monthData.revenue.asignado;
   };
 
@@ -139,6 +144,11 @@ export function ProyectoPnlGrid({ proyectoId, clienteId }: Props) {
 
     if (ftesReal !== null && ftesReal !== undefined) {
       return ftesReal;
+    }
+
+    // Si showPotencial y el mes es fuente POTENCIAL: efectivo = asignado + potencial
+    if (showPotencial && monthData.fuente === 'POTENCIAL') {
+      return monthData.indicadores.ftesAsignados + (data.potencial?.meses[m]?.ftePotencial ?? 0);
     }
 
     return monthData.indicadores.ftesAsignados;
@@ -218,7 +228,7 @@ export function ProyectoPnlGrid({ proyectoId, clienteId }: Props) {
                     ? 'bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100'
                     : 'bg-white border-stone-200 text-stone-500 hover:bg-stone-50'
                 }`}
-                title="Alternar visualización del bloque Potencial"
+                title="Con potencial: meses sin real suman asignado + potencial ponderado"
               >
                 {showPotencial ? 'Con potencial' : 'Sin potencial'}
               </button>
@@ -313,6 +323,13 @@ export function ProyectoPnlGrid({ proyectoId, clienteId }: Props) {
                     getValue={getEffectiveRevenue}
                     fmt={fmt}
                     hasRealData={hasRealRevenue}
+                    getBadge={(m) => {
+                      const dirtyVal = realDataHook?.getDirtyValue(m, 'revenueReal');
+                      const revenueReal = dirtyVal !== undefined ? dirtyVal : data?.meses[m]?.revenueReal;
+                      if (revenueReal !== null && revenueReal !== undefined) return 'real';
+                      if (showPotencial && data?.meses[m]?.fuente === 'POTENCIAL') return 'potencial';
+                      return null;
+                    }}
                   />
 
                   {expandedSections.revenue && (
@@ -518,6 +535,13 @@ export function ProyectoPnlGrid({ proyectoId, clienteId }: Props) {
                     getValue={getEffectiveFtes}
                     fmt={(v) => v !== 0 ? fmtFte(v) : '-'}
                     hasRealData={hasRealFtes}
+                    getBadge={(m) => {
+                      const dirtyVal = realDataHook?.getDirtyValue(m, 'ftesReales');
+                      const ftesReal = dirtyVal !== undefined ? dirtyVal : data?.meses[m]?.ftesReales;
+                      if (ftesReal !== null && ftesReal !== undefined) return 'real';
+                      if (showPotencial && data?.meses[m]?.fuente === 'POTENCIAL') return 'potencial';
+                      return null;
+                    }}
                   />
 
                   {expandedSections.fte && (
@@ -733,60 +757,13 @@ export function ProyectoPnlGrid({ proyectoId, clienteId }: Props) {
                     formatFn={(v) => v != null ? fmt(v) : '-'}
                   />
 
-                  {/* ===== BLOQUE POTENCIAL (B-26) — solo visible si showPotencial ===== */}
-                  {/* REGLA (potencial.md): nunca se suma a revenue/costos/totalesAnuales confirmados */}
+                  {/* Nota al pie sobre potencial — reemplaza el bloque amber separado */}
                   {showPotencial && data.potencial && (
                     <>
-                      {/* Separador visual — sección potencial */}
-                      <tr className="bg-amber-50/60 border-t-2 border-amber-300">
-                        <td colSpan={14} className="py-1.5 px-3">
-                          <span className="text-[10px] font-semibold tracking-wider text-amber-700 uppercase">
-                            Potencial (no suma al confirmado)
-                          </span>
-                        </td>
-                      </tr>
-                      <tr className="border-t border-amber-100 hover:bg-amber-50/40 transition-colors">
-                        <td className="py-1.5 px-3 text-amber-700 sticky left-0 bg-white z-10">
-                          Revenue potencial*
-                        </td>
-                        {months.map((m) => {
-                          const val = data.potencial?.meses[m]?.fcstRevPot ?? 0;
-                          return (
-                            <td key={m} className="py-1.5 px-2 text-right tabular-nums text-amber-700">
-                              {val > 0 ? fmt(val, m) : <span className="text-stone-300">-</span>}
-                            </td>
-                          );
-                        })}
-                        <td className="py-1.5 px-3 text-right tabular-nums font-semibold bg-amber-50/60 text-amber-700">
-                          {(() => {
-                            const total = data.potencial?.anual?.fcstRevPot ?? 0;
-                            return total > 0 ? fmt(total) : <span className="text-stone-300">-</span>;
-                          })()}
-                        </td>
-                      </tr>
-                      <tr className="border-t border-amber-100 hover:bg-amber-50/40 transition-colors">
-                        <td className="py-1.5 px-3 text-amber-700 sticky left-0 bg-white z-10">
-                          FTEs potenciales*
-                        </td>
-                        {months.map((m) => {
-                          const val = data.potencial?.meses[m]?.ftePotencial ?? 0;
-                          return (
-                            <td key={m} className="py-1.5 px-2 text-right tabular-nums text-amber-700">
-                              {val > 0 ? fmtFte(val) : <span className="text-stone-300">-</span>}
-                            </td>
-                          );
-                        })}
-                        <td className="py-1.5 px-3 text-right tabular-nums font-semibold bg-amber-50/60 text-amber-700">
-                          {(() => {
-                            const total = data.potencial?.anual?.ftePotencial ?? 0;
-                            return total > 0 ? fmtFte(total) : <span className="text-stone-300">-</span>;
-                          })()}
-                        </td>
-                      </tr>
-                      <tr className="border-t border-amber-100">
+                      <tr className="border-t border-stone-100">
                         <td colSpan={14} className="py-1 px-3">
                           <span className="text-[10px] text-amber-600/70">
-                            * Ponderado por probabilidadCierre. Solo ClientePotencial con estado=ACTIVO.
+                            * Meses con badge Pot. = asignado + potencial ponderado. * Ponderado por probabilidadCierre. Solo ClientePotencial con estado=ACTIVO.
                           </span>
                         </td>
                       </tr>
@@ -970,9 +947,10 @@ interface CollapsableMainRowProps {
   getValue: (m: number) => number;
   fmt: (val: number, month?: number) => string;
   hasRealData: (m: number) => boolean;
+  getBadge?: (m: number) => 'real' | 'potencial' | null;
 }
 
-function CollapsableMainRow({ label, isExpanded, onToggle, months, getValue, fmt, hasRealData }: CollapsableMainRowProps) {
+function CollapsableMainRow({ label, isExpanded, onToggle, months, getValue, fmt, hasRealData, getBadge }: CollapsableMainRowProps) {
   return (
     <tr className="bg-stone-50/80 border-t-2 border-stone-300 hover:bg-stone-100/60 transition-colors cursor-pointer" onClick={onToggle}>
       <td className="py-2 px-3 font-bold text-stone-800 sticky left-0 bg-stone-50/80 z-10">
@@ -987,14 +965,19 @@ function CollapsableMainRow({ label, isExpanded, onToggle, months, getValue, fmt
       </td>
       {months.map((m) => {
         const val = getValue(m);
-        const isReal = hasRealData(m);
+        const badge = getBadge ? getBadge(m) : (hasRealData(m) ? 'real' : null);
         return (
           <td key={m} className="py-2 px-2 text-right tabular-nums font-bold text-stone-800">
             <div className="flex items-center justify-end gap-1">
               {val !== 0 ? fmt(val, m) : <span className="text-stone-300">-</span>}
-              {isReal && (
+              {badge === 'real' && (
                 <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-blue-500 text-blue-600 bg-blue-50">
                   Real
+                </Badge>
+              )}
+              {badge === 'potencial' && (
+                <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-amber-500 text-amber-600 bg-amber-50">
+                  Pot.*
                 </Badge>
               )}
             </div>

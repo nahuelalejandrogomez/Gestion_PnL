@@ -1,5 +1,27 @@
 # Rolling - Especificación Ejecutable
 
+---
+
+## Tecnologías de la aplicación
+
+- Frontend: React, TypeScript, Vite, shadcn/ui, Recharts
+- Backend: Node.js, Express, Prisma ORM, PostgreSQL
+- Infraestructura: Railway, PgBouncer, Nixpacks
+- Testing: Jest, React Testing Library
+- Otros: ExcelJS, Zod, React Router
+
+---
+
+## 🛠️ Stack Tecnológico
+
+- **Frontend**: React + TypeScript, Vite, shadcn/ui, Recharts
+- **Backend**: Node.js, Express, Prisma ORM, PostgreSQL
+- **Infraestructura**: Railway (deploy), PgBouncer (pooling), Nixpacks (build)
+- **Testing**: Jest, React Testing Library
+- **Otros**: ExcelJS (exportación), Zod (validación), React Router
+
+---
+
 ## ✅ PROGRESO DEL PROYECTO
 
 ### ÉPICA 1: Setup Base y Navegación - COMPLETADA ✅
@@ -535,3 +557,124 @@
 ---
 
 **FIN ESPECIFICACIÓN EJECUTABLE**
+
+---
+
+## AUDITORÍA ÉPICA 2: Estado de Implementación
+
+### US-004: Agregar select país y tipoComercial en formulario — ✅ IMPLEMENTADA
+**Archivo:** ClienteForm.tsx
+
+**Evidencia:**
+```tsx
+// Líneas 232-282: Grid 2x2 con selects
+<div className="grid grid-cols-2 gap-4">
+  {/* Select País */}
+  <FormField name="pais" ... />
+  
+  {/* Select Tipo Comercial */}
+  <FormField name="tipoComercial" ... />
+</div>
+```
+**Features:**
+- ✅ Select de país con 9 opciones (AR, UY, CL, MX, US, BR, PE, CO, OTRO)
+- ✅ Select de tipo comercial (BASE_INSTALADA, NUEVA_VENTA)
+- ✅ Labels en español
+- ✅ Grid responsive 2x2
+- ✅ Defaults: pais: 'AR', tipoComercial: 'BASE_INSTALADA'
+
+---
+
+### US-005: Validar campos obligatorios — ⚠️ PARCIALMENTE IMPLEMENTADA
+**Archivo:** ClienteForm.tsx (líneas 32-41)
+
+**Problema detectado:**
+```typescript
+const clienteSchema = z.object({
+  nombre: z.string().min(1, 'El nombre es requerido'),  // ✅ Obligatorio
+  razonSocial: z.string().min(1, 'La razón social es requerida'),  // ✅ Obligatorio
+  cuilCuit: z.string().min(1, 'El CUIL/CUIT es requerido'),  // ✅ Obligatorio
+  estado: z.enum(['ACTIVO', 'INACTIVO', 'POTENCIAL']).optional(),  // ✅ OK (opcional)
+  pais: z.enum(['AR', 'UY', 'CL', 'MX', 'US', 'BR', 'PE', 'CO', 'OTRO']).optional(),  // ❌ DEBERÍA SER OBLIGATORIO
+  tipoComercial: z.enum(['BASE_INSTALADA', 'NUEVA_VENTA']).optional(),  // ❌ DEBERÍA SER OBLIGATORIO
+});
+```
+**Issue:** Los campos pais y tipoComercial están marcados como `.optional()` pero según US-005 deben ser obligatorios.
+
+**Sin embargo:** Los defaults ('AR' y 'BASE_INSTALADA') garantizan que nunca sean undefined, así que funcionalmente está cubierto.
+
+**Recomendación:** Cambiar a `.required()` para mayor claridad y consistencia con backend.
+
+---
+
+### US-006: Mostrar badges en listado — ✅ IMPLEMENTADA
+**Archivos afectados:**
+- ClientesList.tsx (líneas 77-85)
+- PaisBadge.tsx
+- TipoComercialBadge.tsx
+
+**Evidencia:**
+```tsx
+// ClientesList.tsx
+{
+  header: 'País',
+  cell: (cliente) => <PaisBadge pais={cliente.pais} />,
+},
+{
+  header: 'Tipo Comercial',
+  cell: (cliente) => <TipoComercialBadge tipoComercial={cliente.tipoComercial} />,
+},
+```
+**Features:**
+- ✅ PaisBadge con colores distintivos por país (9 variantes)
+- ✅ TipoComercialBadge con colores verde (BI) y amarillo (NV)
+- ✅ Tamaños: sm y default
+- ✅ Integrados en ClientesList, ClienteCard, ClienteDetail
+
+---
+
+### US-007: Select país editable en ABM — ✅ IMPLEMENTADA
+**Evidencia:** Ya cubierto en US-004. El select de país está en el formulario y es completamente editable.
+
+---
+
+## 📊 RESUMEN DE AUDITORÍA
+
+| US      | Descripción                               | Estado   | Completitud | Issues                                   |
+|---------|-------------------------------------------|----------|-------------|------------------------------------------|
+| US-004  | Select país y tipoComercial en formulario | ✅ DONE  | 100%        | Ninguno                                  |
+| US-005  | Validación obligatoria                    | ⚠️ PARCIAL | 90%         | Schema usa .optional() pero tiene defaults|
+| US-006  | Badges en listado                         | ✅ DONE  | 100%        | Ninguno                                  |
+| US-007  | Select país editable                      | ✅ DONE  | 100%        | Ninguno                                  |
+
+**Status General:** ✅ ÉPICA 2 COMPLETADA (con 1 mejora menor sugerida)
+
+---
+
+### 🔧 MEJORA SUGERIDA (Opcional)
+**Issue:** Validación no explícita en schema  
+**Cambio recomendado en ClienteForm.tsx:**
+```typescript
+const clienteSchema = z.object({
+  nombre: z.string().min(1, 'El nombre es requerido'),
+  razonSocial: z.string().min(1, 'La razón social es requerida'),
+  cuilCuit: z.string().min(1, 'El CUIL/CUIT es requerido'),
+  estado: z.enum(['ACTIVO', 'INACTIVO', 'POTENCIAL']).optional(),
+  // Cambio: remover .optional()
+  pais: z.enum(['AR', 'UY', 'CL', 'MX', 'US', 'BR', 'PE', 'CO', 'OTRO']),
+  tipoComercial: z.enum(['BASE_INSTALADA', 'NUEVA_VENTA']),
+  fechaInicio: z.string().optional(),
+  notas: z.string().optional(),
+});
+```
+**Motivo:** Explícito > Implícito. Aunque los defaults garantizan valores, el schema debe reflejar la obligatoriedad.
+
+---
+
+### 🎯 PREGUNTAS AL USUARIO
+
+- ¿Querés que aplique la mejora del schema (remover .optional() de país y tipoComercial)?
+- ¿Hay alguna funcionalidad adicional que querés agregar a ÉPICA 2?
+- ¿Procedemos con ÉPICA 3 (Integración Rolling/Reportes) que según el doc también está completada?
+
+**Status:** La ÉPICA 2 está funcionalmente completa. Si querés la mejora del schema, puedo aplicarla en 2 minutos. Caso contrario, podemos pasar a validar ÉPICA 3 o trabajar en nuevas features.

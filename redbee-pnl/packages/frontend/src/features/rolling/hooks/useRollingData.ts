@@ -54,10 +54,19 @@ function transformToRollingData(
       gross: monthData.indicadores.diffAmount,
       gmPct: monthData.indicadores.gmPct,
 
-      // Bloque Potencial (B-26) — fuente: pnlData.potencial.meses[m]
-      // REGLA (potencial.md): nunca se suma a gross ni gmPct del confirmado
+      // Bloque Potencial — contribución para subfila desglose
       ftePotencial: pnlData.potencial?.meses[m]?.ftePotencial ?? 0,
       revenuePotencial: pnlData.potencial?.meses[m]?.fcstRevPot ?? 0,
+
+      // Valores efectivos: real si existe, sino asignado + potencial
+      // El campo fuente viene del backend (injectFuenteIntoMonths)
+      fuente: (monthData.fuente ?? 'ASIGNADO') as 'REAL' | 'POTENCIAL' | 'ASIGNADO',
+      revenueEfectivo: monthData.fuente === 'REAL'
+        ? (monthData.revenueReal ?? 0)
+        : monthData.revenue.asignado + (pnlData.potencial?.meses[m]?.fcstRevPot ?? 0),
+      ftesEfectivos: monthData.fuente === 'REAL'
+        ? (monthData.ftesReales ?? 0)
+        : monthData.indicadores.ftesAsignados + (pnlData.potencial?.meses[m]?.ftePotencial ?? 0),
     };
   }
 

@@ -3,10 +3,10 @@
  * ÉPICA 2 US-005: Tabla consolidada FTEs por cliente
  * ÉPICA 2 US-006: Totales y validación
  *
- * BUG FIX: Fila principal expandible por cliente
- * - Fila principal muestra valor total efectivo (ftesReales ?? ftesAsignados)
- * - Expandible para mostrar Backlog y Potencial
- * - UX igual a P&L Cliente
+ * Semántica efectiva:
+ * - Fila principal muestra ftesEfectivos: real si existe, asignado+potencial si no
+ * - Badge "Real" (azul) si fuente=REAL, "Pot.*" (amber) si fuente=POTENCIAL
+ * - Expandible: subfila "Confirmado" + subfila "Potencial*"
  */
 
 import { useState } from 'react';
@@ -155,7 +155,7 @@ export function RfActualsTable({ year, paisFilter, tipoComercialFilter }: RfActu
           </p>
         )}
         <p className="text-xs text-stone-400 mt-2">
-          * Potencial ponderado por probabilidadCierre. No suma al total confirmado.
+          * Meses sin real = asignado + potencial ponderado por probabilidadCierre.
         </p>
       </CardContent>
     </Card>
@@ -209,18 +209,22 @@ function ClienteSection({
             );
           }
 
-          // Fila principal muestra SOLO backlog (lo que se va a facturar)
-          // NO suma potencial - esto hace que coincida con P&L Cliente
-          const hasReal = monthData.ftesReales !== null;
-          const backlog = monthData.ftesReales ?? monthData.ftesAsignados;
+          // Fila principal muestra ftesEfectivos: real si hay real, asignado+potencial si no
+          const efectivo = monthData.ftesEfectivos;
+          const fuente = monthData.fuente;
 
           return (
             <td key={m} className="py-2 px-2 text-right tabular-nums font-semibold text-stone-800">
               <div className="flex items-center justify-end gap-1">
-                {backlog > 0 ? fmtFte(backlog) : <span className="text-stone-300">-</span>}
-                {hasReal && (
+                {efectivo > 0 ? fmtFte(efectivo) : <span className="text-stone-300">-</span>}
+                {fuente === 'REAL' && (
                   <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-blue-500 text-blue-600 bg-blue-50">
                     Real
+                  </Badge>
+                )}
+                {fuente === 'POTENCIAL' && (
+                  <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-amber-500 text-amber-600 bg-amber-50">
+                    Pot.*
                   </Badge>
                 )}
               </div>
@@ -229,14 +233,11 @@ function ClienteSection({
         })}
         <td className="py-2 px-3 text-right tabular-nums font-bold text-stone-900 bg-stone-100/60">
           {(() => {
-            // Total anual = suma de backlog mensual (NO promedio, NO incluye potencial)
+            // Total anual = suma de ftesEfectivos mensual
             let totalAnual = 0;
             for (let m = 1; m <= 12; m++) {
               const monthData = cliente.meses[m];
-              if (monthData) {
-                const monthBacklog = monthData.ftesReales ?? monthData.ftesAsignados;
-                totalAnual += monthBacklog;
-              }
+              if (monthData) totalAnual += monthData.ftesEfectivos;
             }
             return fmtFte(totalAnual);
           })()}
@@ -246,10 +247,10 @@ function ClienteSection({
       {/* Subfilas (solo si expandido) */}
       {isExpanded && (
         <>
-          {/* Subfila: Backlog */}
+          {/* Subfila: Confirmado */}
           <tr className="border-t border-stone-100 hover:bg-stone-50/40 transition-colors">
             <td className="py-1.5 px-3 pl-8 text-stone-600 text-[11px] sticky left-0 bg-white z-10">
-              Backlog
+              Confirmado
             </td>
             {months.map((m) => {
               const monthData = cliente.meses[m];
@@ -359,10 +360,10 @@ function TotalesSection({
         </td>
       </tr>
 
-      {/* Fila Backlog TOTAL */}
+      {/* Fila Confirmado TOTAL */}
       <tr className="border-t border-stone-200 hover:bg-stone-50/40 transition-colors">
         <td className="py-1.5 px-3 pl-6 text-stone-700 font-semibold sticky left-0 bg-white z-10">
-          Backlog Total
+          Confirmado Total
         </td>
         {months.map((m) => {
           const agg = aggregates.byMonth[m];
