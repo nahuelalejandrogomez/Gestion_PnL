@@ -35,6 +35,10 @@ export function ProyectoPnlGrid({ proyectoId, clienteId }: Props) {
     fte: false,
   });
 
+  // Toggle Potencial: mostrar/ocultar línea Potencial (solo Cliente view, default: visible)
+  // REGLA (potencial.md): la sección potencial nunca se suma a los totales confirmados
+  const [showPotencial, setShowPotencial] = useState(true);
+
   // Usar el hook correcto dependiendo de si es proyecto o cliente
   const isClienteView = !!clienteId;
 
@@ -205,6 +209,20 @@ export function ProyectoPnlGrid({ proyectoId, clienteId }: Props) {
             </CardTitle>
           </div>
           <div className="flex items-center gap-3">
+            {/* Toggle Potencial (solo Cliente view) */}
+            {isClienteView && (
+              <button
+                onClick={() => setShowPotencial(prev => !prev)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${
+                  showPotencial
+                    ? 'bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100'
+                    : 'bg-white border-stone-200 text-stone-500 hover:bg-stone-50'
+                }`}
+                title="Alternar visualización del bloque Potencial"
+              >
+                {showPotencial ? 'Con potencial' : 'Sin potencial'}
+              </button>
+            )}
             {/* Save/Cancel buttons when editing real data */}
             {realDataHook?.hasDirtyData && (
               <>
@@ -714,6 +732,66 @@ export function ProyectoPnlGrid({ proyectoId, clienteId }: Props) {
                     }}
                     formatFn={(v) => v != null ? fmt(v) : '-'}
                   />
+
+                  {/* ===== BLOQUE POTENCIAL (B-26) — solo visible si showPotencial ===== */}
+                  {/* REGLA (potencial.md): nunca se suma a revenue/costos/totalesAnuales confirmados */}
+                  {showPotencial && data.potencial && (
+                    <>
+                      {/* Separador visual — sección potencial */}
+                      <tr className="bg-amber-50/60 border-t-2 border-amber-300">
+                        <td colSpan={14} className="py-1.5 px-3">
+                          <span className="text-[10px] font-semibold tracking-wider text-amber-700 uppercase">
+                            Potencial (no suma al confirmado)
+                          </span>
+                        </td>
+                      </tr>
+                      <tr className="border-t border-amber-100 hover:bg-amber-50/40 transition-colors">
+                        <td className="py-1.5 px-3 text-amber-700 sticky left-0 bg-white z-10">
+                          Revenue potencial*
+                        </td>
+                        {months.map((m) => {
+                          const val = data.potencial?.meses[m]?.fcstRevPot ?? 0;
+                          return (
+                            <td key={m} className="py-1.5 px-2 text-right tabular-nums text-amber-700">
+                              {val > 0 ? fmt(val, m) : <span className="text-stone-300">-</span>}
+                            </td>
+                          );
+                        })}
+                        <td className="py-1.5 px-3 text-right tabular-nums font-semibold bg-amber-50/60 text-amber-700">
+                          {(() => {
+                            const total = data.potencial?.anual?.fcstRevPot ?? 0;
+                            return total > 0 ? fmt(total) : <span className="text-stone-300">-</span>;
+                          })()}
+                        </td>
+                      </tr>
+                      <tr className="border-t border-amber-100 hover:bg-amber-50/40 transition-colors">
+                        <td className="py-1.5 px-3 text-amber-700 sticky left-0 bg-white z-10">
+                          FTEs potenciales*
+                        </td>
+                        {months.map((m) => {
+                          const val = data.potencial?.meses[m]?.ftePotencial ?? 0;
+                          return (
+                            <td key={m} className="py-1.5 px-2 text-right tabular-nums text-amber-700">
+                              {val > 0 ? fmtFte(val) : <span className="text-stone-300">-</span>}
+                            </td>
+                          );
+                        })}
+                        <td className="py-1.5 px-3 text-right tabular-nums font-semibold bg-amber-50/60 text-amber-700">
+                          {(() => {
+                            const total = data.potencial?.anual?.ftePotencial ?? 0;
+                            return total > 0 ? fmtFte(total) : <span className="text-stone-300">-</span>;
+                          })()}
+                        </td>
+                      </tr>
+                      <tr className="border-t border-amber-100">
+                        <td colSpan={14} className="py-1 px-3">
+                          <span className="text-[10px] text-amber-600/70">
+                            * Ponderado por probabilidadCierre. Solo ClientePotencial con estado=ACTIVO.
+                          </span>
+                        </td>
+                      </tr>
+                    </>
+                  )}
                 </>
               ) : (
                 // Vista Proyecto: Sin colapsar (original)

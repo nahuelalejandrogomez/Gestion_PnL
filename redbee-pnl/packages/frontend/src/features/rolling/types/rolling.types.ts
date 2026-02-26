@@ -63,6 +63,11 @@ export interface RollingMonthData {
   // Indicadores
   gross: number; // revenue - costos
   gmPct: number | null; // gross margin %
+
+  // Bloque Potencial (B-26) — fuente: ClientePotencial ACTIVO ponderado
+  // REGLA (potencial.md): NUNCA suma al total confirmado ni a gross/gmPct
+  ftePotencial: number;      // sum(linea.ftes × prob/100)
+  revenuePotencial: number;  // sum(linea.revenueEstimado × prob/100)
 }
 
 /**

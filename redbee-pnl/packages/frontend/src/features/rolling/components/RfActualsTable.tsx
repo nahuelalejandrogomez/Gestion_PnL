@@ -154,6 +154,9 @@ export function RfActualsTable({ year, paisFilter, tipoComercialFilter }: RfActu
             ❌ Error de validación: Discrepancias detectadas en totales. Revisa logs para detalles.
           </p>
         )}
+        <p className="text-xs text-stone-400 mt-2">
+          * Potencial ponderado por probabilidadCierre. No suma al total confirmado.
+        </p>
       </CardContent>
     </Card>
   );
@@ -272,10 +275,10 @@ function ClienteSection({
             </td>
           </tr>
 
-          {/* Subfila: Potencial */}
+          {/* Subfila: Potencial (B-26) — ClientePotencial ACTIVO ponderado */}
           <tr className="border-t border-stone-100 hover:bg-stone-50/40 transition-colors">
             <td className="py-1.5 px-3 pl-8 text-amber-600 text-[11px] sticky left-0 bg-white z-10">
-              Potencial
+              Potencial*
             </td>
             {months.map((m) => {
               const monthData = cliente.meses[m];
@@ -287,19 +290,23 @@ function ClienteSection({
                 );
               }
 
-              // Potencial = ftesNoAsignados (actualmente 0, mostrar "-")
-              // TODO: Cuando se implemente funcionalidad potencial, descomentar:
-              // const potencial = monthData.ftesNoAsignados;
-              // return potencial > 0 ? fmtFte(potencial) : "-";
+              const potencial = monthData.ftePotencial;
 
               return (
                 <td key={m} className="py-1.5 px-2 text-right tabular-nums text-amber-600">
-                  <span className="text-stone-300">-</span>
+                  {potencial > 0 ? fmtFte(potencial) : <span className="text-stone-300">-</span>}
                 </td>
               );
             })}
             <td className="py-1.5 px-3 text-right tabular-nums font-semibold bg-stone-50/60 text-amber-600">
-              -
+              {(() => {
+                let total = 0;
+                for (let m = 1; m <= 12; m++) {
+                  const md = cliente.meses[m];
+                  if (md) total += md.ftePotencial;
+                }
+                return total > 0 ? fmtFte(total) : <span className="text-stone-300">-</span>;
+              })()}
             </td>
           </tr>
         </>

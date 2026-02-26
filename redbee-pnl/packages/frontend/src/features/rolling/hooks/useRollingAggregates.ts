@@ -76,15 +76,14 @@ export function useRollingAggregates(data: RollingData | undefined): RollingAggr
         const clienteBacklog = monthData.ftesReales ?? monthData.ftesAsignados;
         backlogMonth += clienteBacklog;
 
-        // Potencial = 0 (funcionalidad no implementada aún)
-        // TODO: Implementar cálculo de potencial cuando se desarrolle la funcionalidad
-        // potencialMonth += monthData.ftesNoAsignados;
+        // Potencial (B-26) — fuente: ClientePotencial ACTIVO ponderado
+        potencialMonth += monthData.ftePotencial;
       }
 
-      // Total = Backlog solamente (potencial = 0 por ahora)
+      // Total = Backlog solamente — REGLA (potencial.md): potencial NO suma al total confirmado
       const totalMonth = backlogMonth;
 
-      // Validación: total debe = backlog (potencial siempre 0 por ahora)
+      // Validación: total debe = backlog (potencial se muestra separado)
       const discrepancy = Math.abs(totalMonth - backlogMonth);
       const isValid = discrepancy <= 0.01;
 
@@ -140,23 +139,21 @@ export function useRollingAggregates(data: RollingData | undefined): RollingAggr
         const clienteBacklog = monthData.revenueReal ?? monthData.revenueAsignado;
         revBacklogMonth += clienteBacklog;
 
-        // Potencial = 0 (funcionalidad no implementada aún)
-        // TODO: Implementar cálculo de potencial cuando se desarrolle la funcionalidad
-        // revPotencialMonth += monthData.revenueNoAsignado;
+        // Potencial (B-26) — fuente: ClientePotencial ACTIVO ponderado
+        revPotencialMonth += monthData.revenuePotencial;
       }
 
-      // Total = Backlog solamente (potencial = 0 por ahora)
+      // Total = Backlog solamente — REGLA (potencial.md): potencial NO suma al total confirmado
       const revTotalMonth = revBacklogMonth;
 
-      // Budget = 0 (placeholder hasta que se implemente funcionalidad)
-      // TODO: Implementar presupuestos mensuales cuando esté disponible
+      // Budget = 0 (placeholder — B-18 presupuestos)
       const revBudgetMonth = 0;
 
       // Desvío vs Budget
       const desvio = revTotalMonth - revBudgetMonth;
       const desvioPct = revBudgetMonth > 0 ? (desvio / revBudgetMonth) * 100 : null;
 
-      // Validación: total debe = backlog (potencial siempre 0 por ahora)
+      // Validación: total debe = backlog (potencial se muestra separado)
       const revDiscrepancy = Math.abs(revTotalMonth - revBacklogMonth);
       const revIsValid = revDiscrepancy <= 0.01;
 

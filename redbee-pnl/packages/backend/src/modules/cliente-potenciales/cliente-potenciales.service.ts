@@ -157,6 +157,25 @@ export class ClientePotencialesService {
     return { deleted: true };
   }
 
+  // ── Estado ───────────────────────────────────────────────────────────────────
+
+  async cambiarEstado(
+    clienteId: string,
+    id: string,
+    nuevoEstado: 'ACTIVO' | 'GANADO' | 'PERDIDO',
+    proyectoId?: string,
+  ) {
+    await this.findOne(clienteId, id);
+    return this.prisma.clientePotencial.update({
+      where: { id },
+      data: {
+        estado: nuevoEstado,
+        ...(nuevoEstado === 'GANADO' && proyectoId ? { proyectoId } : {}),
+      },
+      include: POTENCIAL_INCLUDE,
+    });
+  }
+
   // ── Helpers ──────────────────────────────────────────────────────────────────
 
   private async assertClienteExists(clienteId: string) {

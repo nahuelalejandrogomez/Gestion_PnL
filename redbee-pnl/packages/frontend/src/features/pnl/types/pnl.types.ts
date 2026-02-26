@@ -22,10 +22,18 @@ export interface PnlMonthIndicadores {
   blendCost: number | null;
 }
 
+// Bloque Potencial — fuente exclusiva: ClientePotencial con estado=ACTIVO
+// REGLA (potencial.md): nunca mezclar con meses/totalesAnuales del bloque confirmado
+export interface PotencialMes {
+  ftePotencial: number;    // sum(linea.ftes × prob/100) por mes
+  fcstRevPot: number;      // sum(linea.revenueEstimado × prob/100) por mes
+  forecastCostPot: number; // siempre 0: sin costo de nómina asociado
+}
+
 // Nuevos indicadores de negocio (16 indicadores anuales)
 export interface IndicadoresNegocio {
   // Revenue & Forecast
-  ftePotencial: number; // Placeholder en 0
+  ftePotencial: number; // anual — viene del bloque potencial
   fte: number; // Suma anual de FTEs asignados
   fcstRevPot: number; // Placeholder en 0
   fcstRev: number; // Revenue forecast anual
@@ -83,5 +91,11 @@ export interface PnlYearResult {
   meses: Record<number, PnlMonthData>;
   totalesAnuales: PnlMonthData;
   indicadoresNegocio: IndicadoresNegocio; // 16 indicadores de negocio
+  // Bloque Potencial — separado del confirmado (B-25/B-26)
+  // Solo presente en el endpoint de cliente (no de proyecto individual)
+  potencial?: {
+    meses: Record<number, PotencialMes>;
+    anual: PotencialMes;
+  };
   hasRealData?: boolean; // Indica si hay datos reales ingresados (solo para Cliente P&L)
 }

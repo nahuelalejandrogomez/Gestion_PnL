@@ -166,6 +166,9 @@ export function RevenueTable({ year, paisFilter, tipoComercialFilter }: RevenueT
             ❌ Error de validación: Discrepancias detectadas en totales. Revisa logs para detalles.
           </p>
         )}
+        <p className="text-xs text-stone-400 mt-2">
+          * Potencial ponderado por probabilidadCierre. No suma al total confirmado.
+        </p>
       </CardContent>
     </Card>
   );
@@ -313,10 +316,10 @@ function ClienteSection({
             </td>
           </tr>
 
-          {/* Subfila: Potencial */}
+          {/* Subfila: Potencial (B-26) — ClientePotencial ACTIVO ponderado */}
           <tr className="border-t border-stone-100 hover:bg-stone-50/40 transition-colors">
             <td className="py-1.5 px-3 pl-8 text-amber-600 text-[11px] sticky left-0 bg-white z-10">
-              Potencial
+              Potencial*
             </td>
             {months.map((m) => {
               const monthData = cliente.meses[m];
@@ -328,22 +331,29 @@ function ClienteSection({
                 );
               }
 
-              // Potencial = revenueNoAsignado (actualmente 0, mostrar "-")
-              // TODO: Cuando se implemente funcionalidad potencial, descomentar:
-              // let potencial = monthData.revenueNoAsignado;
-              // if (moneda === 'ARS') {
-              //   potencial = convertToARS(potencial, m, fxRates);
-              // }
-              // return potencial > 0 ? fmtCurrency(potencial, moneda) : "-";
+              let potencial = monthData.revenuePotencial;
+              if (moneda === 'ARS') {
+                potencial = convertToARS(potencial, m, fxRates);
+              }
 
               return (
                 <td key={m} className="py-1.5 px-2 text-right tabular-nums text-amber-600">
-                  <span className="text-stone-300">-</span>
+                  {potencial > 0 ? fmtCurrency(potencial, moneda) : <span className="text-stone-300">-</span>}
                 </td>
               );
             })}
             <td className="py-1.5 px-3 text-right tabular-nums font-semibold bg-stone-50/60 text-amber-600">
-              -
+              {(() => {
+                let total = 0;
+                for (let m = 1; m <= 12; m++) {
+                  const md = cliente.meses[m];
+                  if (md) {
+                    const v = moneda === 'ARS' ? convertToARS(md.revenuePotencial, m, fxRates) : md.revenuePotencial;
+                    total += v;
+                  }
+                }
+                return total > 0 ? fmtCurrency(total, moneda) : <span className="text-stone-300">-</span>;
+              })()}
             </td>
           </tr>
         </>
@@ -449,22 +459,34 @@ function TotalesSection({
         </td>
       </tr>
 
-      {/* Fila Potencial TOTAL */}
+      {/* Fila Potencial TOTAL (B-26) */}
       <tr className="border-t border-stone-200 hover:bg-stone-50/40 transition-colors">
         <td className="py-1.5 px-3 pl-6 text-amber-700 font-semibold sticky left-0 bg-white z-10">
-          Potencial Total
+          Potencial Total*
         </td>
         {months.map((m) => {
-          // Potencial = 0 (funcionalidad no implementada)
-          // TODO: Cuando se implemente, descomentar: const revAgg = revenueAgg.byMonth[m];
+          const revAgg = revenueAgg.byMonth[m];
+          let potencial = revAgg.potencial;
+          if (moneda === 'ARS') {
+            potencial = convertToARS(potencial, m, fxRates);
+          }
           return (
             <td key={m} className="py-1.5 px-2 text-right tabular-nums font-semibold text-amber-700">
-              <span className="text-stone-300">-</span>
+              {potencial > 0 ? fmtCurrency(potencial, moneda) : <span className="text-stone-300">-</span>}
             </td>
           );
         })}
         <td className="py-1.5 px-3 text-right tabular-nums font-semibold bg-stone-50/60 text-amber-700">
-          -
+          {(() => {
+            let potencialAnual = revenueAgg.annual.potencial;
+            if (moneda === 'ARS') {
+              potencialAnual = 0;
+              for (let m = 1; m <= 12; m++) {
+                potencialAnual += convertToARS(revenueAgg.byMonth[m].potencial, m, fxRates);
+              }
+            }
+            return potencialAnual > 0 ? fmtCurrency(potencialAnual, moneda) : <span className="text-stone-300">-</span>;
+          })()}
         </td>
       </tr>
 

@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, FileText, FolderKanban, Pencil, Trash2, CheckCircle, Receipt, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Calendar, FileText, FolderKanban, Pencil, Trash2, CheckCircle, Receipt, BarChart3, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -27,6 +27,7 @@ import { ProyectosTable, ProyectoForm, useProyectoMutations } from '@/features/p
 import { TarifariosTab, useTarifarios } from '@/features/tarifarios';
 import { ProyectoPnlGrid, useClientePnlYear } from '@/features/pnl';
 import type { PnlYearResult } from '@/features/pnl';
+import { PotencialesTab } from '@/features/potencial';
 import { useState } from 'react';
 import type { UpdateClienteDto } from '../types/cliente.types';
 import type { CreateProyectoDto } from '@/features/proyectos/types/proyecto.types';
@@ -254,6 +255,13 @@ export function ClienteDetail() {
             <Receipt className="h-4 w-4" />
             Tarifarios ({tarifariosData?.total || 0})
           </TabsTrigger>
+          <TabsTrigger
+            value="potenciales"
+            className="flex items-center gap-2 data-[state=active]:bg-stone-100 data-[state=active]:text-stone-800 rounded-md px-4"
+          >
+            <TrendingUp className="h-4 w-4" />
+            Potenciales
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="pnl" className="mt-6">
@@ -275,6 +283,10 @@ export function ClienteDetail() {
 
         <TabsContent value="tarifarios" className="mt-6">
           <TarifariosTab clienteId={cliente.id} clienteNombre={cliente.nombre} />
+        </TabsContent>
+
+        <TabsContent value="potenciales" className="mt-6">
+          <PotencialesTab clienteId={cliente.id} clienteNombre={cliente.nombre} />
         </TabsContent>
       </Tabs>
 

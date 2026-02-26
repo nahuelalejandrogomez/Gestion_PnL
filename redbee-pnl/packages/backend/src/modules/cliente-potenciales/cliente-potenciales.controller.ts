@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -11,6 +12,7 @@ import {
 import { ClientePotencialesService } from './cliente-potenciales.service';
 import { CreateClientePotencialDto } from './dto/create-cliente-potencial.dto';
 import { UpdateClientePotencialDto } from './dto/update-cliente-potencial.dto';
+import { CambiarEstadoDto } from './dto/cambiar-estado.dto';
 
 @Controller('clientes/:clienteId/potenciales')
 export class ClientePotencialesController {
@@ -60,6 +62,17 @@ export class ClientePotencialesController {
     @Body() lineas: Parameters<ClientePotencialesService['upsertLineas']>[2],
   ) {
     return this.service.upsertLineas(clienteId, potencialId, lineas);
+  }
+
+  // ── Estado ────────────────────────────────────────────────────────────────
+
+  @Patch(':id/estado')
+  cambiarEstado(
+    @Param('clienteId') clienteId: string,
+    @Param('id') id: string,
+    @Body() dto: CambiarEstadoDto,
+  ) {
+    return this.service.cambiarEstado(clienteId, id, dto.estado, dto.proyectoId);
   }
 
   @Delete(':id/lineas/:lineaId')

@@ -76,6 +76,47 @@
 
 ---
 
+## 2026-02-25 — Épica POTENCIAL: Implementación completa (B-23 a B-28)
+
+**Autor:** Claude Code
+
+**Resumen:** Implementación completa de la épica Potencial, cubriendo backend, frontend y visualización.
+
+**Backend (B-23 / B-24 / B-25 / B-28):**
+- `prisma/schema.prisma` — modelos `ClientePotencial`, `ClientePotencialLinea`, `ClientePotencialLineaMes` (migración `20260225`)
+- `modules/cliente-potenciales/` — módulo NestJS completo: service, controller, DTOs (create, update, cambiar-estado)
+- `modules/pnl/pnl.service.ts` — conectado a `ClientePotencial` para calcular `ftePotencial`/`fcstRevPot` (campo `potencial` en `PnlYearResult`)
+- `modules/pnl/pnl.service.ts` — proyectos POTENCIAL/TENTATIVO excluidos del P&L confirmado (REGLA DE NO-MEZCLA)
+- Nuevo endpoint: `PATCH /api/clientes/:clienteId/potenciales/:id/estado` (B-28)
+
+**Frontend Tipos (B-26):**
+- `features/pnl/types/pnl.types.ts` — `PotencialMes` + campo `potencial?: { meses, anual }` en `PnlYearResult`
+- `features/rolling/types/rolling.types.ts` — `ftePotencial` y `revenuePotencial` en `RollingMonthData`
+
+**Frontend Rolling (B-26):**
+- `features/rolling/hooks/useRollingData.ts` — extrae datos de potencial del backend en `transformToRollingData()`
+- `features/rolling/hooks/useRollingAggregates.ts` — agrega potencial en columna separada (nunca se mezcla con confirmados)
+- `features/rolling/components/RfActualsTable.tsx` — subfila "Potencial*" con datos reales + footnote
+- `features/rolling/components/RevenueTable.tsx` — subfila "Potencial*" + TotalesSection actualizados
+
+**Frontend P&L (B-26):**
+- `features/pnl/components/ProyectoPnlGrid.tsx` — sección POTENCIAL visual (amber) con toggle "Con/Sin potencial"
+
+**Frontend Feature Potencial (B-27 / B-28):**
+- `features/potencial/types/potencial.types.ts` — tipos frontend completos
+- `features/potencial/api/potencialesApi.ts` — cliente HTTP con `cambiarEstado()`
+- `features/potencial/hooks/usePotenciales.ts` — queries + mutations con cache invalidation
+- `features/potencial/components/PotencialesTab.tsx` — lista activos + histórico + botones Ganado/Perdido (AlertDialog)
+- `features/potencial/components/PotencialForm.tsx` — formulario alta/edición con líneas mensuales por perfil
+- `features/potencial/index.ts` — barrel export
+- `features/clientes/components/ClienteDetail.tsx` — tab "Potenciales" integrado
+
+**SPECs actualizados:**
+- `modules/potencial.md` — estado IMPLEMENTADO v2.1, criterios de aceptación marcados, tabla de archivos implementados
+- `08_BACKLOG.md` — B-23 a B-28 marcados como ✅ HECHO
+
+---
+
 ## Próximas actualizaciones sugeridas
 
 - Actualizar este SPEC cuando se implemente autenticación (B-01)

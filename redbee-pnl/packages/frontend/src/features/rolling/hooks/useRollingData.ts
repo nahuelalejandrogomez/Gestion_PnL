@@ -53,6 +53,11 @@ function transformToRollingData(
       // Indicadores
       gross: monthData.indicadores.diffAmount,
       gmPct: monthData.indicadores.gmPct,
+
+      // Bloque Potencial (B-26) — fuente: pnlData.potencial.meses[m]
+      // REGLA (potencial.md): nunca se suma a gross ni gmPct del confirmado
+      ftePotencial: pnlData.potencial?.meses[m]?.ftePotencial ?? 0,
+      revenuePotencial: pnlData.potencial?.meses[m]?.fcstRevPot ?? 0,
     };
   }
 
@@ -202,7 +207,7 @@ export function useRollingData(year: number) {
         clientes: clientesData,
         totalClientes: clientesActivos.length,
         fxRates,
-        forecasts: [], // TBD US-006+
+        forecasts: [], // Reservado para uso futuro; el potencial ahora está en RollingMonthData.ftePotencial
         lastUpdated: new Date().toISOString(),
       };
     },

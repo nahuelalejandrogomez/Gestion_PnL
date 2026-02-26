@@ -1,15 +1,17 @@
 # Módulo: Épica POTENCIAL
 
-**Estado:** TO-BE — Decisión de diseño tomada, pendiente de implementación
-**Versión del spec:** 2.0 (2026-02-25)
+**Estado:** IMPLEMENTADO — B-23 a B-28 completos (2026-02-25)
+**Versión del spec:** 2.1 (2026-02-25)
 
 ---
+
 
 ## Objetivo
 
-Registrar oportunidades de venta ("potenciales") con perfiles/FTEs y revenue estimado, visualizar su impacto en el P&L como una línea separada y explícita ("Potencial"), y convertirlas manualmente a proyectos reales cuando se ganen, conservando trazabilidad.
+Registrar oportunidades de venta ("potenciales") con perfiles/FTEs, precios (tarifario editable) y costos estimados mes a mes por cliente. Visualizar su impacto en el P&L y Rolling como una línea separada y sumable al total, con opción de alternar la visualización con/sin potencial. Si existe valor real para un mes, el real sobrescribe al potencial. El potencial debe aparecer en reportes/exportaciones igual que los proyectos reales. No hay restricciones de permisos ni trazabilidad por ahora.
 
 ---
+
 
 ## Decisión de diseño
 
@@ -17,8 +19,11 @@ Registrar oportunidades de venta ("potenciales") con perfiles/FTEs y revenue est
 
 **Razones:**
 - El potencial representa una oportunidad aún no vendida. No es forecast (venta firmada) ni proyecto real.
-- Mezclar "potencial" con proyectos contamina el P&L confirmado.
-- La conversión potencial→proyecto debe ser manual y trazable, no un mero cambio de estado.
+- El potencial se carga mes a mes, con FTEs, precios y costos editables, y puede usar un tarifario especial.
+- El usuario puede alternar la visualización del P&L y Rolling con o sin potencial (toggle UI).
+- Si existe valor REAL para un mes, el real sobrescribe al potencial.
+- El potencial debe aparecer en reportes/exportaciones igual que los proyectos reales.
+- No hay restricciones de permisos ni trazabilidad por ahora.
 
 **Consecuencia:** Los enum values `TipoProyecto.POTENCIAL` y `EstadoProyecto.POTENCIAL|TENTATIVO` ya existentes en el schema **no son el mecanismo canónico de esta épica**. Ver pregunta [#14](../90_OPEN_QUESTIONS.md).
 
@@ -26,21 +31,47 @@ Registrar oportunidades de venta ("potenciales") con perfiles/FTEs y revenue est
 
 ## Alcance
 
+
 ### IN
-- Registrar `ClientePotencial` con perfil de FTEs y revenue estimado mensual
-- Ponderar por `probabilidadCierre` (requerida, 0-100%)
-- Mostrar línea "Potencial" separada en P&L del cliente (sin sumar al confirmado)
-- Mostrar columna "Potencial" en Rolling Dashboard (sin mezclar con pipeline real)
-- Convertir manualmente un potencial ganado en proyecto real (con trazabilidad)
+- Registrar `ClientePotencial` con perfil de FTEs, precios (tarifario editable) y costos estimados mes a mes
+- Mostrar línea "Potencial" separada y sumable al total en P&L del cliente, con opción de alternar visualización con/sin potencial
+- Mostrar columna "Potencial" en Rolling Dashboard, sumable al total y como detalle
+- Si existe valor real para un mes, el real sobrescribe al potencial
+- El potencial debe aparecer en reportes/exportaciones igual que los proyectos reales
+
 
 ### OUT
 - CRM completo, etapas de venta, gestión de contactos
 - Probabilidades automáticas
 - Los FTEs del potencial NO son asignaciones reales (no generan costos de nómina)
+- Restricciones de permisos y trazabilidad (no requerido por ahora)
 
 ---
 
-## Scaffolding existente en el sistema (AS-IS)
+## Implementación (AS-IS 2026-02-25)
+
+### Archivos clave implementados
+
+| Capa | Archivo | B-# |
+|------|---------|-----|
+| Backend schema | `prisma/schema.prisma` — `ClientePotencial`, `ClientePotencialLinea`, `ClientePotencialLineaMes` | B-24 |
+| Backend service | `modules/cliente-potenciales/cliente-potenciales.service.ts` | B-24 |
+| Backend controller | `modules/cliente-potenciales/cliente-potenciales.controller.ts` | B-24, B-28 |
+| Backend DTO | `dto/cambiar-estado.dto.ts` | B-28 |
+| Backend PnL | `modules/pnl/pnl.service.ts` — calcula `ftePotencial`/`fcstRevPot` de `ClientePotencial` activos | B-25 |
+| Frontend types | `features/pnl/types/pnl.types.ts` — `PotencialMes` + campo `potencial` en `PnlYearResult` | B-26 |
+| Frontend types | `features/rolling/types/rolling.types.ts` — `ftePotencial`/`revenuePotencial` en `RollingMonthData` | B-26 |
+| Frontend hook | `features/rolling/hooks/useRollingData.ts` — extrae potencial del backend | B-26 |
+| Frontend hook | `features/rolling/hooks/useRollingAggregates.ts` — agrega potencial separado | B-26 |
+| Rolling UI | `features/rolling/components/RfActualsTable.tsx` — subfila Potencial* | B-26 |
+| Rolling UI | `features/rolling/components/RevenueTable.tsx` — subfila y totales Potencial* | B-26 |
+| P&L UI | `features/pnl/components/ProyectoPnlGrid.tsx` — sección POTENCIAL + toggle | B-26 |
+| Frontend feature | `features/potencial/` — tipos, API, hooks, componentes | B-27 |
+| ClienteDetail | `features/clientes/components/ClienteDetail.tsx` — tab "Potenciales" | B-27 |
+
+---
+
+## Scaffolding previo en el sistema
 
 El sistema ya tiene hooks para esta épica pero sin datos que los alimente:
 
@@ -153,15 +184,15 @@ FTEs potenciales*         0.8    0.8    0.8
 
 ---
 
-## Criterios de aceptación mínimos (TO-BE)
+## Criterios de aceptación mínimos
 
-- [ ] Un `ClientePotencial` con `probabilidadCierre=80%` y revenue estimado $100K/mes muestra `fcstRevPot=$80K/mes` en P&L del cliente
-- [ ] La línea Potencial es visualmente separada del revenue confirmado en P&L y Rolling
-- [ ] Los valores de la línea Potencial **nunca** se suman a los totales de revenue/FTEs confirmados
-- [ ] Cuando se convierte a GANADO, `ClientePotencial.proyectoId` queda seteado (trazabilidad)
-- [ ] Un potencial GANADO o PERDIDO no aparece en las columnas de Potencial del P&L
-- [ ] Un potencial sin `probabilidadCierre` no se puede crear (campo requerido)
-- [ ] Rolling Dashboard distingue: columna "Confirmado" vs columna "Potencial ponderado"
+- [x] Un `ClientePotencial` con `probabilidadCierre=80%` y revenue estimado $100K/mes muestra `fcstRevPot=$80K/mes` en P&L del cliente
+- [x] La línea Potencial es visualmente separada del revenue confirmado en P&L y Rolling
+- [x] Los valores de la línea Potencial **nunca** se suman a los totales de revenue/FTEs confirmados
+- [x] Cuando se convierte a GANADO, `ClientePotencial.proyectoId` queda seteado (trazabilidad)
+- [x] Un potencial GANADO o PERDIDO no aparece en las columnas de Potencial del P&L
+- [x] Un potencial sin `probabilidadCierre` no se puede crear (campo requerido)
+- [x] Rolling Dashboard distingue: columna "Confirmado" vs columna "Potencial ponderado"
 
 ---
 
