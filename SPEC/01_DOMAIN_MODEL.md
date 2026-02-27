@@ -6,7 +6,7 @@
 |---------|-----------|
 | **Cliente** | Empresa cliente de Redbee. Tiene proyectos y contratos. |
 | **Proyecto** | Engagement dentro de un cliente. Puede ser PROYECTO, SOPORTE, RETAINER, POTENCIAL. |
-| **Potencial** _(TO-BE)_ | Oportunidad comercial a nivel **cliente**, aún no vendida ni firmada. **No es un Proyecto.** Se modela como entidad propia (`ClientePotencial`). Tiene perfiles/FTEs estimados y `probabilidadCierre` (requerida). Ver [modules/potencial.md](modules/potencial.md). |
+| **Potencial** | Oportunidad comercial a nivel **cliente**, aún no vendida ni firmada. **No es un Proyecto.** Se modela como entidad propia (`ClientePotencial`). Permite cargar mes a mes FTEs, precios (tarifario editable) y costos estimados. **Semántica merge-when-no-real (B-29):** si un mes no tiene datos reales, el potencial ponderado se suma al total efectivo; si hay real, el real sobrescribe. Distinción visual por badges: "Real" (azul), "Pot.*" (amber). Toggle "Con/Sin potencial" disponible. Ver [modules/potencial.md](modules/potencial.md). |
 | **Forecast** | Venta ya firmada o proyecto en curso. Corresponde al pipeline confirmado. **Distinto del Potencial:** el forecast se cumple; el potencial hay que salir a venderlo. |
 | **Recurso** | Persona (empleado). Tiene perfil, costo mensual y moneda. |
 | **Perfil** | Rol/seniority (JR, SSR, SR, LEAD, MANAGER, STAFF). |
@@ -29,10 +29,10 @@
 ```
 Cliente (1)──────(N) ClientePotencial  [TO-BE]  ← entidad nueva, separada de Proyecto
    │                    │
-   │                    ├─ probabilidadCierre (requerida)
    │                    ├─ estado: ACTIVO | GANADO | PERDIDO
    │                    ├─(N) ClientePotencialLinea ──(1) Perfil  [TO-BE]
-   │                    │      └─(N) ClientePotencialLineaMes (ftes, revenueEstimado)
+   │                    │      └─(N) ClientePotencialLineaMes (ftes, precio, costoEstimado)
+   │                    ├─ tarifarioPotencialId? (FK → Tarifario — editable)
    │                    └─ proyectoId? (FK → Proyecto — seteado al convertir)
    │
 Cliente (1)──────(N) Proyecto
@@ -67,7 +67,8 @@ Fuente: `redbee-pnl/packages/backend/prisma/schema.prisma`
 | Over-allocation: warning al superar 100%/150%, nunca bloquea | memoria del proyecto |
 | Tarifario revenue plan: si `tarifarioRevenuePlanId` existe, se usa en lugar de `tarifarioId` | `pnl.service.ts:122` |
 | Proyecto CERRADO no se incluye en P&L de cliente | `pnl.service.ts:616` |
-| **[AS-IS POTENCIAL]** Proyectos POTENCIAL/TENTATIVO SÍ se incluyen en P&L (no hay filtro) — sin ponderación por probabilidad | `pnl.service.ts:613-620` |
+| Proyectos POTENCIAL/TENTATIVO **excluidos** del P&L confirmado (B-23) | `pnl.service.ts` — `estado: { notIn: ['CERRADO', 'POTENCIAL', 'TENTATIVO'] }` |
+| **[B-29]** Semántica merge-when-no-real: `fuente` por mes determina el valor efectivo | `pnl.service.ts:injectFuenteIntoMonths()` |
 | Perfil: unique por `(nombre, nivel)` | `schema.prisma:306` |
 | Código de proyecto: unique por `(clienteId, codigo)` | `schema.prisma:213` |
 | Tarifario rate normalizado a mensual: HORA×176, DIA×22, MES=directo | `pnl.service.ts:206` |

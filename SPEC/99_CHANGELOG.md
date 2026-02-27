@@ -117,6 +117,48 @@
 
 ---
 
+---
+
+## 2026-02-26 — B-29: Semántica merge-when-no-real (nueva semántica Potencial)
+
+**Autor:** Claude Code
+
+**Motivo:** Cambio de semántica del Potencial: la "REGLA DE NO-MEZCLA" (sección amber separada, nunca suma al total) se reemplaza por semántica **merge-when-no-real**: meses sin dato real incluyen el potencial en el total efectivo.
+
+**Decisiones registradas:**
+- Campo `fuente: 'REAL' | 'POTENCIAL' | 'ASIGNADO'` por mes en backend y frontend
+- Valor efectivo = `real ?? (asignado + potencial)` cuando `showPotencial = true`
+- Distinción visual por badges en lugar de sección separada amber
+- El bloque `potencial` se mantiene en el response para subfilas de desglose
+- Invariante de agregación: `total = backlog + potencial`
+- Toggle "Con/Sin potencial" ahora controla si el potencial se incluye en el efectivo (antes: si se mostraba la sección amber)
+
+**Backend:**
+- `pnl.service.ts` — nuevo método `injectFuenteIntoMonths()` que agrega `fuente` a cada mes
+- `pnl.service.ts` — campo `fuente?` en `PnlMonthData` (interface interna)
+
+**Frontend tipos:**
+- `features/pnl/types/pnl.types.ts` — `fuente?: 'REAL' | 'POTENCIAL' | 'ASIGNADO'` en `PnlMonthData`
+- `features/rolling/types/rolling.types.ts` — `revenueEfectivo`, `ftesEfectivos`, `fuente` en `RollingMonthData`
+
+**Frontend Rolling:**
+- `features/rolling/hooks/useRollingData.ts` — computa efectivo en `transformToRollingData()`
+- `features/rolling/hooks/useRollingAggregates.ts` — `total = Σ(efectivos)`, invariante `total = backlog + potencial`
+- `features/rolling/components/RfActualsTable.tsx` — fila principal usa `ftesEfectivos`; badge Real/Pot.*; subfila "Backlog" → "Confirmado"
+- `features/rolling/components/RevenueTable.tsx` — ídem para revenue; "Backlog Total" → "Confirmado Total"
+
+**Frontend P&L:**
+- `features/pnl/components/ProyectoPnlGrid.tsx` — `getEffectiveRevenue`/`Ftes` incluyen potencial cuando `showPotencial && fuente=POTENCIAL`; elimina bloque amber separado; badge `Pot.*` en filas REVENUE y FTE colapsables
+
+**SPECs actualizados:**
+- `modules/potencial.md` — v2.2: nueva semántica documentada, tabla de visualización actualizada, criterios de aceptación
+- `modules/pnl.md` — campo `fuente`, semántica merge, visualización actualizada, RETOCAR limpiado
+- `modules/rolling.md` — tipos actualizados con campos efectivos, semántica de agregación
+- `01_DOMAIN_MODEL.md` — definición de Potencial actualizada, nuevas reglas de negocio
+- `08_BACKLOG.md` — B-29 agregado como ✅ HECHO
+
+---
+
 ## Próximas actualizaciones sugeridas
 
 - Actualizar este SPEC cuando se implemente autenticación (B-01)
